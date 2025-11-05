@@ -14,6 +14,7 @@ library(fixest)
 library(countrycode)
 library(tidyverse)
 library(vroom)
+library(countrycode)
 
 ################################################################################
 
@@ -77,7 +78,31 @@ table(dta$Month)
 table(dta$Reporter)
 unique(dta$`Trade Partner`)
 table(dta$Year, dta$Month)
+colSums(is.na(dta))
 
+################################################################################
+
+# get ISOCode 3 for partners 
+unique(dta$`Trade Partner`)
+unique(dta$`Trade Partner ISO Code`)
+
+dta$PartnerISO3 <- countrycode(dta$`Trade Partner ISO Code`, 
+                        origin = "iso2c", 
+                        destination = "iso3c")
+test <- dta %>% filter(is.na(PartnerISO3))
+unique(test$`Trade Partner`)
+unique(test$`Trade Partner`)
+
+# For Namibia, have to give them manually:
+dta <- dta %>% mutate(
+  PartnerISO3 = if_else(`Trade Partner` == "Namibia", "NAM", PartnerISO3))
+
+# we can drop the rest of the countries 
+dta <- dta %>% filter(!is.na(PartnerISO3))
+colSums(is.na(dta))
+  
+  
+################################################################################
 # export data 
 
 write_csv(dta,  "data/trade/GTA_CHN_import/CHN_import_2015_2023.csv")
