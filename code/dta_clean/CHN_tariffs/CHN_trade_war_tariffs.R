@@ -4,11 +4,10 @@
 
 
 ################################################################################
-#                      Cepii bilateral gravity charteristics
+#                      Fagelbaum tariff data
 
 
-# get worldbank data for gravity models
-
+#Data provide US export data and tariffs on US export (provide retaliatory tariffs)
 
 ################################################################################
 
@@ -47,10 +46,31 @@ CHN_US_export <- US_export %>% filter(cty_name == "CHINA")
 
 ################################################################################
 
+# Select variable of interest: tariffs
+
 # variables of interest: "Statutory Tariff Rate"/"WTO MFN Tariff Rate" /   "Trade War Export Tariff Increase
 summary(CHN_US_export$x_increase)
+summary(CHN_US_export$x_stattariff1)
+summary(CHN_US_export$x_stattariff2)
+summary(CHN_US_export$x_mfn_tariff)
 
-CHN_US_export <- CHN_US_export %>%
+names(CHN_US_export)
+CHN_US_export1 <- CHN_US_export %>% select(cty_name, hs10, hs6,x_stattariff1, x_stattariff2, x_mfn_tariff,x_increase )
+
+################################################################################
+
+# HS Porduct Aggregation
+
+# tariffs are at HS10 level
+# need to get at HS6 level
+
+
+
+
+
+
+
+
 
 
 
