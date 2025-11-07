@@ -152,5 +152,20 @@ trade_war_tariffs2 <- trade_war_tariffs1 %>% select(-mdate) %>%
   ungroup()
 colSums(is.na(trade_war_tariffs2))
 
+################################################################################
+
+names(MFN_WITS)
+
+
+
+
+
+
+
+
+
+
+
+
 
 
