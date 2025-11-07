@@ -27,6 +27,7 @@ library(vroom)
 library(countrycode)
 library(Hmisc)
 library(haven)
+library(concordance)
 
 ################################################################################
 # directory: 
@@ -155,8 +156,35 @@ colSums(is.na(trade_war_tariffs2))
 ################################################################################
 
 names(MFN_WITS)
+length(unique(MFN_WITS$ExporterISO3))
+
+# harmonize product code 
+
+table(MFN_WITS$NomenCode,MFN_WITS$year)
+
+# get data Hs6 for  revision and HS 5 revision
+class(MFN_WITS$hs6)
+unique(nchar(MFN_WITS$hs6))
 
 
+MFN_WITS <- MFN_WITS %>%
+  mutate(
+    # ensure 6-digit character HS codes
+    hs6 = str_pad(as.character(hs6), 6, pad = "0"),
+        # target HS4 view (6-digit codes concorded to HS4 basis)
+    hs6_H4 = case_when(   NomenCode == "H4" ~ hs6,
+                          NomenCode == "H5" ~ concord_hs(hs6, origin = "HS5", destination = "HS4",
+                                     dest.digit = 6, all = FALSE),  TRUE ~ NA_character_ ),
+    hs6_H5 = case_when(   NomenCode == "H5" ~ hs6,
+                          NomenCode == "H4" ~ concord_hs(hs6,  origin = "HS4", destination = "HS5",
+                                     dest.digit = 6, all = FALSE),    TRUE ~ NA_character_    )  )
+      
+
+################################################################################
+names(trade_war_tariffs2)
+names(MFN_WITS)
+
+trade_war_tariffs3 <- full_join(MFN_WITS, trade_war_tariffs2, by =  c(hs6_H5 = ))
 
 
 

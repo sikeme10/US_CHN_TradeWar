@@ -65,7 +65,6 @@ dta_wide <- dta %>%
   )
 
 
-
 ################################################################################
 # country isocodes
 
@@ -84,17 +83,18 @@ df <- raw[-c(1,2), ]
 names(df) <- c("Country", "ISO3", "Code")
 
 names(df)
-names(dta)
+names(dta_wide)
 
 # rename so that get ISOcodes for Partner 
 df <- df %>% rename(ExporterISO3 = ISO3)
 
-dta <- left_join(dta, df, by = c("Partner" = "Code"))
-colSums(is.na(dta))
-test <- dta %>% filter(is.na(ExporterISO3))
+dta_wide <- left_join(dta_wide, df, by = c("Partner" = "Code"))
+colSums(is.na(dta_wide))
+test <- dta_wide %>% filter(is.na(ExporterISO3))
 unique(test$`Partner Name`)
-dta <- dta %>%  mutate(    ExporterISO3 = if_else(`Partner Name` == "Sudan", "SDN", ExporterISO3)  )
-dta <- dta %>%  filter(!is.na(ExporterISO3))
+dta_wide <- dta_wide %>%  mutate(    ExporterISO3 = if_else(`Partner Name` == "Sudan", "SDN", ExporterISO3)  )
+dta_wide <- dta_wide %>%  filter(!is.na(ExporterISO3))
+
 
 ################################################################################
 
