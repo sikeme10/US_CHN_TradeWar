@@ -153,6 +153,9 @@ trade_war_tariffs2 <- trade_war_tariffs1 %>% select(-mdate) %>%
   ungroup()
 colSums(is.na(trade_war_tariffs2))
 
+
+write_csv(trade_war_tariffs2, "data/tariff_dta/trade_war_tariffs.csv")
+
 ################################################################################
 
 names(MFN_WITS)
@@ -178,7 +181,9 @@ MFN_WITS <- MFN_WITS %>%
     hs6_H5 = case_when(   NomenCode == "H5" ~ hs6,
                           NomenCode == "H4" ~ concord_hs(hs6,  origin = "HS4", destination = "HS5",
                                      dest.digit = 6, all = FALSE),    TRUE ~ NA_character_    )  )
-      
+# at yealy levle: MFN_WITS
+# tariff trade war is at monthly level.. 
+
 
 ################################################################################
 names(trade_war_tariffs2)
