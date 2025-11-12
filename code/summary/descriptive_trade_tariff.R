@@ -53,23 +53,23 @@ names(tariff)
 class(tariff$hs6)
 
 # select year of interest 
-tariff <- tariff %>% select(year, month, hs6, weighted_x_stattariff1, weighted_x_increase) %>%
-  mutate(tariff_rate = weighted_x_stattariff1 + weighted_x_increase)
-summary(tariff$tariff_rate)
-
+tariff <- tariff %>% select(year, month, hs6, Weighted_AHS , teti_tariff_2, fajgel_tariff_2)
+summary(tariff$teti_tariff_2)
+summary(tariff$fajgel_tariff_2)
 
 # c) Merge tariff and trade data 
 
 dta <- left_join( merge_US_export,tariff, by = c("HS6"  = "hs6", "year" = "year", "month" = "month" ))
 names(dta)
+colSums(is.na(dta))
 
-
+# replace chines export share by NA
 dta <- dta %>%  mutate( CHN_export_val_USD = if_else(is.na(CHN_export_val_USD), 0,CHN_export_val_USD  )  )
 
 
 # for tariff data: fill it so that takes the value of previous time when the value 
 dta <- dta %>%  group_by(HS10, year, HS6) %>%  # include ALL key vars
-  arrange(month, .by_group = TRUE) %>%  fill(tariff_rate, .direction = "down") %>%  ungroup()
+  arrange(month, .by_group = TRUE) %>%  fill(teti_tariff_2 ,fajgel_tariff_2 , .direction = "down") %>%  ungroup()
 colSums(is.na(dta))
 
 

@@ -106,10 +106,8 @@ fajgelbaum <- fajgelbaum %>%  select(-cty_name, -simple_x_stattariff1, -simple_x
     weighted_x_stattariff1 = weighted_x_stattariff1 * 100,
     weighted_x_stattariff2 = weighted_x_stattariff2 * 100,
     weighted_x_mfn_tariff  = weighted_x_mfn_tariff  * 100,
-    weighted_x_increase    = weighted_x_increase    * 100,
-    fajgel_tariff = pmin(weighted_x_stattariff1, weighted_x_mfn_tariff, na.rm = TRUE) +
-      weighted_x_increase  )
-
+    weighted_x_increase    = weighted_x_increase    * 100  )
+# rename teti tariffs
 teti <- teti %>% rename(teti_tariff= tariff)
 
 trade_war_tariffs <- full_join(teti, fajgelbaum)
@@ -122,10 +120,9 @@ length(unique(trade_war_tariffs$hs6))
 unique(trade_war_tariffs$year)
 unique(trade_war_tariffs$month)
 panel_balanced <- trade_war_tariffs %>%
-  expand(
-    hs6   = unique(hs6),
-    year  = sort(unique(year)),
-    month = sort(unique(month))  )
+  expand( hs6   = unique(hs6), 
+          year  = sort(unique(year)),
+          month = sort(unique(month))  )
 length(unique(trade_war_tariffs$hs6))
 table(panel_balanced$year)
 table(panel_balanced$month)
@@ -138,23 +135,40 @@ trade_war_tariffs1 <- left_join(panel_balanced,trade_war_tariffs )
 names(trade_war_tariffs1)
 unique(trade_war_tariffs1$nomenclature)
 unique(trade_war_tariffs1$NomenCode)
+
 # fill up values that are NAs;
 trade_war_tariffs1 <- trade_war_tariffs1 %>%
   mutate(across(c(ImporterISO3, ExporterISO3, nomenclature, NomenCode), ~ {
     fill_value <- unique(na.omit(.x))
-    if (length(fill_value) == 1) replace(.x, is.na(.x), fill_value) else .x
-  }))
+    if (length(fill_value) == 1) replace(.x, is.na(.x), fill_value) else .x  }))
 colSums(is.na(trade_war_tariffs1))
+
+
+# for MFN tariff data: fill it so that takes the value of previous time when the value is missing 
+trade_war_tariffs1 <- trade_war_tariffs1 %>%
+  group_by(ImporterISO3, ExporterISO3, hs6, nomenclature, NomenCode,year) %>%  # include ALL key vars
+  arrange(month, .by_group = TRUE) %>%
+  fill(weighted_x_stattariff1, weighted_x_mfn_tariff, .direction = "updown") %>%
+  ungroup() 
+
+# create variable for fajgel_tariff 
+trade_war_tariffs1 <- trade_war_tariffs1 %>% mutate(
+  fajgel_tariff = pmin(weighted_x_stattariff1, weighted_x_mfn_tariff, na.rm = TRUE) + weighted_x_increase, na.rm = TRUE  )
+
 # for tariff data: fill it so that takes the value of previous time when the value 
 trade_war_tariffs2 <- trade_war_tariffs1 %>% select(-mdate) %>%
   group_by(ImporterISO3, ExporterISO3, hs6, nomenclature, NomenCode,year) %>%  # include ALL key vars
   arrange(month, .by_group = TRUE) %>%
   fill(teti_tariff, fajgel_tariff, .direction = "down") %>%
   ungroup()
+
+
 colSums(is.na(trade_war_tariffs2))
 
 
-write_csv(trade_war_tariffs2, "data/tariff_dta/trade_war_tariffs.csv")
+names(trade_war_tariffs2)
+
+
 
 ################################################################################
 
@@ -184,21 +198,38 @@ MFN_WITS <- MFN_WITS %>%
 # at yealy levle: MFN_WITS
 # tariff trade war is at monthly level.. 
 
-
 ################################################################################
+# Get tariff for China on US 
+################################################################################
+
 names(trade_war_tariffs2)
 names(MFN_WITS)
 
-trade_war_tariffs3 <- full_join(MFN_WITS, trade_war_tariffs2, by =  c(hs6_H5 = ))
+MFN_WITS1 <- MFN_WITS %>% select( ExporterISO3,  hs6_H4,hs6_H5, year, Country,`Weighted Average_MFN`,
+    `Weighted Average_AHS`) %>%  rename(Weighted_MFN = `Weighted Average_MFN`,Weighted_AHS = `Weighted Average_AHS` )
+
+# Select_chinese MFN on USA 
+MFN_WITS1$hs6_H5 <- as.numeric(MFN_WITS1$hs6_H5)
+MFN_WITS1 <- MFN_WITS1 %>% filter(ExporterISO3 == "USA")
+CHN_tariffs <- full_join( trade_war_tariffs2, MFN_WITS1, by = c("hs6" = "hs6_H5", "year" = "year","ExporterISO3" = "ExporterISO3" ))
+unique(CHN_tariffs$ExporterISO3)
+
+names(CHN_tariffs)
+colSums(is.na(CHN_tariffs))
+CHN_tariffs <- CHN_tariffs %>% mutate(
+  teti_tariff_2 = if_else(is.na(teti_tariff), Weighted_AHS,teti_tariff ),
+  fajgel_tariff_2 = if_else(is.na(fajgel_tariff), Weighted_AHS,fajgel_tariff ),
+)
+
+write_csv(CHN_tariffs, "data/tariff_dta/trade_war_tariffs.csv")
+
+
+################################################################################
 
 
 
 
 
-
-
-
-
-
+################################################################################
 
 
