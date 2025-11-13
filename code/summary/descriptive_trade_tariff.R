@@ -72,9 +72,111 @@ dta <- dta %>%  group_by(HS10, year, HS6) %>%  # include ALL key vars
   arrange(month, .by_group = TRUE) %>%  fill(teti_tariff_2 ,fajgel_tariff_2 , .direction = "down") %>%  ungroup()
 colSums(is.na(dta))
 
+################################################################################
+# 2) HS Product Aggregation
+################################################################################
+
+# tariffs are at HS10 level --> need to get at HS6 level
+# could do weighted tariffs or simple average tariffs
+# weighted average = trade share whithin HS6 of the HS10 export value time the tariffs 
+# simple average = is just an average 
+
+names(dta)
+# create tot export at naics 3 
+tot_dta_naics3 <- dta %>%
+  group_by(year,month, naics3) %>%
+  mutate(tot_export_CHN_naics3 = sum(CHN_export_val_USD, na.rm = TRUE)) %>%
+  ungroup()
+
+
+# create tot export at naics 4 
+tot_dta_naics4 <- dta %>%
+  group_by(year,month, naics4) %>%
+  mutate(tot_export_CHN_naics4 = sum(CHN_export_val_USD, na.rm = TRUE)) %>%
+  ungroup()
 
 
 
+################################################################################
+# aggregate at naics 3 digit level 
+################################################################################
+names(tot_dta_naics3)
+
+
+
+dta_naics3 <- tot_dta_naics3 %>% group_by(year, month, naics3) %>% 
+  summarise(CHN_export_val_USD = sum(CHN_export_val_USD, na.rm = TRUE),
+            tot_export_val_USD = sum(tot_export_val_USD, na.rm = TRUE),
+            share_CHN_export = CHN_export_val_USD / tot_export_val_USD*100,
+            teti_simple_average = mean(teti_tariff_2, na.rm= TRUE),
+            fajgel_simple_average = mean(fajgel_tariff_2, na.rm= TRUE),
+            teti_weighted_average = mean((CHN_export_val_USD/tot_export_CHN_naics3)*teti_tariff_2, na.rm= TRUE),
+            fajgel_weighted_average = mean((CHN_export_val_USD/tot_export_CHN_naics3)*fajgel_tariff_2, na.rm= TRUE)            )
+unique(merge_US_export_naics3$naics3)  
+names(merge_US_export_naics3)
+
+
+
+#details on naics code 
+
+# Define lookup table for 3-digit Agriculture NAICS codes
+naics3_lookup <- c(
+  "111" = "Crop Production",
+  "112" = "Animal Production and Aquaculture",
+  "113" = "Forestry and Logging",
+  "114" = "Fishing, Hunting and Trapping",
+  "115" = "Support Activities for Agriculture and Forestry")
+
+# Add sector classification to your merged dataset
+dta_naics3 <- dta_naics3 %>%
+  mutate(
+    # ensure naics3 is treated as numeric or character safely
+    naics3_chr = substr(gsub("\\D", "", as.character(naics3)), 1, 3),
+    sector = if_else(naics3_chr %in% names(naics3_lookup), "Ag", "NonAg"),
+    sector_desc = naics3_lookup[naics3_chr]  )
+
+
+
+# Combine Year and Month into a proper Date variable (1st of each month)
+dta_naics3 <- dta_naics3 %>%
+  mutate( year = as.integer(year),    month = as.integer(month),
+          date = make_date(year = year, month = month, day = 1)  )
+names(dta_naics3)
+
+
+# Plot: only Ag sector
+ggplot(
+  subset(dta_naics3, sector == "Ag"),
+  aes(x = date, y = teti_weighted_average, color = as.factor(sector_desc))) +
+  geom_line(size = 1) +
+  geom_point() +
+  labs(
+    x = "Date",
+    y = "weighted tariff rate",
+    color = "Product Code",
+    title = "Share of U.S. Agricultural Exports to China over Time by Product Code"  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    legend.position = "bottom",
+    legend.title = element_text(face = "bold"),
+    plot.title = element_text(face = "bold", hjust = 0.5)  )
+
+
+ggplot(
+  subset(dta_naics3, sector == "Ag"),
+  aes(x = date, y = share_CHN_export, color = as.factor(sector_desc))) +
+  geom_line(size = 1) +
+  geom_point() +
+  labs(
+    x = "Date",
+    y = "weighted tariff rate",
+    color = "Product Code",
+    title = "Share of U.S. Agricultural Exports to China over Time by Product Code"  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    legend.position = "bottom",
+    legend.title = element_text(face = "bold"),
+    plot.title = element_text(face = "bold", hjust = 0.5)  )
 
 
 
