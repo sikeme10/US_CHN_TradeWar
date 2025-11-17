@@ -44,7 +44,8 @@ gravity <- read_csv("data/gravity/clean_Gravity.csv")
 worldbank <- read_csv("data/gravity/Worldbank_dta.csv")
 
 # tariff data 
-
+tariff <- read_csv("data/tariff_dta/trade_war_tariffs.csv")
+MFN <- read_csv("data/tariff_dta/CHN_import_tariffs/CHN_WITS_tariff_clean.csv")
 
 ################################################################################
 
