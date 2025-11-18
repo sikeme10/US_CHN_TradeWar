@@ -115,27 +115,40 @@ unique(nchar(dta$`HS6 Code`))
 
 dta <- dta %>%  mutate( 
   hs6_H4 = case_when(Year < 2017 ~ `HS6 Code`,
-                     Year >= 2017 ~ concord_hs(`HS6 Code`, origin = "HS5", destination = "HS4",dest.digit  = 6, all= FALSE),  TRUE ~ NA_character_),
-  hs6_H5 = case_when(Year >= 2017 ~ `HS6 Code`,
-                     Year < 2017 ~ concord_hs(`HS6 Code`,origin = "HS4",destination = "HS5",dest.digit  = 6,all = FALSE),TRUE ~ NA_character_   )  )
+                     Year >= 2017 ~ concord(`HS6 Code`, origin = "HS5", destination = "HS4",dest.digit  = 6, all= FALSE),  TRUE ~ NA_character_),
+  # hs6_H5 = case_when(Year >= 2017 ~ `HS6 Code`, Year < 2017 ~ concord(`HS6 Code`,origin = "HS4",destination = "HS5",dest.digit  = 6,all = FALSE),TRUE ~ NA_character_   )
+  hs6_H5 =`HS6 Code` )
+
+dta <- dta %>%  mutate(hs6_H5_combined = concord( sourcevar   = `HS6 Code`,origin = "HS5",  destination = "HS5",   dest.digit  = 6, all= FALSE))
+
   
 colSums(is.na(dta))
 length(unique(dta$`HS6 Code`))
+length(unique(dta$hs6_H5))
 length(unique(dta$hs6_H5))
 length(unique(dta$hs6_H4))
 
 test <- dta %>% filter(Year >=2017)
 length(unique(test$`HS6 Code`))
+HS_to_H5 <- read_csv("data/crosswalk/HS_concordance/Concordance_HS_to_H5.CSV")
+H5_to_H4 <- read_csv("data/crosswalk/HS_concordance/Concordance_H5_to_H4.CSV")
+length(unique(H5_to_H4$`HS 2017 Product Code`))
+HS2017_list <- unique(H5_to_H4$`HS 2017 Product Code`)
+HS_list <- unique(HS_to_H5$`HS - Combined  Product Code`)
 
-
-HS4 <- data("hs5_hs4")
-
+same_codes <- intersect(unique(dta$`HS6 Code`), HS_list)
+length(same_codes)
+diff_codes <- setdiff(unique(dta$`HS6 Code`), HS_list)
+diff_codes <- setdiff(unique(dta$`HS6 Code`), HS2017_list)
+length(diff_codes)
 
 ################################################################################
 # rename some of the variables 
 
 names(dta)
-dta <- dta %>% rename(year = Year, month = Month)
+dta <- dta %>% rename(year = Year, month = Month, ExporterISO3 = PartnerISO3, Trade_value_USD = USD) %>% 
+  mutate(ImporterISO3 = "CHN")
+  
 
 
 
@@ -146,15 +159,38 @@ unique(dta$`Trade Partner`)
 
 # order partner based on traded volume 
 partner_order <- dta %>%  group_by(`Trade Partner`) %>%
-  summarise(total_usd = sum(USD, na.rm = TRUE)) %>%
+  summarise(total_usd = sum(Trade_value_USD, na.rm = TRUE)) %>%
   arrange(desc(total_usd)) %>%
   pull(`Trade Partner`)
 
-  
+################################################################################
+# duplicates present 
+# sometimes if unit is different provide different observations for  each type of unit 
+names(dta)
+unique(dta$`Trade Direction`)
+# check duplicates 
+dups <- dta %>%  group_by(year, month, Reporter,`Trade Direction`, `Trade Partner`,`Trade Partner ISO Code`,
+                          `HS2 Code`,`HS4 Code`,`HS6 Code`,`HS6 Description`, ExporterISO3, hs6_H4, hs6_H5,
+                          ImporterISO3) %>%  filter(n() > 1)
+
+dta1 <- dta %>% group_by(year, month, Reporter,`Trade Direction`, `Trade Partner`,`Trade Partner ISO Code`,
+                        `HS2 Code`,`HS4 Code`,`HS6 Code`,`HS6 Description`, ExporterISO3, hs6_H4, hs6_H5,
+                        ImporterISO3) %>% 
+  summarise(
+    Trade_value_USD = sum(Trade_value_USD, na.rm = TRUE),
+    `Unit Price` = mean(Trade_value_USD / `Primary Quantity`, na.rm = TRUE),
+        # Combine character values of Primary Units into one string separated by "/"
+    `Primary Units` = paste(unique(`Primary Units`), collapse = "/"),
+    .groups = "drop"  )
+dups <- dta1 %>%  group_by(year, month, Reporter,`Trade Direction`, `Trade Partner`,`Trade Partner ISO Code`,
+                          `HS2 Code`,`HS4 Code`,`HS6 Code`,`HS6 Description`, ExporterISO3, hs6_H4, hs6_H5,
+                          ImporterISO3) %>%  filter(n() > 1)
+
+
 ################################################################################
 # export data 
 
-write_csv(dta,  "data/trade/GTA_CHN_import/CHN_import_2015_2023.csv")
+write_csv(dta1,  "data/trade/GTA_CHN_import/CHN_import_2015_2020.csv")
 
 
 

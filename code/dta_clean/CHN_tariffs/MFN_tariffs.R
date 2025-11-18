@@ -23,22 +23,30 @@ library(countrycode)
 library(tidyverse)
 library(vroom)
 library(countrycode)
-
+library(read_html)
+library(html_nodes)
+library(html_table)
+library(rvest)
+library(xml2)
+library(magrittr)
+library(tidyverse)
 
 rm(list=ls())
 
 ################################################################################
 
 setwd("/data/sikeme/TRADE/US_CHN_TradeWar_git")
+
+################################################################################
+# 1) load 
 ################################################################################
 
-# load 
 dta <- read_csv("data/tariff_dta/CHN_import_tariffs/CHN_WITS_tariff.csv")
 names(dta)
 
 ################################################################################
-
-
+# 2) Arrange by Duty types 
+################################################################################
 
 # two duty types
 
@@ -49,8 +57,7 @@ dta <- dta %>%
     "Selected Nomen","Native Nomen","Reporter","Reporter Name",
     "Product","Product Name","Partner","Partner Name",
     "Tariff Year","Trade Year","Trade Source",
-    "DutyType","Simple Average","Weighted Average"
-  )))
+    "DutyType","Simple Average","Weighted Average"  )))
 
 # pivot wider: create columns per DutyType for both averages
 dta_wide <- dta %>%
@@ -66,7 +73,9 @@ dta_wide <- dta %>%
 
 
 ################################################################################
-# country isocodes
+# 3) country isocodes
+################################################################################
+
 
 # retrieve from website isocdes 
 url <- "https://wits.worldbank.org/wits/wits/witshelp/Content/Codes/Country_Codes.htm"
@@ -95,9 +104,42 @@ unique(test$`Partner Name`)
 dta_wide <- dta_wide %>%  mutate(    ExporterISO3 = if_else(`Partner Name` == "Sudan", "SDN", ExporterISO3)  )
 dta_wide <- dta_wide %>%  filter(!is.na(ExporterISO3))
 
-
+################################################################################
+# get Product codes at HS4 and HS5 revisions
 ################################################################################
 
+names(dta_wide)
+length(unique(dta_wide$ExporterISO3))
+
+dta_wide <- dta_wide %>% rename( year = `Trade Year`, hs6 = Product, NomenCode = `Native Nomen`)
+
+# harmonize product code 
+
+table(dta_wide$NomenCode,dta_wide$year)
+
+# get data Hs6 for  revision and HS 5 revision
+class(dta_wide$hs6)
+unique(nchar(dta_wide$hs6))
+
+
+dta_wide <- dta_wide %>%
+  mutate(
+    # ensure 6-digit character HS codes
+    hs6 = str_pad(as.character(hs6), 6, pad = "0"),
+    # target HS4 view (6-digit codes concorded to HS4 basis)
+    hs6_H4 = case_when(   NomenCode == "H4" ~ hs6,
+                          NomenCode == "H5" ~ concord_hs(hs6, origin = "HS5", destination = "HS4",
+                                                         dest.digit = 6, all = FALSE),  TRUE ~ NA_character_ ),
+    hs6_H5 = case_when(   NomenCode == "H5" ~ hs6,
+                          NomenCode == "H4" ~ concord_hs(hs6,  origin = "HS4", destination = "HS5",
+                                                         dest.digit = 6, all = FALSE),    TRUE ~ NA_character_    )  )
+
+colSums(is.na(dta_wide))
+length(unique(dta_wide$hs6_H4))
+length(unique(dta_wide$hs6_H5))
+
+################################################################################
+# export data 
 
 write_csv(dta_wide, "data/tariff_dta/CHN_import_tariffs/CHN_WITS_tariff_clean.csv")
 
