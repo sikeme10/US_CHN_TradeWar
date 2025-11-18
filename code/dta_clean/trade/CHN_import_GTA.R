@@ -100,7 +100,56 @@ dta <- dta %>% mutate(
 # we can drop the rest of the countries 
 dta <- dta %>% filter(!is.na(PartnerISO3))
 colSums(is.na(dta))
+
+################################################################################
+# select year of interest:
+years <- c(2015:2020)
+dta <- dta %>% filter(Year %in% years)
+unique(dta$Year)
+
+################################################################################
+# get HS revision in line 
+names(dta)
+class(dta$`HS6 Code`)
+unique(nchar(dta$`HS6 Code`))
+
+dta <- dta %>%  mutate( 
+  hs6_H4 = case_when(Year < 2017 ~ `HS6 Code`,
+                     Year >= 2017 ~ concord_hs(`HS6 Code`, origin = "HS5", destination = "HS4",dest.digit  = 6, all= FALSE),  TRUE ~ NA_character_),
+  hs6_H5 = case_when(Year >= 2017 ~ `HS6 Code`,
+                     Year < 2017 ~ concord_hs(`HS6 Code`,origin = "HS4",destination = "HS5",dest.digit  = 6,all = FALSE),TRUE ~ NA_character_   )  )
   
+colSums(is.na(dta))
+length(unique(dta$`HS6 Code`))
+length(unique(dta$hs6_H5))
+length(unique(dta$hs6_H4))
+
+test <- dta %>% filter(Year >=2017)
+length(unique(test$`HS6 Code`))
+
+
+HS4 <- data("hs5_hs4")
+
+
+################################################################################
+# rename some of the variables 
+
+names(dta)
+dta <- dta %>% rename(year = Year, month = Month)
+
+
+
+################################################################################
+# select Partner:
+unique(dta$`Trade Partner`)
+
+
+# order partner based on traded volume 
+partner_order <- dta %>%  group_by(`Trade Partner`) %>%
+  summarise(total_usd = sum(USD, na.rm = TRUE)) %>%
+  arrange(desc(total_usd)) %>%
+  pull(`Trade Partner`)
+
   
 ################################################################################
 # export data 
