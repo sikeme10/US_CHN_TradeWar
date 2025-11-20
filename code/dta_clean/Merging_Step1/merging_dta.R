@@ -102,8 +102,8 @@ table(trade$month)
 trade$month <- as.numeric(trade$month)
 
 ################################################################################
-
-# Balanced data 
+# 3) Get Balanced data 
+################################################################################
 
 # change some of the variables names to harmonize
 # get data of unique combination of Product-code, Partners, Year and month 
@@ -129,12 +129,41 @@ trade <- trade %>%  filter(!`Trade Partner` %in% c(  "Melilla",  "Canary Islands
     "Marquesas Islands", "Tubuai Islands","Ceuta","NL Antilles (Bonaire)",  "NL Antilles (Saba)"  ))
 dta <- left_join(panel_balanced, trade)
 
+names(dta)
+head(dta)
+colSums(is.na(dta))
+
+# refill trade values based on NAs 
+dta <- dta %>% mutate(
+  Trade_value_USD = if_else(is.na(Trade_value_USD), 0, Trade_value_USD)
+)
+
+dta <- dta %>% 
+  group_by(hs6_H5, year, month, ExporterISO3) %>% 
+  fill(    ImporterISO3,    `HS2 Code`,  `HS4 Code`,
+    `HS6 Code`,
+    `HS6 Description`,
+    hs6_H4,
+    .direction = "updown"
+  )
+
+
+dta <- dta %>% 
+  group_by(hs6_H5) %>% 
+  fill(   ImporterISO3,  `HS2 Code`,  `HS4 Code`, `HS6 Code`,     `HS6 Description`,
+           hs6_H4,   .direction = "updown"  )
+
+
 
 ################################################################################
 
+# merge with MFN traiff data 
+names(MFN)
 
 
-
+MFN <- MFN %>% select (NomenCode,  year,ExporterISO3, hs6_H5, `Weighted Average_MFN`,
+                           `Weighted Average_AHS`, `Weighted Average_PRF`)
+dta1 <- left_join(MFN,dta)
 
 
 
