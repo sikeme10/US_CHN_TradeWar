@@ -111,7 +111,7 @@ dta_wide <- dta_wide %>%  filter(!is.na(ExporterISO3))
 names(dta_wide)
 length(unique(dta_wide$ExporterISO3))
 
-dta_wide <- dta_wide %>% rename( year = `Trade Year`, hs6 = Product, NomenCode = `Native Nomen`)
+dta_wide <- dta_wide %>% rename( year = `Tariff Year`, Trade_Year = `Trade Year`, hs6 = Product, NomenCode = `Native Nomen`)
 
 # harmonize product code 
 
@@ -137,6 +137,16 @@ dta_wide <- dta_wide %>%
 colSums(is.na(dta_wide))
 length(unique(dta_wide$hs6_H4))
 length(unique(dta_wide$hs6_H5))
+
+################################################################################
+# duplicates...
+names(dta_wide)
+
+dups <- dta_wide %>%  group_by(hs6_H5, Trade_Year, ExporterISO3) %>%  filter(n() > 1)
+dups <- dta_wide %>%  group_by(hs6_H5, year, ExporterISO3)%>%  filter(n() > 1)
+
+
+
 
 ################################################################################
 # export data 
