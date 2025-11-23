@@ -323,11 +323,28 @@ dta2 <- dta2 %>%
 colSums(is.na(dta2))
 
 # create final tariff variable
-dta2 <- dta2 %>%  mutate(
-  Applied_tariff = case_when(
-    ExporterISO3 == "USA" ~  if_else(!is.na(teti_tariff_2), teti_tariff_2, Weighted_AHS),
-    TRUE ~ Weighted_AHS  ))
+dta2 <- dta2 %>% 
+  mutate( Applied_tariff = case_when( ExporterISO3 == "USA" ~ if_else(!is.na(teti_tariff_2),
+                teti_tariff_2, min(Weighted_AHS, Weighted_MFN, na.rm = TRUE)),
+                TRUE ~ min(Weighted_MFN, Weighted_AHS, na.rm = TRUE))) %>% ungroup()
+summary(dta2$Applied_tariff)
 colSums(is.na(dta2))
+
+
+#fill tariff variable if different from USA 
+# dta2 <- dta2 %>%
+#   group_by(ExporterISO3, hs6_H5) %>%
+#   arrange(year, month, .by_group = TRUE) %>%
+#   mutate(
+#     Applied_tariff = if (unique(ExporterISO3) != "USA") {
+#       tidyr::fill(cur_data(), Applied_tariff, .direction = "updown")$Applied_tariff
+#     } else { Applied_tariff}  ) %>%
+#   ungroup()
+
+  
+test <- dta2 %>% filter(is.na(Applied_tariff))
+unique(test$ExporterISO3)
+table(test$year, test$ExporterISO3)
 
 ################################################################################
 # checks
@@ -338,9 +355,21 @@ length(unique(dta2$ExporterISO3))
 
 ################################################################################
 
+# add product HS2 and HS4 
+names(dta2)
+
+################################################################################
+
 # save final data
 write_csv(dta2, paste0(exp, "dta_CHN_gravity_3.csv"))
 
 ################################################################################
+dta2 <- read_csv(paste0(exp, "dta_CHN_gravity_3.csv"))
+
+
+
+
+
+
 
 
