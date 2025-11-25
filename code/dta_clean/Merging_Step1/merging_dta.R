@@ -45,6 +45,9 @@ names(gravity)
 worldbank <- read_csv("data/gravity/Worldbank_dta.csv")
 names(worldbank)
 
+# rta data 
+rta <- read_csv("data/gravity/clean_rta.csv")
+
 # tariff data 
 tariff <- read_csv("data/tariff_dta/trade_war_tariffs.csv")
 names(tariff)
@@ -120,9 +123,8 @@ table(panel_balanced$month)
 
 
 # merge everything:
-dups <- trade %>%  group_by(hs6_H5, year, month, ExporterISO3, ImporterISO3) %>%
-  filter(n() > 1)
-unique(dups$`Trade Partner`)
+# dups <- trade %>%  group_by(hs6_H5, year, month, ExporterISO3, ImporterISO3) %>%  filter(n() > 1)
+# unique(dups$`Trade Partner`)
 # drop duplicates for spain 
 trade <- trade %>%  filter(!`Trade Partner` %in% c(  "Melilla",  "Canary Islands",
     "French Polynesia","Society Islands", "Tuamotu Islands","Gambier Islands",
@@ -154,7 +156,7 @@ colSums(is.na(dta))
 
 # select variable of interest 
 dta <- dta %>%  select(hs6_H5,year, month,ExporterISO3,  ImporterISO3,
-  `HS6 Description`,  hs6_H4,  Trade_value_USD, `Unit Price`)
+  `HS6 Description`,  hs6_H4,  Trade_value_USD, Unit_Price)
 
 
 ################################################################################
@@ -172,7 +174,7 @@ MFN <- MFN %>% filter(!is.na(hs6_H5))
 
 
 # checks
-dups2 <- MFN %>%  group_by(hs6_H5, year, ExporterISO3)%>%  filter(n() > 1)
+# dups2 <- MFN %>%  group_by(hs6_H5, year, ExporterISO3)%>%  filter(n() > 1)
 colSums(is.na(MFN))
 colSums(is.na(dta))
 unique(MFN$year)
@@ -212,10 +214,9 @@ gravity <- gravity %>% rename(ExporterISO3 = PartnerISO3,  ImporterISO3 = Report
                               Importer_GDP = gdp_d, Exporter_GDP = gdp_o, Exporter_wto = wto_o,
                               Exporter_eu = eu_o) %>% select(-country_id_o, -country_id_d, -eu_d, -wto_d)
 
-dups2 <- gravity %>%  group_by(year, ExporterISO3)%>%  filter(n() > 1)
-# remove duplicates by keeping first observation (non NA)
-library(dplyr)
+# dups2 <- gravity %>%  group_by(year, ExporterISO3)%>%  filter(n() > 1)
 
+# remove duplicates by keeping first observation (non NA)
 gravity <- gravity %>%  group_by(year, ExporterISO3, ImporterISO3) %>%
   summarise(across( c(contig, dist, comlang_off, Colonial_ties, Importer_GDP, Exporter_GDP, Exporter_wto, Exporter_eu),
       ~ { vals <- .x[!is.na(.x)]      # drop NAs
@@ -247,7 +248,8 @@ worldbank <- worldbank %>% rename(ExporterISO3 = iso3c,  Exporter_GDP_current_US
   select(-country,-iso2c)
 
 # check duplicates
-dups2 <- worldbank %>%  group_by(year, ExporterISO3)%>%  filter(n() > 1)
+# dups2 <- worldbank %>%  group_by(year, ExporterISO3)%>%  filter(n() > 1)
+
 # remove duplicates by keeping non NA
 worldbank <- worldbank %>% filter(!is.na(ExporterISO3))
 
@@ -283,7 +285,8 @@ tariff <- tariff  %>% rename(hs6_H5 = hs6) %>%
          teti_tariff_2,  fajgel_tariff_2)
 
 # check duplicates
-dups2 <- tariff %>%  group_by(hs6_H5, year,month, ExporterISO3)%>%  filter(n() > 1)
+# dups2 <- tariff %>%  group_by(hs6_H5, year,month, ExporterISO3)%>%  filter(n() > 1)
+
 # remove duplicates by taking average tariff rates 
 tariff <- tariff %>%  group_by(hs6_H5, year, month, ExporterISO3, ImporterISO3) %>%
   summarise(teti_tariff_2   = mean(teti_tariff_2, na.rm = TRUE),
@@ -345,6 +348,28 @@ colSums(is.na(dta2))
 test <- dta2 %>% filter(is.na(Applied_tariff))
 unique(test$ExporterISO3)
 table(test$year, test$ExporterISO3)
+
+################################################################################
+# merge with RTA data
+################################################################################
+names(rta)
+names(dta2)
+
+# rename some of the rta variables 
+rta <- rta %>% rename(ExporterISO3 = PartnerISO3 ,  ImporterISO3 = ReporterISO3 ) %>% 
+  select(ImporterISO3, ExporterISO3, year , rta, fta_and_eia)
+
+
+# merge the data 
+dta2 <- left_join(dta2,rta)
+
+dta2 <- dta2 %>% 
+  group_by(ImporterISO3, ExporterISO3) %>%  # include ALL key vars
+  arrange(year, month, .by_group = TRUE) %>%
+  fill(rta, fta_and_eia, .direction = "updown") %>%  ungroup()
+test <- dta2 %>% filter(!is.na(rta))
+unique(test$ExporterISO3)
+colSums(is.na(dta2))
 
 ################################################################################
 # checks

@@ -119,7 +119,7 @@ dta <- dta %>%  mutate(
   # hs6_H5 = case_when(Year >= 2017 ~ `HS6 Code`, Year < 2017 ~ concord(`HS6 Code`,origin = "HS4",destination = "HS5",dest.digit  = 6,all = FALSE),TRUE ~ NA_character_   )
   hs6_H5 =`HS6 Code` )
 
-dta <- dta %>%  mutate(hs6_H5_combined = concord( sourcevar   = `HS6 Code`,origin = "HS5",  destination = "HS5",   dest.digit  = 6, all= FALSE))
+# dta <- dta %>%  mutate(hs6_H5_combined = concord( sourcevar   = `HS6 Code`,origin = "HS5",  destination = "HS5",   dest.digit  = 6, all= FALSE))
 
   
 colSums(is.na(dta))
@@ -173,15 +173,19 @@ dups <- dta %>%  group_by(year, month, Reporter,`Trade Direction`, `Trade Partne
                           `HS2 Code`,`HS4 Code`,`HS6 Code`,`HS6 Description`, ExporterISO3, hs6_H4, hs6_H5,
                           ImporterISO3) %>%  filter(n() > 1)
 
+summary(dta$`Unit Price`)
+
 dta1 <- dta %>% group_by(year, month, Reporter,`Trade Direction`, `Trade Partner`,`Trade Partner ISO Code`,
                         `HS2 Code`,`HS4 Code`,`HS6 Code`,`HS6 Description`, ExporterISO3, hs6_H4, hs6_H5,
                         ImporterISO3) %>% 
   summarise(
     Trade_value_USD = sum(Trade_value_USD, na.rm = TRUE),
-    `Unit Price` = mean(Trade_value_USD / `Primary Quantity`, na.rm = TRUE),
+    Unit_Price = mean(`Unit Price`, na.rm = TRUE),
         # Combine character values of Primary Units into one string separated by "/"
     `Primary Units` = paste(unique(`Primary Units`), collapse = "/"),
-    .groups = "drop"  )
+    .groups = "drop")
+summary(dta1$Unit_Price)
+test <- dta1 %>% filter(Unit_Price>1000)
 dups <- dta1 %>%  group_by(year, month, Reporter,`Trade Direction`, `Trade Partner`,`Trade Partner ISO Code`,
                           `HS2 Code`,`HS4 Code`,`HS6 Code`,`HS6 Description`, ExporterISO3, hs6_H4, hs6_H5,
                           ImporterISO3) %>%  filter(n() > 1)
