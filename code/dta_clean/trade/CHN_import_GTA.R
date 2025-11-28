@@ -14,7 +14,7 @@ library(fixest)
 library(countrycode)
 library(tidyverse)
 library(vroom)
-library(countrycode)
+library(concordance)
 
 ################################################################################
 
@@ -190,6 +190,26 @@ dups <- dta1 %>%  group_by(year, month, Reporter,`Trade Direction`, `Trade Partn
                           `HS2 Code`,`HS4 Code`,`HS6 Code`,`HS6 Description`, ExporterISO3, hs6_H4, hs6_H5,
                           ImporterISO3) %>%  filter(n() > 1)
 
+################################################################################
+# if we want qunatity as a variable 
+
+# if instead keep only kg 
+# keep all data but remove the non-KG rows only when duplicates exist
+dta2 <- dta %>%
+  group_by(
+    year, month, Reporter, `Trade Direction`, `Trade Partner`,
+    `Trade Partner ISO Code`, `HS2 Code`, `HS4 Code`, `HS6 Code`,
+    `HS6 Description`, ExporterISO3, hs6_H4, hs6_H5, ImporterISO3) %>%
+  mutate(dup = n() > 1) %>%
+  filter(!dup | (`Primary Units` == "KG")) %>%  
+  select(-dup) %>% ungroup()
+
+dups <- dta2 %>%  group_by(year, month, Reporter,`Trade Direction`, `Trade Partner`,`Trade Partner ISO Code`,
+                          `HS2 Code`,`HS4 Code`,`HS6 Code`,`HS6 Description`, ExporterISO3, hs6_H4, hs6_H5,
+                          ImporterISO3) %>%  filter(n() > 1)
+dta2 <- dta2 %>% rename(Quantity = `Primary Quantity`, Unit_Price = `Primary Units`)
+
+
 
 ################################################################################
 # export data 
@@ -197,4 +217,5 @@ dups <- dta1 %>%  group_by(year, month, Reporter,`Trade Direction`, `Trade Partn
 write_csv(dta1,  "data/trade/GTA_CHN_import/CHN_import_2015_2020.csv")
 
 
+write_csv(dta2,  "data/trade/GTA_CHN_import/CHN_import_quant_2015_2020.csv")
 
