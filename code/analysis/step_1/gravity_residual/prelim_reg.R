@@ -159,7 +159,7 @@ length(unique((dta$hs4)))
 # plot
 
 ##############################################################################
-# 4) In a loop for each HS 2 level: Poisson specification
+# 4) Residual approach: In a loop for each HS 2 level: Poisson specification
 ##############################################################################
 # run it for each product HS2 level and save the residual
 
@@ -186,6 +186,8 @@ for (i in seq_along(unique_HS2)) {
     group_by(ExporterISO3) %>%
     filter(any(Trade_value_USD != 0, na.rm = TRUE)) %>%
     ungroup()
+  sub_dta1 <- sub_dta1 %>%
+    mutate(fe_id = interaction(month, ExporterISO3, hs6_H5, drop = TRUE))
   
   # 3. run regression
   reg <- fepois(
@@ -194,7 +196,7 @@ for (i in seq_along(unique_HS2)) {
       Importer_GDP + Exporter_wto + Exporter_eu + Exporter_GDP_current_USD + 
       Exporter_Gross_Cap_formation_current_USD + Exporter_Ag_land_K2 + 
       Exporter_Exchange_rate_LCU_per_USD + log(1 + Applied_tariff)  | 
-      year + month^ExporterISO3^hs6_H5,
+      year + fe_id,
     data = sub_dta1,
     vcov = ~ ExporterISO3
   )
@@ -216,6 +218,73 @@ final_dta_with_residuals <- dplyr::bind_rows(results_list)
 names(final_dta_with_residuals)
 colSums(is.na(final_dta_with_residuals))
 write_csv(final_dta_with_residuals, paste0(exp, "gravity_pois_residual.csv"))
+
+# ##############################################################################
+# # 5) Fixed effect approach : In a loop for each HS 2 level: With fixed effeccts 
+# ##############################################################################
+
+
+library(dplyr)
+library(fixest)
+
+# All unique HS2 values
+unique_HS2 <- unique(dta$hs2)
+
+# Create an empty list to store results for each HS2
+results_list <- vector("list", length(unique_HS2))
+names(results_list) <- unique_HS2
+
+for (i in seq_along(unique_HS2)) {
+  # i <- 1
+  HS_val <- unique_HS2[i]
+  message("Running HS2 = ", HS_val)
+  
+  # 1. subset
+  sub_dta <- dta %>% filter(hs2 == HS_val)
+  
+  # 2. drop exporters with all-zero trade
+  sub_dta1 <- sub_dta %>%
+    group_by(ExporterISO3) %>%
+    filter(any(Trade_value_USD != 0, na.rm = TRUE)) %>%
+    ungroup()
+  sub_dta1 <- sub_dta1 %>%
+    mutate(fe_id = interaction(month, year, ExporterISO3, hs4, drop = TRUE))
+  
+  # 3. run regression
+  reg <- fepois(
+    Trade_value_USD ~ 
+      contig + dist + comlang_off + Colonial_ties + rta + fta_and_eia +
+      Importer_GDP + Exporter_wto + Exporter_eu + Exporter_GDP_current_USD + 
+      Exporter_Gross_Cap_formation_current_USD + Exporter_Ag_land_K2 + 
+      Exporter_Exchange_rate_LCU_per_USD + log(1 + Applied_tariff)  | 
+      fe_id,
+    data = sub_dta1,
+    vcov = ~ ExporterISO3)
+  
+  # 4. extract residuals matched to original data rows
+  idx <- obs(reg)        # row indices inside sub_dta1
+  resid_vec <- resid(reg)
+  
+  # 5. add residuals
+  sub_dta1$residual <- NA_real_
+  sub_dta1$residual[idx] <- resid_vec
+
+  # store FE
+  fe_list <- fixef(reg)
+  fe_id <- data.frame( fe_id    = names(fe_list$fe_id),
+    FE = as.numeric(fe_list$fe_id))
+  sub_dta1 <- sub_dta1 %>%left_join(fe_id, by = "fe_id")
+    
+  # 6. store the result
+  results_list[[i]] <- sub_dta1
+}
+
+# Optional: bind all outputs into one dataset
+final_dta_with_residuals <- dplyr::bind_rows(results_list)
+names(final_dta_with_residuals)
+colSums(is.na(final_dta_with_residuals))
+write_csv(final_dta_with_residuals, paste0(exp, "gravity_pois_FE.csv"))
+
 
 
 # 

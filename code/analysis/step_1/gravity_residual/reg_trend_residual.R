@@ -37,7 +37,7 @@ names(dta)
 ################################################################################
 
 # check values:
-summary(dta$resid_change)
+summary(dta$residual)
 
 
 # add HS section for each HS6 product code 
@@ -93,9 +93,9 @@ names(US)
 ################################################################################
 
 
-plot <- ggplot(subset(US, sector == "Ag"), aes(x = resid_change, fill = factor(trade_war))) + 
+plot <- ggplot(subset(US, sector == "Ag"), aes(x = residual, fill = factor(trade_war))) + 
   geom_density(alpha = 0.25) +
-  labs(title = "Gravity model US reisudal",
+  labs(title = "Gravity model US residual",
        fill = "Year",
        x = "Residual",
        y = "Density") +
@@ -104,26 +104,26 @@ plot <- ggplot(subset(US, sector == "Ag"), aes(x = resid_change, fill = factor(t
   theme(panel.background = element_rect(fill = "white", color = NA),     
         plot.background  = element_rect(fill = "white", color = NA))
 plot
-ggsave(filename = file.path(exp, "plot/", "density_TE_US_Ag_2015_2020.png"),plot = plot, width = 8, height = 5, dpi = 300)
+ggsave(filename = file.path(exp, "plot/", "density_res_US_Ag_2015_2020.png"),plot = plot, width = 8, height = 5, dpi = 300)
 
 
-plot <- ggplot(subset(US, sector == "Ag"), aes(x = date, y = resid_change)) +
+plot <- ggplot(subset(US, sector == "Ag"), aes(x = date, y = residual)) +
   geom_smooth(se = TRUE) +
   geom_hline(yintercept = 0, linetype = "dotted", color = "red") + 
-  labs( title = "Gravity model US reisudal",
-        x = "Date",   y = "Residua; value"  ) +
+  labs( title = "Gravity model US residual",
+        x = "Date",   y = "Residual value"  ) +
   theme_minimal(base_size = 14) +   
   theme(panel.background = element_rect(fill = "white", color = NA),     
         plot.background  = element_rect(fill = "white", color = NA))
 plot
-ggsave(filename = file.path(exp, "plot/", "plot_TE_US_Ag_2015_2020.png"),plot = plot, width = 8, height = 5, dpi = 300)
+ggsave(filename = file.path(exp, "plot/", "plot_res_US_Ag_2015_2020.png"),plot = plot, width = 8, height = 5, dpi = 300)
 
 
 #for manufacturing 
 
-plot <- ggplot(subset(US, sector == "Manu"), aes(x = resid_change, fill = factor(trade_war))) + 
+plot <- ggplot(subset(US, sector == "Manu"), aes(x = residual, fill = factor(trade_war))) + 
   geom_density(alpha = 0.25) +
-  labs(title = "Gravity model US reisudal",
+  labs(title = "Gravity model US residual",
        fill = "Year",
        x = "Residual",
        y = "Density") +
@@ -132,19 +132,19 @@ plot <- ggplot(subset(US, sector == "Manu"), aes(x = resid_change, fill = factor
   theme(panel.background = element_rect(fill = "white", color = NA),     
         plot.background  = element_rect(fill = "white", color = NA))
 plot
-ggsave(filename = file.path(exp, "plot/", "density_TE_US_Manu_2015_2020.png"),plot = plot, width = 8, height = 5, dpi = 300)
+ggsave(filename = file.path(exp, "plot/", "density_res_US_Manu_2015_2020.png"),plot = plot, width = 8, height = 5, dpi = 300)
 
 
-plot <- ggplot(subset(US, sector == "Manu"), aes(x = date, y = resid_change)) +
+plot <- ggplot(subset(US, sector == "Manu"), aes(x = date, y = residual)) +
   geom_smooth(se = TRUE) +
   geom_hline(yintercept = 0, linetype = "dotted", color = "red") + 
-  labs( title = "Gravity model US reisudal",
-        x = "Date",   y = "Residua; value"  ) +
+  labs( title = "Gravity model US residual",
+        x = "Date",   y = "Residual value"  ) +
   theme_minimal(base_size = 14) +   
   theme(panel.background = element_rect(fill = "white", color = NA),     
         plot.background  = element_rect(fill = "white", color = NA))
 plot
-ggsave(filename = file.path(exp, "plot/", "plot_TE_US_Manu_2015_2020.png"),plot = plot, width = 8, height = 5, dpi = 300)
+ggsave(filename = file.path(exp, "plot/", "plot_res_US_Manu_2015_2020.png"),plot = plot, width = 8, height = 5, dpi = 300)
 
 
 ################################################################################
