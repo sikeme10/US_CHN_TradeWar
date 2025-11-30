@@ -135,3 +135,170 @@ gamma
 epsilon <- -b_Q / (1+b_P)
 epsilon
 
+
+
+################################################################################
+# 2) in a loop for each sector 
+################################################################################
+
+
+
+library(dplyr)
+library(fixest)
+
+# Get all sectors
+all_sectors <- sort(unique(dta$sector))
+
+# Helper to safely extract the coefficient (returns NA if regression fails)
+get_beta <- function(reg_obj, name = "d_log_Applied_tariff") {
+  out <- tryCatch(coef(reg_obj)[name], error = function(e) NA_real_)
+  return(out)}
+
+# Empty results data.frame
+results_sector <- data.frame(
+  sector = character(),
+  b_V    = numeric(),
+  b_Q    = numeric(),
+  b_P    = numeric(),
+  gamma  = numeric(),
+  epsilon = numeric(),
+  stringsAsFactors = FALSE)
+
+for (s in all_sectors) {
+  
+  cat("Running sector:", s, "\n")
+  
+  sub_dta <- dta %>% filter(sector == s)
+  if (nrow(sub_dta) == 0) next
+  
+  ## 1) Trade values
+  # (you can switch FE spec here if you prefer ExporterISO3^hs6_H5)
+  reg_V <- feols(
+    d_log_Trade_value_USD ~ d_log_Applied_tariff | hs6_H5,
+    data = sub_dta )
+  b_V <- get_beta(reg_V)
+  
+  ## 2) Quantity
+  reg_Q <- feols(
+    d_log_Quantity ~ d_log_Applied_tariff | hs6_H5,
+    data = sub_dta )
+  b_Q <- get_beta(reg_Q)
+  
+  ## 3) Price
+  # again, change FE part if you want year + ExporterISO3^hs6_H5
+  reg_P <- feols(
+    d_log_Unit_Price ~ d_log_Applied_tariff | hs6_H5,
+    data = sub_dta )
+  b_P <- get_beta(reg_P)
+  
+  ## 4) Elasticities
+  # protect against division by zero / NA
+  if (is.na(b_Q) || is.na(b_P) || abs(b_P) < 1e-10) {
+    gamma   <- NA_real_
+    epsilon <- NA_real_
+  } else {
+    gamma   <- b_Q / b_P
+    epsilon <- -b_Q / (1 + b_P)
+  }
+  
+  ## 5) Store results
+  results_sector <- rbind(
+    results_sector,
+    data.frame(
+      sector  = s,
+      b_V     = b_V,
+      b_Q     = b_Q,
+      b_P     = b_P,
+      gamma   = gamma,
+      epsilon = epsilon,
+      stringsAsFactors = FALSE
+    ) )}
+
+results_sector
+
+
+
+################################################################################
+# 2) in a loop for each sector 
+################################################################################
+
+
+library(dplyr)
+library(fixest)
+
+# Get all HS sections
+all_sections <- sort(unique(dta$HS_section))
+
+# Helper: safely extract the coefficient (returns NA if regression fails)
+get_beta <- function(reg_obj, name = "d_log_Applied_tariff") {
+  out <- tryCatch(coef(reg_obj)[name], error = function(e) NA_real_)
+  return(out)
+}
+
+# Empty results data.frame
+results_HS_section <- data.frame(
+  HS_section = character(),
+  b_V        = numeric(),
+  b_Q        = numeric(),
+  b_P        = numeric(),
+  gamma      = numeric(),
+  epsilon    = numeric(),
+  stringsAsFactors = FALSE
+)
+
+for (sec in all_sections) {
+  
+  cat("Running HS_section:", sec, "\n")
+  
+  sub_dta <- dta %>% filter(HS_section == sec)
+  if (nrow(sub_dta) == 0) next
+  
+  ## 1) Trade values
+  # (use your preferred FE; here: hs6_H5 FE as in your last code)
+  reg_V <- feols(
+    d_log_Trade_value_USD ~ d_log_Applied_tariff | hs6_H5,
+    data = sub_dta
+  )
+  b_V <- get_beta(reg_V)
+  
+  ## 2) Quantity
+  reg_Q <- feols(
+    d_log_Quantity ~ d_log_Applied_tariff | hs6_H5,
+    data = sub_dta
+  )
+  b_Q <- get_beta(reg_Q)
+  
+  ## 3) Price
+  reg_P <- feols(
+    d_log_Unit_Price ~ d_log_Applied_tariff | hs6_H5,
+    data = sub_dta
+  )
+  b_P <- get_beta(reg_P)
+  
+  ## 4) Elasticities
+  if (is.na(b_Q) || is.na(b_P) || abs(b_P) < 1e-10) {
+    gamma   <- NA_real_
+    epsilon <- NA_real_
+  } else {
+    gamma   <- b_Q / b_P
+    epsilon <- -b_Q / (1 + b_P)
+  }
+  
+  ## 5) Store results
+  results_HS_section <- rbind(
+    results_HS_section,
+    data.frame(
+      HS_section = sec,
+      b_V        = b_V,
+      b_Q        = b_Q,
+      b_P        = b_P,
+      gamma      = gamma,
+      epsilon    = epsilon,
+      stringsAsFactors = FALSE
+    )
+  )
+}
+
+results_HS_section
+
+
