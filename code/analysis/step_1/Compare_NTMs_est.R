@@ -70,6 +70,8 @@ colSums(is.na(dta))
 dta <- dta %>%  filter(!if_all(c(FE, residual, teJLMS), is.na))
 write_csv(dta , paste0(exp, "estimates_reduced_form.csv"))
 
+
+dta <- read_csv( paste0(exp, "estimates_reduced_form.csv"))
 ################################################################################
 # # add some product level variables 
 ################################################################################
@@ -175,7 +177,7 @@ US <- dta  %>% filter(ExporterISO3 == "USA")
 US <- US %>%  mutate(date = as.Date(paste(year, month, "01", sep = "-"))  ) 
 
 write_csv(US, paste0(exp, "US_ln_NTMs.csv"))
-
+US <- read_csv(paste0(exp, "US_ln_NTMs.csv"))
 
 plot <- ggplot(subset(US, sector == "Ag")) +
   geom_smooth(aes(x = date, y = ln_AVE_FE, color = "FE"), se = TRUE) +
@@ -185,11 +187,12 @@ plot <- ggplot(subset(US, sector == "Ag")) +
     values = c("FE" = "steelblue", "u" = "darkorange")  ) +
   labs(    title = "Average estimated ln(1+AVE) using FE and stochastic frontier: agricultural sector",   x = "Date",    y = "ln(1+AVE)"  ) +
   theme_minimal(base_size = 14) +
-  theme(    panel.background = element_rect(fill = "white", color = NA),
+  theme(   plot.title = element_text(size = 12),   
+           panel.background = element_rect(fill = "white", color = NA),
             plot.background  = element_rect(fill = "white", color = NA)  )
 
 plot
-
+ggsave(filename = file.path(exp, "plot/", "Compare_AVE_Ag.png"),plot = plot, width = 8, height = 5, dpi = 300)
 
 plot <- ggplot(subset(US, sector == "Ag")) +
   geom_smooth(aes(x = date, y = ln_AVE_u, color = "u"), se = TRUE) +
@@ -198,10 +201,13 @@ plot <- ggplot(subset(US, sector == "Ag")) +
     values = c("u" = "darkorange")  ) +
   labs(    title = "Average estimated ln(1+AVE) using stochastic frontier: agricultural sector",   x = "Date",    y = "ln(1+AVE)"  )  +
   theme_minimal(base_size = 14) +
-  theme(panel.background = element_rect(fill = "white", color = NA),
+  theme(
+    plot.title = element_text(size = 12),   
+    panel.background = element_rect(fill = "white", color = NA),
         plot.background  = element_rect(fill = "white", color = NA)  )
 
 plot
+ggsave(filename = file.path(exp, "plot/", "stochastic_AVE_Ag.png"),plot = plot, width = 8, height = 5, dpi = 300)
 
 plot <- ggplot(subset(US, sector == "Ag")) +
   geom_smooth(aes(x = date, y = ln_AVE_FE, color = "FE"), se = TRUE) +
@@ -210,10 +216,14 @@ plot <- ggplot(subset(US, sector == "Ag")) +
                        values = c("FE" = "steelblue")  ) +
   labs(    title = "Average estimated ln(1+AVE) using stochastic frontier: agricultural sector",   x = "Date",    y = "ln(1+AVE)"  )  +
   theme_minimal(base_size = 14) +
-  theme(panel.background = element_rect(fill = "white", color = NA),
+  theme(
+    plot.title = element_text(size = 12),   
+    panel.background = element_rect(fill = "white", color = NA),
         plot.background  = element_rect(fill = "white", color = NA)  )
 
 plot
+ggsave(filename = file.path(exp, "plot/", "FE_AVE_Ag.png"),plot = plot, width = 8, height = 5, dpi = 300)
+
 
 
 
@@ -222,12 +232,16 @@ plot <- ggplot(subset(US, sector == "Manu")) +
   geom_smooth(aes(x = date, y = ln_AVE_u,  color = "u"),  se = TRUE) +
   scale_color_manual(  name = "Series",
     values = c("FE" = "steelblue", "u" = "darkorange")  ) +
-  labs(    title = "Gravity model US FE value",   x = "Date",    y = "FE value"  ) +
+  labs(    title = "Average estimated ln(1+AVE) using stochastic frontier: manufacturing sector",   x = "Date",    y = "ln(1+AVE)"  ) +
   theme_minimal(base_size = 14) +
-  theme(    panel.background = element_rect(fill = "white", color = NA),
+  theme(   plot.title = element_text(size = 12),   
+    panel.background = element_rect(fill = "white", color = NA),
             plot.background  = element_rect(fill = "white", color = NA)  )
 
 plot
+ggsave(filename = file.path(exp, "plot/", "Compare_AVE_Manu.png"),plot = plot, width = 8, height = 5, dpi = 300)
+
+
 
 
 plot <- ggplot(subset(US, sector == "Manu")) +
@@ -237,7 +251,8 @@ plot <- ggplot(subset(US, sector == "Manu")) +
                        values = c("FE" = "steelblue", "u" = "darkorange")  ) +
   labs(    title = "Gravity model US FE value",   x = "Date",    y = "FE value"  ) +
   theme_minimal(base_size = 14) +
-  theme(    panel.background = element_rect(fill = "white", color = NA),
+  theme(    plot.title = element_text(size = 12),   
+    panel.background = element_rect(fill = "white", color = NA),
             plot.background  = element_rect(fill = "white", color = NA)  )
 
 plot
@@ -255,7 +270,7 @@ plot <- ggplot(subset(US, sector == "Manu")) +
     y = "FE value"
   ) +
   theme_minimal(base_size = 14) +
-  theme(
+  theme( plot.title = element_text(size = 12),   
     panel.background = element_rect(fill = "white", color = NA),
     plot.background  = element_rect(fill = "white", color = NA)
   )

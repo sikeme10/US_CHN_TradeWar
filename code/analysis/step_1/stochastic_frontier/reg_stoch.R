@@ -393,31 +393,31 @@ for (HS2 in hs2_vals) {
             " ; skipping muhet model")
     failed_hs2 <- c(failed_hs2, paste0(HS2, "_no_logTariff_mu"))
   }
+  ## ---- Efficiencies for TN and TN_muTariff separately ------------------
   
-  ## ---- Efficiency for this HS2 (using mod_tn_tar if it worked) ---------
-  mod_for_eff <- if (!inherits(mod_tn_tar, "try-error")) mod_tn_tar else mod_tn
+  # 1) Always compute efficiencies for the plain truncated-normal model
+  eff_tn      <- sfaR::efficiencies(mod_tn, newData = dta2)
+  dta2_eff_tn <- cbind(dta2, eff_tn)  # teBC, teJLMS, u, etc.
   
-  eff_full <- sfaR::efficiencies(mod_for_eff, newData = dta2)
-  dta2_with_eff <- cbind(dta2, eff_full)  # adds u, teBC, teJLMS, ...
-  
-  ## ---- Build coef table for this HS2 -----------------------------------
-  this_coef_parts <- list(
-    texreg_to_df(mod_hn, "HN", HS2),
-    texreg_to_df(mod_tn, "TN", HS2)
-  )
-  
+  # 2) Compute efficiencies for the mu-heterogeneous TN model if it converged
   if (!inherits(mod_tn_tar, "try-error")) {
-    this_coef_parts[[length(this_coef_parts) + 1]] <-
-      texreg_to_df(mod_tn_tar, "TN_muTariff", HS2)
+    eff_tn_tar      <- sfaR::efficiencies(mod_tn_tar, newData = dta2)
+    dta2_eff_tn_tar <- cbind(dta2, eff_tn_tar)
+  } else {
+    dta2_eff_tn_tar <- NULL
   }
   
-  coef_list[[k]] <- dplyr::bind_rows(this_coef_parts)
-  k <- k + 1
+  ## (Optional) 3) If you want efficiencies for the half-normal model as well:
+  # eff_hn      <- sfaR::efficiencies(mod_hn, newData = dta2)
+  # dta2_eff_hn <- cbind(dta2, eff_hn)
   
   ## ---- Store everything in results_list --------------------------------
   results_list[[as.character(HS2)]] <- list(
     hs2        = HS2,
-    data       = dta2_with_eff,
+    data_raw   = dta2,             # data used in estimation
+    data_tn    = dta2_eff_tn,      # efficiencies from mod_tn
+    data_tn_mu = dta2_eff_tn_tar,  # efficiencies from mod_tn_tar (or NULL if failed)
+    # data_hn  = dta2_eff_hn,      # uncomment if you compute HN efficiencies
     mod_hn     = mod_hn,
     mod_tn     = mod_tn,
     mod_tn_tar = if (!inherits(mod_tn_tar, "try-error")) mod_tn_tar else NULL
@@ -431,7 +431,10 @@ coef_all <- dplyr::bind_rows(coef_list)
 
 ## ------------ Optional: bind all HS2 data with inefficiencies ----------
 
-dta_all_with_eff <- dplyr::bind_rows(  lapply(results_list, function(x) x$data))
+
+dta_all_with_eff <- dplyr::bind_rows(  lapply(results_list, function(x) x$data_tn))
+dta_all_with_eff_mu <- dplyr::bind_rows(  lapply(results_list, function(x) x$data_tn_mu))
+
 
 # failed HS2 codes:
 failed_hs2
@@ -439,10 +442,10 @@ failed_hs2
 
 # save results:
 
-
-write_csv(coef_all, file.path(exp, "sfaR_coef_HS2_average.csv"))
+write_csv(coef_all, file.path(exp, "sfaR_coef_HS2_average_new.csv"))
 write_csv(dta_all_with_eff, file.path(exp, "sfaR_efficiency_average.csv"))
-saveRDS(results_list, file.path(exp, "sfaR_results_efficiency_list_HS2_average.rds"))
+write_csv(dta_all_with_eff_mu, file.path(exp, "sfaR_efficiency_average_mu.csv"))
+saveRDS(results_list, file.path(exp, "sfaR_results_efficiency_list_HS2_average_new.rds"))
 
 # 
 # write_csv(coef_all, file.path(exp, "sfaR_coef_HS2.csv"))
