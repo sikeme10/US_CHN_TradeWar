@@ -272,7 +272,7 @@ for (HS2 in hs2_vals) {
   message("=== HS2 = ", HS2, " ===")
   
   # test 
-  # HS2 <- hs2_vals[8]
+  # HS2 <- hs2_vals[1]
   
   # Subset and drop rows with NA in SFA vars
   dta2 <- dta1 %>% filter(hs2 == HS2) %>%
@@ -410,6 +410,15 @@ for (HS2 in hs2_vals) {
   ## (Optional) 3) If you want efficiencies for the half-normal model as well:
   # eff_hn      <- sfaR::efficiencies(mod_hn, newData = dta2)
   # dta2_eff_hn <- cbind(dta2, eff_hn)
+  
+  ## ---- Build coef table for this HS2 -----------------------------------
+  this_coef_parts <- list(texreg_to_df(mod_hn, "HN", HS2),texreg_to_df(mod_tn, "TN", HS2)  )
+  
+  if (!inherits(mod_tn_tar, "try-error")) {
+    this_coef_parts[[length(this_coef_parts) + 1]] <-  texreg_to_df(mod_tn_tar, "TN_muTariff", HS2)
+  }
+    coef_list[[k]] <- dplyr::bind_rows(this_coef_parts)
+  k <- k + 1
   
   ## ---- Store everything in results_list --------------------------------
   results_list[[as.character(HS2)]] <- list(

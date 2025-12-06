@@ -1,7 +1,8 @@
 
 
 ################################################################################
-# we create two variables here: fraction of US industry i sold domestically
+
+# create variable gamm_iju interacted with tariff here 
 
 ################################################################################
 
@@ -21,10 +22,10 @@ library(vroom)
 
 rm(list=ls())
 # Set directory
-setwd("/data/sikeme/TRADE/NTM_trade_war/data")
+setwd("/data/sikeme/TRADE/US_CHN_TradeWar_git")
 getwd()
 
-exp <- "/data/sikeme/TRADE/NTM_trade_war/data/created_exposure"
+exp <- "/data/sikeme/TRADE/US_CHN_TradeWar_git/data/created_exposure"
 
 
 ################################################################################
@@ -32,20 +33,21 @@ exp <- "/data/sikeme/TRADE/NTM_trade_war/data/created_exposure"
 ################################################################################
 
 # US tot export at HS6 level H4:
-US_export <- read_csv("trade/US_export_schott_2012.csv")
+US_export <- read_csv("data/trade/US_export_schott_2012.csv")
 colSums(is.na(US_export))
 test<- US_export %>% filter(is.na(ISO_Code))
 unique(test$Country)
 
 # US industry output NAICS 3 digit level
-output_NAICS3 <-  read_csv("/data/sikeme/TRADE/NTM_trade_war/data/Census_output/output_NAICS_3.csv")
+output_NAICS3 <-  read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/data/Census_output/output_NAICS_3.csv")
 
 # crosswalk: industry NAICS to HS product code 
 
-HS_NAICS <- read_csv("/data/sikeme/TRADE/NTM_trade_war/data/crosswalk/clean_HS6_naics3_2012.csv")
+HS_NAICS <- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/data/crosswalk/clean_HS6_naics3_2012.csv")
 
 
-tariff <- read_csv("chen_NTB_tariff/hs2_agriculture_manufacturing_clean.csv")
+tariff <- read_csv("data/chen_NTB_tariff/hs2_agriculture_manufacturing_clean.csv")
+summary(tariff)
 
 ################################################################################
 

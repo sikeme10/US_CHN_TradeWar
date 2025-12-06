@@ -37,10 +37,10 @@ exp <- "/data/sikeme/TRADE/US_CHN_TradeWar_git/output/Compare_values/"
 # Load FE estimates 
 fe <- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/output/summary/prelim_reg/gravity_pois_FE.csv")
 res <- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/output/summary/prelim_reg/gravity_pois_residual.csv")
-sf <- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/output/stochastic/sfaR_efficiency.csv")
-
+sf <- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/output/stochastic/sfaR_efficiency_average_merged.csv")
 
 ################################################################################
+
 # merge the data 
 
 
@@ -52,15 +52,14 @@ names(sf)
 
 fe <- fe %>% select(year,month,hs2, hs4, hs6_H5, ExporterISO3, ImporterISO3,Applied_tariff, fe_id, FE)
 res <- res %>% select(year,month,hs2, hs4, hs6_H5, ExporterISO3, ImporterISO3,Applied_tariff, residual)
-sf <- sf %>% select(year,month,hs2, hs4, hs6_H5, ExporterISO3, ImporterISO3,Applied_tariff, u, uLB ,uUB,
-                    m, teJLMS)
+sf <- sf %>% select(year,month,hs2, hs4, hs6_H5, ExporterISO3, ImporterISO3,Applied_tariff, u,teJLMS,
+                    u_tariff , teJLMS_tariff)
 
 # merge all data 
 library(dplyr)
 
 # Full join all three datasets
-dta <- fe %>%
-  full_join(res, by = c("year", "month", "hs2", "hs4", "hs6_H5",
+dta <- fe %>%  full_join(res, by = c("year", "month", "hs2", "hs4", "hs6_H5",
                         "ExporterISO3", "ImporterISO3", "Applied_tariff")) %>%
   full_join(sf,  by = c("year", "month", "hs2", "hs4", "hs6_H5",
                         "ExporterISO3", "ImporterISO3", "Applied_tariff"))
@@ -117,6 +116,7 @@ dta <- dta %>% mutate(
 table(dta$sector)
 table(dta$hs_section)
 
+
 ################################################################################
 # If we want to create a benchmark for each values 
 # we take the max value of the FE and u among all exporter for a specific product, month, year
@@ -134,12 +134,17 @@ dta <- dta %>% group_by(year, month, hs6_H5) %>%
 summary(dta$FE_benchmark_exporter)
 summary(dta$u_benchmark_exporter)
 
+# if we want to use pre 2017 asa bechnmark 
+dta <- dta %>% group_by(year, month, exporterISO3,  hs6_H5) %>% mutate(
+  FE_pre_2017 = mean(FE where year %in%c(2015, 2017), na.rm = TRUE)
+)
+
+
 ################################################################################
 
 # add elasticities from chen et al.
 
-dta <- dta %>% mutate(
-  elastcities = case_when(sector == "Ag" ~  3 ,
+dta <- dta %>% mutate(elastcities = case_when(sector == "Ag" ~  3 ,
                           sector == "Manu" ~ 1.97,
                           sector == "Other" ~ 5 ))
 
@@ -156,8 +161,7 @@ dta <- dta %>%
     
     diff_u_benchmark = if_else(
       !is.na(u) & !is.na(u_benchmark_exporter) & u == u_benchmark_exporter,
-      NA_real_,      -u + u_benchmark_exporter    )
-  )
+      NA_real_,      -u + u_benchmark_exporter    )  )
 summary(dta$diff_FE_benchmark)
 summary(dta$diff_u_benchmark)
 
@@ -175,6 +179,7 @@ summary(dta$ln_AVE_u)
 ################################################################################
 US <- dta  %>% filter(ExporterISO3 == "USA")
 US <- US %>%  mutate(date = as.Date(paste(year, month, "01", sep = "-"))  ) 
+summary(US$)
 
 write_csv(US, paste0(exp, "US_ln_NTMs.csv"))
 US <- read_csv(paste0(exp, "US_ln_NTMs.csv"))
