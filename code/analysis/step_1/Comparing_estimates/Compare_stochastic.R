@@ -109,7 +109,7 @@ US_Ag <- US %>% filter(sector == "Ag")
 
 ggplot(US_Ag, aes(x = u, y = u_tariff)) +
   geom_point(alpha = 0.150, size = 1) +
-  geom_smooth(method = "lm", se = FALSE, color = "red") +
+  geom_abline(intercept = 0, slope = 1, color = "red", linewidth = 1) +
   theme_minimal() +
   labs(
     title = "Plot of inefficiency and tariff-adjusted Inefficiency (u) in agricultural Sector",
@@ -124,7 +124,7 @@ ggplot(US_Ag, aes(x = u, y = u_tariff)) +
 ggplot(US_Ag, aes(x = u, y = u_tariff)) +
   geom_hex(bins = 40) +
   scale_fill_viridis_c(option = "C") +
-  geom_smooth(method = "lm", se = FALSE, color = "red") +
+  geom_abline(intercept = 0, slope = 1, color = "red", linewidth = 1) +
   theme_minimal()
 model <- lm(u_tariff ~ u, data = US_Ag)
 summary(model)

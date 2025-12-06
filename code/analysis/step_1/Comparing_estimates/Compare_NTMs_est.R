@@ -46,17 +46,18 @@ sf <- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/output/stochastic/sfaR_ef
 
 # select data we want 
 names(fe)
+colSums(is.na(fe))
 names(res)
 names(sf)
 
 
-fe <- fe %>% select(year,month,hs2, hs4, hs6_H5, ExporterISO3, ImporterISO3,Applied_tariff, fe_id, FE)
+fe <- fe %>% select(year,month,hs2, hs4, hs6_H5, ExporterISO3, ImporterISO3,Trade_value_USD, Applied_tariff, fe_id, FE)
 res <- res %>% select(year,month,hs2, hs4, hs6_H5, ExporterISO3, ImporterISO3,Applied_tariff, residual)
 sf <- sf %>% select(year,month,hs2, hs4, hs6_H5, ExporterISO3, ImporterISO3,Applied_tariff, u,teJLMS,
                     u_tariff , teJLMS_tariff)
 
 # merge all data 
-library(dplyr)
+
 
 # Full join all three datasets
 dta <- fe %>%  full_join(res, by = c("year", "month", "hs2", "hs4", "hs6_H5",
@@ -64,6 +65,12 @@ dta <- fe %>%  full_join(res, by = c("year", "month", "hs2", "hs4", "hs6_H5",
   full_join(sf,  by = c("year", "month", "hs2", "hs4", "hs6_H5",
                         "ExporterISO3", "ImporterISO3", "Applied_tariff"))
 colSums(is.na(dta))
+names(dta)
+
+# create a log 
+dta <- dta %>% mutate(log_tariff = log(1+Applied_tariff) )
+summary(dta$log_tariff)
+summary(dta$Applied_tariff)
 
 # drop Nas
 dta <- dta %>%  filter(!if_all(c(FE, residual, teJLMS), is.na))
@@ -71,6 +78,8 @@ write_csv(dta , paste0(exp, "estimates_reduced_form.csv"))
 
 
 dta <- read_csv( paste0(exp, "estimates_reduced_form.csv"))
+names(dta)
+
 ################################################################################
 # # add some product level variables 
 ################################################################################
@@ -84,8 +93,9 @@ summary(dta$u)
 class(dta$hs6_H5)
 unique(nchar(dta$hs6_H5))
 unique(dta$hs2)
+table(dta$hs2)
 
-
+dta$hs2 <- as.numeric(dta$hs2)
 dta <- dta %>% mutate(
   hs_section = case_when(
     hs2 %in% 1:5 ~ 1,
@@ -115,36 +125,51 @@ dta <- dta %>% mutate(
     TRUE                  ~ "Other"))
 table(dta$sector)
 table(dta$hs_section)
+table(dta$hs2)
+table(dta$hs2, dta$hs_section)
+names(dta)
 
 
 ################################################################################
 # If we want to create a benchmark for each values 
 # we take the max value of the FE and u among all exporter for a specific product, month, year
 
-dta <- dta %>% group_by(year, month, hs6_H5) %>%
-  mutate( FE_benchmark_exporter = {
-    m <- max(FE, na.rm = TRUE)
-    ifelse(is.infinite(m), NA_real_, m)   
-    },
-    u_benchmark_exporter = {
-      m <- min(u, na.rm = TRUE)
-      ifelse(is.infinite(m), NA_real_, m)   
-      }  ) %>%
-  ungroup()
-summary(dta$FE_benchmark_exporter)
-summary(dta$u_benchmark_exporter)
-
-# if we want to use pre 2017 asa bechnmark 
-dta <- dta %>% group_by(year, month, exporterISO3,  hs6_H5) %>% mutate(
-  FE_pre_2017 = mean(FE where year %in%c(2015, 2017), na.rm = TRUE)
-)
+# dta <- dta %>% group_by(year, month, hs6_H5) %>%
+#   mutate( FE_benchmark_exporter = {
+#     m <- max(FE, na.rm = TRUE)
+#     ifelse(is.infinite(m), NA_real_, m)   
+#     },
+#     u_benchmark_exporter = {
+#       m <- min(u, na.rm = TRUE)
+#       ifelse(is.infinite(m), NA_real_, m)   
+#       }  ) %>%
+#   ungroup()
+# summary(dta$FE_benchmark_exporter)
+# summary(dta$u_benchmark_exporter)
 
 
+
+
+# if we want to use pre 2017 as a benchmark 
+# dta <- dta %>% group_by(month, ExporterISO3, hs6_H5) %>%
+#   mutate( FE_pre_2017_m = mean(FE[year %in% c(2015, 2017)], na.rm = TRUE),
+#     u_pre_2017_m = mean(u[year %in% c(2015, 2017)], na.rm = TRUE),
+#     u_tariff_pre_2017_m = mean(u_tariff[year %in% c(2015, 2017)], na.rm = TRUE) ) %>%  ungroup()
+
+dta <- dta %>%  group_by(ExporterISO3, hs6_H5) %>%
+  mutate( FE_pre_2017 = mean(FE[year %in% c(2017)], na.rm = TRUE),
+    u_pre_2017 = mean(u[year %in% c(2017)], na.rm = TRUE),
+    u_tariff_pre_2017 = mean(u_tariff[year %in% c(2017)], na.rm = TRUE),
+    log_tariff_pre_2017 = mean(log_tariff[year %in% c(2017)], na.rm = TRUE)) %>%  ungroup()
+
+
+################################################################################
+# Add elasticities
 ################################################################################
 
 # add elasticities from chen et al.
 
-dta <- dta %>% mutate(elastcities = case_when(sector == "Ag" ~  3 ,
+dta <- dta %>% mutate(elasticities = case_when(sector == "Ag" ~  3 ,
                           sector == "Manu" ~ 1.97,
                           sector == "Other" ~ 5 ))
 
@@ -152,136 +177,389 @@ dta <- dta %>% arrange(year, month, hs6_H5)
 
 ################################################################################
 
-# create adjusted values of efficencies and FE estimates
+# create adjusted values of efficiency and FE estimates
+# do the difference with 2017 baseline 
 dta <- dta %>%
   mutate(
-    diff_FE_benchmark = if_else(
-      !is.na(FE) & !is.na(FE_benchmark_exporter) & FE == FE_benchmark_exporter,
-      NA_real_,  FE - FE_benchmark_exporter    ),
+    # Difference in FE relative to 2017 baseline
+    diff_FE_2017 = if_else( year > 2017 & !is.na(FE) & !is.na(FE_pre_2017),
+      FE - FE_pre_2017,      NA_real_    ),
     
-    diff_u_benchmark = if_else(
-      !is.na(u) & !is.na(u_benchmark_exporter) & u == u_benchmark_exporter,
-      NA_real_,      -u + u_benchmark_exporter    )  )
-summary(dta$diff_FE_benchmark)
-summary(dta$diff_u_benchmark)
+    # Difference in u (inefficiency) relative to 2017 baseline
+    diff_u_2017 = if_else(year > 2017 & !is.na(u) & !is.na(u_pre_2017),
+       u_pre_2017 - u,      NA_real_    ),
+    
+    # Difference in tariff-adjusted u relative to 2017 baseline
+    diff_u_tariff_2017 = if_else( year > 2017 & !is.na(u_tariff) & !is.na(u_tariff_pre_2017),
+      u_tariff_pre_2017 - u_tariff,     NA_real_    ),
+    
+    # Difference in log tariffs relative to 2017 baseline
+    diff_log_tariff_2017 = if_else(  year > 2017 & !is.na(log_tariff) & !is.na(log_tariff_pre_2017),
+      log_tariff - log_tariff_pre_2017,      NA_real_    )  )
+
+test  <- dta %>% filter(year >2017)
+colSums(is.na(test))
+summary(dta$diff_FE_2017)
+summary(dta$diff_u_2017)
+summary(dta$diff_u_tariff_2017)
+summary(dta$diff_log_tariff_2017)
+################################################################################
+
+# estimate ln(1+T) and changes in ln(1+T)
+
+dta <- dta %>%
+  mutate(
+    ln_AVE_FE = (1/(1-elasticities))*FE,
+    ln_AVE_u = (1/(1-elasticities))*-u,
+    ln_AVE_u_tariff = (1/(1-elasticities))*-u_tariff,
+    diff_ln_AVE_FE =if_else(year %in% c(2018:2020), (1/(1-elasticities))*diff_FE_2017, NA) ,
+    diff_ln_AVE_u =if_else(year %in% c(2018:2020), (1/(1-elasticities))*diff_u_2017, NA) ,
+    diff_ln_AVE_u_tariff =if_else(year %in% c(2018:2020), (1/(1-elasticities))*diff_u_tariff_2017, NA) )
+summary(dta$ln_AVE_FE)
+summary(dta$ln_AVE_u)
+summary(dta$ln_AVE_u_tariff)
+summary(dta$diff_ln_AVE_FE)
+summary(dta$diff_ln_AVE_u)
+summary(dta$diff_ln_AVE_u_tariff)
+colSums(is.na(dta))
+
+
+write_csv(dta , paste0(exp, "estimates_reduced_form1.csv"))
+
+dta <- read_csv( paste0(exp, "estimates_reduced_form1.csv"))
 
 ################################################################################
 
-# estimate ln(1+T)
-
-dta <- dta %>%
-  mutate(
-    ln_AVE_FE = (1/(1-elastcities))*diff_FE_benchmark,
-    ln_AVE_u = (1/(1-elastcities))*diff_u_benchmark  )
-summary(dta$ln_AVE_FE)
-summary(dta$ln_AVE_u)
+# Plotting ln(1+AVE)
 
 ################################################################################
 US <- dta  %>% filter(ExporterISO3 == "USA")
 US <- US %>%  mutate(date = as.Date(paste(year, month, "01", sep = "-"))  ) 
-summary(US$)
+summary(US)
+names(US)
+unique(US$hs2)
+unique(US$hs_section)
 
 write_csv(US, paste0(exp, "US_ln_NTMs.csv"))
 US <- read_csv(paste0(exp, "US_ln_NTMs.csv"))
 
-plot <- ggplot(subset(US, sector == "Ag")) +
-  geom_smooth(aes(x = date, y = ln_AVE_FE, color = "FE"), se = TRUE) +
-  geom_smooth(aes(x = date, y = ln_AVE_u,  color = "u"),  se = TRUE) +
-  scale_color_manual(
-    name = "Series",
-    values = c("FE" = "steelblue", "u" = "darkorange")  ) +
-  labs(    title = "Average estimated ln(1+AVE) using FE and stochastic frontier: agricultural sector",   x = "Date",    y = "ln(1+AVE)"  ) +
-  theme_minimal(base_size = 14) +
-  theme(   plot.title = element_text(size = 12),   
-           panel.background = element_rect(fill = "white", color = NA),
-            plot.background  = element_rect(fill = "white", color = NA)  )
+################################################################################
 
-plot
-ggsave(filename = file.path(exp, "plot/", "Compare_AVE_Ag.png"),plot = plot, width = 8, height = 5, dpi = 300)
+# For US ag: 
 
-plot <- ggplot(subset(US, sector == "Ag")) +
-  geom_smooth(aes(x = date, y = ln_AVE_u, color = "u"), se = TRUE) +
-  facet_wrap(~hs_section) +
-  scale_color_manual(  name = "Series",
-    values = c("u" = "darkorange")  ) +
-  labs(    title = "Average estimated ln(1+AVE) using stochastic frontier: agricultural sector",   x = "Date",    y = "ln(1+AVE)"  )  +
+# create simple average change and weighted average change in 
+US_ag <- US %>% filter(sector == "Ag")
+names(US_ag)
+unique(US_ag$year)
+unique(US_ag$hs2)
+unique(US_ag$hs_section)
+length(unique(US_ag$hs6_H5))
+
+# Ag sector level: create weight in trade (hs6/total US export)
+# weights for hs6 to aggregate to sector level
+US_ag_2017_hs6 <- US_ag %>%
+  filter(year == 2017) %>%
+  group_by(hs6_H5) %>%
+  summarise(Trade_value_USD_2017 = sum(Trade_value_USD, na.rm = TRUE),  .groups = "drop"  ) %>%
+  mutate(  tot_Trade_value_USD_2017 = sum(Trade_value_USD_2017),
+           weight_sector = Trade_value_USD_2017 / tot_Trade_value_USD_2017  )
+US_ag <-left_join(US_ag,US_ag_2017_hs6 )
+
+
+# HS section level : weights for hs6 to aggregate to HS-section
+US_ag_2017_hs_sect <- US_ag %>%  filter(year == 2017) %>%
+  group_by(hs_section, hs6_H5) %>%
+  summarise( Trade_value_USD_2017 = sum(Trade_value_USD, na.rm = TRUE),  .groups = "drop_last"    ) %>%
+  group_by(hs_section) %>%
+  mutate(  hs_sect_tot_Trade_value_USD_2017 = sum(Trade_value_USD_2017),
+    weight_hs_sect = if_else( hs_sect_tot_Trade_value_USD_2017 > 0,   
+                              Trade_value_USD_2017 / hs_sect_tot_Trade_value_USD_2017,    NA_real_ )) %>%
+  ungroup()
+US_ag <-left_join(US_ag,US_ag_2017_hs_sect )
+
+
+############################################################################
+
+# add Chen et al. estimations 
+Chen <- read_csv("data/chen_NTB_tariff/hs2_agriculture_manufacturing_clean.csv")
+names(Chen)
+
+
+Chen <- Chen %>% select(-Country, - ISO3_Code) %>% rename(hs2 = HS2 , Chen_US_import_share = US_import_share,
+                                                          diff_log_tariff_Chen = tau_tariff_CHN, 
+                                                          diff_ln_AVE_chen = tau_NTB)
+US_ag <- left_join(US_ag,Chen)
+names(US_ag)
+
+# create weights for Chen et al at sector level and HS section
+
+# Ag sector level: create weight in trade (hs6/total US export)
+# weights for hs6 to aggregate to sector level
+US_ag_2017_hs2_chen <- US_ag %>%
+  filter(year == 2017) %>%  group_by(hs2) %>%
+  summarise(Trade_value_USD_2017 = sum(Trade_value_USD, na.rm = TRUE),.groups = "drop"  ) %>%
+  mutate(  chen_tot_Trade_value_USD_2017 = sum(Trade_value_USD_2017, na.rm = TRUE),
+    weight_sector_chen = if_else( chen_tot_Trade_value_USD_2017 > 0,Trade_value_USD_2017 / chen_tot_Trade_value_USD_2017,
+      NA_real_    )  ) %>% select(-Trade_value_USD_2017 )
+US_ag <-left_join(US_ag,US_ag_2017_hs2_chen )
+
+
+# HS section level : weights for hs2 to aggregate to HS-section
+US_ag_2017_hs_sect_chen <- US_ag %>%  
+  filter(year == 2017) %>%
+  group_by(hs_section, hs2) %>%
+  summarise(Trade_value_USD_2017 = sum(Trade_value_USD, na.rm = TRUE),
+    .groups = "drop_last"  ) %>%
+  group_by(hs_section) %>%
+  mutate( Chen_hs_sect_tot_Trade_value_USD_2017 = sum(Trade_value_USD_2017, na.rm = TRUE),
+    weight_hs_sect_Chen = if_else(Chen_hs_sect_tot_Trade_value_USD_2017 > 0,Trade_value_USD_2017 / Chen_hs_sect_tot_Trade_value_USD_2017,
+      NA_real_    )  ) %>%  ungroup() %>% select(-Trade_value_USD_2017 )
+US_ag <-left_join(US_ag, US_ag_2017_hs_sect_chen )
+
+################################################################################
+
+US_ag <- US_ag %>% filter(year>2017)
+
+
+################################################################################
+# plot change in ln(1+AVE)
+################################################################################
+
+# sector level 
+
+# trade weighted and simple average trade costs :
+names(US_ag)
+
+US_ag_w <- US_ag %>%  filter(sector == "Ag", year > 2017) %>%  group_by(date) %>%
+  summarise( 
+    w_FE        = weighted.mean(diff_ln_AVE_FE,        w = weight_sector, na.rm = TRUE),
+    w_sf        = weighted.mean(diff_ln_AVE_u,         w = weight_sector, na.rm = TRUE),
+    w_sf_tariff = weighted.mean(diff_ln_AVE_u_tariff,  w = weight_sector, na.rm = TRUE),
+    w_chen      = weighted.mean(diff_ln_AVE_chen,      w = weight_sector_chen, na.rm = TRUE),
+    w_tariff    = weighted.mean(diff_log_tariff_2017,  w = weight_sector, na.rm = TRUE),
+    s_FE        = mean(diff_ln_AVE_FE,         na.rm = TRUE),
+    s_sf        = mean(diff_ln_AVE_u,          na.rm = TRUE),
+    s_sf_tariff = mean(diff_ln_AVE_u_tariff,   na.rm = TRUE),
+    s_chen      = mean(diff_ln_AVE_chen,       na.rm = TRUE),
+    s_tariff    = mean(diff_log_tariff_2017,   na.rm = TRUE)  ) %>% ungroup() %>%
+  mutate( w_chen = mean(w_chen, na.rm=TRUE),    s_chen = mean(s_chen, na.rm = TRUE))
+
+
+plot <- ggplot(US_ag_w) +
+  geom_line(aes(x = date, y = w_FE,        color = "FE")) +
+  geom_line(aes(x = date, y = w_sf,        color = "sf")) +
+  geom_line(aes(x = date, y = w_sf_tariff, color = "sf_tariff")) +
+  geom_line(aes(x = date, y = w_chen,      color = "Chen_et_al")) +
+  geom_line(aes(x = date, y = w_tariff,    color = "tariff")) +
+  scale_color_manual( values = c(
+      "FE"         = "steelblue",   "sf"         = "darkorange",
+      "sf_tariff"  = "firebrick",    "Chen_et_al" = "purple",      # ← Added color
+      "tariff"     = "darkgreen"    ),
+      labels = c(  "FE"         = "FE",
+                   "sf"         = "SF",
+                   "sf_tariff"  = "Tariff-adjusted SF",
+                   "Chen_et_al" = "Chen et al.",   "tariff"     = "Tariff"    ),    name = "Variables"  ) +
+  labs(title = "Weighted average Δ ln(1+AVE) for agricultural sector (relative to 2017)",
+    x = "Date",   y = "Weighted Δ ln(1+AVE)"  ) +
   theme_minimal(base_size = 14) +
   theme(
-    plot.title = element_text(size = 12),   
+    plot.title = element_text(size = 12, hjust = 0.5),
     panel.background = element_rect(fill = "white", color = NA),
-        plot.background  = element_rect(fill = "white", color = NA)  )
-
+    plot.background  = element_rect(fill = "white", color = NA) ,
+    axis.text.x = element_text(size = 9), # Axis text (tick labels)
+    axis.text.y = element_text(size = 9),
+    axis.title.x = element_text(size = 11), # Axis titles
+    axis.title.y = element_text(size = 11),
+    legend.text  = element_text(size = 10), # Legend text and title
+    legend.title = element_text(size = 10)  )
 plot
-ggsave(filename = file.path(exp, "plot/", "stochastic_AVE_Ag.png"),plot = plot, width = 8, height = 5, dpi = 300)
+ggsave(filename = file.path(exp, "plot/", "Compare_ln_AVE_Ag_weight.png"),plot = plot, width = 8, height = 5, dpi = 300)
 
-plot <- ggplot(subset(US, sector == "Ag")) +
-  geom_smooth(aes(x = date, y = ln_AVE_FE, color = "FE"), se = TRUE) +
-  facet_wrap(~hs_section) +
-  scale_color_manual(  name = "Series",
-                       values = c("FE" = "steelblue")  ) +
-  labs(    title = "Average estimated ln(1+AVE) using stochastic frontier: agricultural sector",   x = "Date",    y = "ln(1+AVE)"  )  +
+
+# simple average 
+plot <- ggplot(US_ag_w) +
+  geom_line(aes(x = date, y = s_FE,        color = "FE")) +
+  geom_line(aes(x = date, y = s_sf,        color = "sf")) +
+  geom_line(aes(x = date, y = s_sf_tariff, color = "sf_tariff")) +
+  geom_line(aes(x = date, y = s_chen,      color = "Chen_et_al")) +
+  geom_line(aes(x = date, y = s_tariff,    color = "tariff")) +
+  scale_color_manual(  values = c(  "FE"         = "steelblue",
+      "sf"         = "darkorange","sf_tariff"  = "firebrick",
+      "Chen_et_al" = "purple",      "tariff"     = "darkgreen"    ),
+      labels = c(  "FE"         = "FE",
+                   "sf"         = "SF",
+                   "sf_tariff"  = "Tariff-adjusted SF",
+                   "Chen_et_al" = "Chen et al.",   "tariff"     = "Tariff"    ),    name = "Variables"  ) +
+  labs(  title = "Simple average Δ ln(1+AVE) for agricultural sector (relative to 2017)",
+    x = "Date",    y = "Simple average Δ ln(1+AVE)"  ) +
   theme_minimal(base_size = 14) +
   theme(
-    plot.title = element_text(size = 12),   
+    plot.title = element_text(size = 12, hjust = 0.5),
     panel.background = element_rect(fill = "white", color = NA),
-        plot.background  = element_rect(fill = "white", color = NA)  )
-
+    plot.background  = element_rect(fill = "white", color = NA) ,
+    axis.text.x = element_text(size = 9), # Axis text (tick labels)
+    axis.text.y = element_text(size = 9),
+    axis.title.x = element_text(size = 11), # Axis titles
+    axis.title.y = element_text(size = 11),
+    legend.text  = element_text(size = 10), # Legend text and title
+    legend.title = element_text(size = 10)  )
 plot
-ggsave(filename = file.path(exp, "plot/", "FE_AVE_Ag.png"),plot = plot, width = 8, height = 5, dpi = 300)
+ggsave(filename = file.path(exp, "plot/", "Compare_ln_AVE_Ag_simple.png"),plot = plot, width = 8, height = 5, dpi = 300)
 
 
 
+#############################################################
+# HS section level 
 
-plot <- ggplot(subset(US, sector == "Manu")) +
-  geom_smooth(aes(x = date, y = ln_AVE_FE, color = "FE"), se = TRUE) +
-  geom_smooth(aes(x = date, y = ln_AVE_u,  color = "u"),  se = TRUE) +
-  scale_color_manual(  name = "Series",
-    values = c("FE" = "steelblue", "u" = "darkorange")  ) +
-  labs(    title = "Average estimated ln(1+AVE) using stochastic frontier: manufacturing sector",   x = "Date",    y = "ln(1+AVE)"  ) +
+names(US_ag)
+US_ag_w_sect <- US_ag %>% filter(sector == "Ag", year > 2017) %>%
+  group_by(date, hs_section) %>% summarise( 
+    w_FE        = weighted.mean(diff_ln_AVE_FE,        w = weight_hs_sect,       na.rm = TRUE),
+    w_sf        = weighted.mean(diff_ln_AVE_u,         w = weight_hs_sect,       na.rm = TRUE),
+    w_sf_tariff = weighted.mean(diff_ln_AVE_u_tariff,  w = weight_hs_sect,       na.rm = TRUE),
+    w_chen      = weighted.mean(diff_ln_AVE_chen,      w = weight_hs_sect_Chen,  na.rm = TRUE),
+    w_tariff    = weighted.mean(diff_log_tariff_2017,  w = weight_hs_sect,       na.rm = TRUE),
+    s_FE        = mean(diff_ln_AVE_FE,         na.rm = TRUE),
+    s_sf        = mean(diff_ln_AVE_u,          na.rm = TRUE),
+    s_sf_tariff = mean(diff_ln_AVE_u_tariff,   na.rm = TRUE),
+    s_chen      = mean(diff_ln_AVE_chen,       na.rm = TRUE),
+    s_tariff    = mean(diff_log_tariff_2017,   na.rm = TRUE),
+    .groups = "drop"  ) %>%  group_by(hs_section) %>%
+  mutate(  w_chen = mean(w_chen, na.rm = TRUE),   s_chen = mean(s_chen, na.rm = TRUE)  )
+
+
+
+plot <- ggplot(US_ag_w_sect) +
+  geom_line(aes(x = date, y = w_FE,        color = "FE")) +
+  geom_line(aes(x = date, y = w_sf,        color = "sf")) +
+  geom_line(aes(x = date, y = w_sf_tariff, color = "sf_tariff")) +
+  geom_line(aes(x = date, y = w_chen,      color = "Chen_et_al")) +
+  geom_line(aes(x = date, y = w_tariff,    color = "tariff")) +
+  scale_color_manual(  values = c(  "FE"         = "steelblue",
+                                    "sf"         = "darkorange","sf_tariff"  = "firebrick",
+                                    "Chen_et_al" = "purple",      "tariff"     = "darkgreen"    ),
+                       labels = c(  "FE"         = "FE",
+                                    "sf"         = "SF",
+                                    "sf_tariff"  = "Tariff-adjusted SF",
+                                    "Chen_et_al" = "Chen et al.",   "tariff"     = "Tariff"    ),    name = "Variables"  ) +
+  facet_wrap(~hs_section)+
+  labs(  title = "Weighted average Δ ln(1+AVE) for agricultural sector by HS section(relative to 2017) ",
+         x = "Date",
+         y = "Weighted Δ ln(1+AVE)"  ) +
+  theme_minimal(base_size = 14)+
+  theme(
+    plot.title = element_text(size = 12, hjust = 0.5),
+    panel.background = element_rect(fill = "white", color = NA),
+    plot.background  = element_rect(fill = "white", color = NA) ,
+    axis.text.x = element_text(size = 9), # Axis text (tick labels)
+    axis.text.y = element_text(size = 9),
+    axis.title.x = element_text(size = 11), # Axis titles
+    axis.title.y = element_text(size = 11),
+    legend.text  = element_text(size = 10), # Legend text and title
+    legend.title = element_text(size = 10)  )
+plot
+ggsave(filename = file.path(exp, "plot/", "Compare_ln_AVE_Ag_hs_sect_weight.png"),plot = plot, width = 8, height = 5, dpi = 300)
+
+
+plot <- ggplot(US_ag_w_sect) +
+  geom_line(aes(x = date, y = s_FE,        color = "FE")) +
+  geom_line(aes(x = date, y = s_sf,        color = "sf")) +
+  geom_line(aes(x = date, y = s_sf_tariff, color = "sf_tariff")) +
+  geom_line(aes(x = date, y = s_chen,      color = "Chen_et_al")) +
+  geom_line(aes(x = date, y = s_tariff,    color = "tariff")) +
+  scale_color_manual(  values = c(  "FE"         = "steelblue",
+                                    "sf"         = "darkorange","sf_tariff"  = "firebrick",
+                                    "Chen_et_al" = "purple",      "tariff"     = "darkgreen"    ),
+                       labels = c(  "FE"         = "FE",
+                                    "sf"         = "SF",
+                                    "sf_tariff"  = "Tariff-adjusted SF",
+                                    "Chen_et_al" = "Chen et al.",   "tariff"     = "Tariff"    ),    name = "Variables"  ) +
+  facet_wrap(~hs_section)+
+  labs(  title = "Simple average Δ ln(1+AVE) for agricultural sector by HS section (relative to 2017) ",
+         x = "Date",
+         y = "Simple average Δ ln(1+AVE)"  ) +
   theme_minimal(base_size = 14) +
-  theme(   plot.title = element_text(size = 12),   
+  theme(
+    plot.title = element_text(size = 12, hjust = 0.5),
     panel.background = element_rect(fill = "white", color = NA),
-            plot.background  = element_rect(fill = "white", color = NA)  )
-
+    plot.background  = element_rect(fill = "white", color = NA) ,
+    axis.text.x = element_text(size = 9), # Axis text (tick labels)
+    axis.text.y = element_text(size = 9),
+    axis.title.x = element_text(size = 11), # Axis titles
+    axis.title.y = element_text(size = 11),
+    legend.text  = element_text(size = 10), # Legend text and title
+    legend.title = element_text(size = 10)  )
 plot
-ggsave(filename = file.path(exp, "plot/", "Compare_AVE_Manu.png"),plot = plot, width = 8, height = 5, dpi = 300)
+ggsave(filename = file.path(exp, "plot/", "Compare_ln_AVE_Ag_hs_sect_simple.png"),plot = plot, width = 8, height = 5, dpi = 300)
+
+
+################################################################################
+
+# correlations of change in ln(1+AVE)
+
+################################################################################
+names(US_ag)
+
+# If we look at correlation between FE and efficiency 
+names(US)
+US_changes_2017 <- US %>% filter(year %in% c(2018:2020))
 
 
 
 
-plot <- ggplot(subset(US, sector == "Manu")) +
- #  geom_smooth(aes(x = date, y = ln_AVE_FE, color = "FE"), se = TRUE) +
-  geom_smooth(aes(x = date, y = ln_AVE_u,  color = "u"),  se = TRUE) +
-  scale_color_manual(  name = "Series",
-                       values = c("FE" = "steelblue", "u" = "darkorange")  ) +
-  labs(    title = "Gravity model US FE value",   x = "Date",    y = "FE value"  ) +
-  theme_minimal(base_size = 14) +
-  theme(    plot.title = element_text(size = 12),   
-    panel.background = element_rect(fill = "white", color = NA),
-            plot.background  = element_rect(fill = "white", color = NA)  )
-
-plot
-
-plot <- ggplot(subset(US, sector == "Manu")) +
-  geom_smooth(aes(x = date, y = ln_AVE_u, color = "u"), se = TRUE) +
-  facet_wrap(~hs_section) +
-  scale_color_manual(
-    name = "Series",
-    values = c("u" = "darkorange")
-  ) +
+plot <- ggplot(US, aes(x = diff_ln_AVE_FE, y = diff_ln_AVE_u_tariff)) +
+  geom_point(alpha = 0.15, size = 1) +
+  geom_smooth(method = "lm", se = FALSE, color = "blue", linewidth = 1) +
+  geom_abline(intercept = 0, slope = 1, color = "red", linewidth = 1,linetype = "dotted", ) +
+  theme_minimal() +
   labs(
-    title = "Gravity model US FE value",
-    x = "Date",
-    y = "FE value"
-  ) +
-  theme_minimal(base_size = 14) +
-  theme( plot.title = element_text(size = 12),   
-    panel.background = element_rect(fill = "white", color = NA),
-    plot.background  = element_rect(fill = "white", color = NA)
+    title = "Plot of FE and Tariff-adjusted Inefficiency (u) in Agricultural Sector",
+    x = "FE",
+    y = "Tariff-adjusted u"  ) +
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 14),
+    axis.title = element_text(size = 12),
+    axis.text  = element_text(size = 12)
   )
-
 plot
 
 
+plot <- ggplot(US_ag, aes(x = diff_ln_AVE_u, y = diff_ln_AVE_u_tariff)) +
+  geom_point(alpha = 0.20, size = 1) +
+  geom_abline(intercept = 0, slope = 1, color = "red", linewidth = 1,linetype = "dotted", ) +
+  theme_minimal() +
+  labs(
+    title = "Plot of US Δ ln(1+AVE) obtained from SF and Tariff-adjusted SF",
+    x = "SF",
+    y = "Tariff-adjusted SF"  ) +
+  theme(
+    plot.title = element_text(size = 12, hjust = 0.5),
+    panel.background = element_rect(fill = "white", color = NA),
+    plot.background  = element_rect(fill = "white", color = NA) ,
+    axis.text.x = element_text(size = 10), # Axis text (tick labels)
+    axis.text.y = element_text(size = 10),
+    axis.title.x = element_text(size = 12), # Axis titles
+    axis.title.y = element_text(size = 12) )
+plot
+ggsave(filename = file.path(exp, "plot/", "Plot_stochastic_corr.png"),plot = plot, width = 8, height = 5, dpi = 300)
 
+################################################################################
+
+# Get correlation plot
+
+US_ag1 <- US_ag %>% filter(year %in% c(2018,2019))
+
+vars <- US_ag1[, c("diff_ln_AVE_chen", "diff_ln_AVE_FE", "diff_ln_AVE_u", "diff_ln_AVE_u_tariff")]
+
+vars <- vars %>%  rename(  Chen_et_al = diff_ln_AVE_chen,  FE = diff_ln_AVE_FE,
+    SF = diff_ln_AVE_u,  SF_tariff  = diff_ln_AVE_u_tariff )
+
+cor_mat <- cor(vars, use = "complete.obs")
+
+# open PNG device
+png(paste0(exp, "plot/corrplot.png"), width = 1200, height = 1000, res = 150)
+
+corrplot(cor_mat, method = "circle", addCoef.col = "black")
+
+dev.off()
  
