@@ -261,6 +261,134 @@ plot <- ggplot(US_ag_w_sect) +
     legend.title = element_text(size = 10)  )
 plot
 ggsave(filename = file.path(exp, "plot/", "Compare_ln_AVE_Ag_hs_sect_simple.png"),plot = plot, width = 8, height = 5, dpi = 300)
+################################################################################
+
+# if put all countries together ;
+make_ag_lnAVE_facet <- function(dta, countries = NULL, save = FALSE, exp = NULL) {
+  
+  # If no country list is given, use all ExporterISO3 in the data
+  if (is.null(countries)) {
+    countries <- unique(dta$ExporterISO3)
+  }
+  
+  # 1. Filter data to chosen countries + Ag sector, build date
+  ag <- dta %>% 
+    filter(
+      ExporterISO3 %in% countries,
+      sector == "Ag"
+    ) %>%
+    mutate(
+      date = as.Date(paste(year, month, "01", sep = "-"))
+    )
+  
+  # 2. HS6 weights per country (baseline 2017)
+  ag_2017_hs6 <- ag %>%
+    filter(year == 2017) %>%
+    group_by(ExporterISO3, hs6_H5) %>%
+    summarise(
+      Trade_value_USD_2017 = sum(Trade_value_USD, na.rm = TRUE),
+      .groups = "drop_last"
+    ) %>%
+    group_by(ExporterISO3) %>%
+    mutate(
+      tot_Trade_value_USD_2017 = sum(Trade_value_USD_2017),
+      weight_sector = if_else(
+        tot_Trade_value_USD_2017 > 0,
+        Trade_value_USD_2017 / tot_Trade_value_USD_2017,
+        NA_real_
+      )
+    ) %>%
+    ungroup()
+  
+  # Join weights back
+  ag <- ag %>%
+    left_join(ag_2017_hs6, by = c("ExporterISO3", "hs6_H5"))
+  
+  # (Your HS-section weights could also be made per country if you still need them,
+  # but they are not used in the plot, so I’m skipping them here.)
+  
+  # 3. Weighted & simple averages over time PER COUNTRY
+  ag_w <- ag %>%
+    filter(year %in% 2018:2019) %>%
+    group_by(ExporterISO3, date) %>%
+    summarise(
+      w_FE        = weighted.mean(diff_ln_AVE_FE,        w = weight_sector, na.rm = TRUE),
+      w_sf        = weighted.mean(diff_ln_AVE_u,         w = weight_sector, na.rm = TRUE),
+      w_sf_tariff = weighted.mean(diff_ln_AVE_u_tariff,  w = weight_sector, na.rm = TRUE),
+      w_tariff    = weighted.mean(diff_log_tariff_2017,  w = weight_sector, na.rm = TRUE),
+      s_FE        = mean(diff_ln_AVE_FE,        na.rm = TRUE),
+      s_sf        = mean(diff_ln_AVE_u,         na.rm = TRUE),
+      s_sf_tariff = mean(diff_ln_AVE_u_tariff,  na.rm = TRUE),
+      s_tariff    = mean(diff_log_tariff_2017,  na.rm = TRUE),
+      .groups = "drop"
+    )
+  
+  # 4. Plot with facet_wrap by country
+  plot <- ggplot(ag_w) +
+    geom_line(aes(x = date, y = w_FE,        color = "FE")) +
+    geom_line(aes(x = date, y = w_sf,        color = "sf")) +
+    geom_line(aes(x = date, y = w_sf_tariff, color = "sf_tariff")) +
+    geom_line(aes(x = date, y = w_tariff,    color = "tariff")) +
+    scale_x_date(date_breaks = "1 year", date_labels = "%Y") +   # ← Only show the year
+    scale_color_manual(
+      values = c(
+        "FE"        = "steelblue",
+        "sf"        = "darkorange",
+        "sf_tariff" = "firebrick",
+        "tariff"    = "darkgreen"
+      ),
+      labels = c(
+        "FE"        = "FE",
+        "sf"        = "SF",
+        "sf_tariff" = "Tariff-adjusted SF",
+        "tariff"    = "Tariff"
+      ),
+      name = "Variables"
+    ) +
+    labs(
+      title = "Weighted average Δ ln(1+AVE) for agricultural sector (relative to 2017)",
+      x = "Date",
+      y = "Weighted Δ ln(1+AVE)"
+    ) +
+    coord_cartesian(ylim = c(-1.5, 1.5)) +
+    facet_wrap(~ ExporterISO3, scales = "fixed") +
+    theme_minimal(base_size = 14) +
+    theme(
+      panel.spacing.x = unit(1.2, "lines"),   # ← MORE HORIZONTAL SPACE
+      plot.title = element_text(size = 12, hjust = 0.5),
+      panel.background = element_rect(fill = "white", color = NA),
+      plot.background  = element_rect(fill = "white", color = NA),
+      axis.text.x = element_text(size = 9),
+      axis.text.y = element_text(size = 9),
+      axis.title.x = element_text(size = 11),
+      axis.title.y = element_text(size = 11),
+      legend.text  = element_text(size = 10),
+      legend.title = element_text(size = 10)
+    )
+  
+  print(plot)
+  
+  # 5. Optional saving
+  if (save) {
+    if (is.null(exp)) {
+      warning("save = TRUE but 'exp' is NULL; not saving.")
+    } else {
+      out_path <- file.path(exp, "plot/Robust/", "AllCountries_Compare_ln_AVE_Ag_weight.png")
+      ggsave(filename = out_path, plot = plot, width = 10, height = 7, dpi = 300)
+      message("Saved plot to: ", out_path)
+    }
+  }
+  
+  invisible(plot)
+}
+countries_vec <- c("BRA", "MEX", "AUS", "CAN", "UKR", "RUS")
+
+make_ag_lnAVE_facet(dta, countries = countries_vec)
+
+# To save:
+make_ag_lnAVE_facet(dta, countries = countries_vec, save = TRUE, exp = exp)
+
+
 
 
 ################################################################################
@@ -311,7 +439,7 @@ plot <- ggplot(US_ag, aes(x = diff_ln_AVE_u, y = diff_ln_AVE_u_tariff)) +
     axis.title.x = element_text(size = 12), # Axis titles
     axis.title.y = element_text(size = 12) )
 plot
-ggsave(filename = file.path(exp, "plot/", "Plot_stochastic_corr.png"),plot = plot, width = 8, height = 5, dpi = 300)
+ggsave(filename = file.path(exp, "plot/", "Plot_stochastic_corr.png"),plot = plot, width = 9, height = 5, dpi = 300)
 
 ################################################################################
 

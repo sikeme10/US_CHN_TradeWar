@@ -25,16 +25,17 @@ library(frontier)
 ################################################################################
 # directory: 
 setwd("/data/sikeme/TRADE/US_CHN_TradeWar_git")
-exp <- "/data/sikeme/TRADE/US_CHN_TradeWar_git/output/summary/prelim_reg/"
+exp <- "/data/sikeme/TRADE/US_CHN_TradeWar_git/output/FE/yearly/"
 
 ################################################################################
 # 1) Load data 
 ################################################################################
 
 
-dta <- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/data/created_gravity/dta_CHN_gravity_3.csv")
+dta <- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/data/created_gravity/dta_CHN_gravity_yearly.csv")
 names(dta)
 colSums(is.na(dta))
+table(dta$year)
 
 ################################################################################
 # 2) Setting up data 
@@ -53,114 +54,6 @@ dta <- dta %>% mutate(log_tariff = log(1+Applied_tariff/100))
 
 
 
-################################################################################
-# 3) On one HS2: try to regress and get residual over time 
-################################################################################
-
-# 
-# # get unique HS2 to pool it
-# unique_HS2 <- unique(dta$hs2)
-# 
-# HS_val <- unique_HS2[1]
-# 
-# # Subset the data for the current HS value
-# sub_dta <- subset(dta, hs2 == HS_val)
-# names(sub_dta)
-# 
-# 
-# 
-#   
-# # filter if have 0s in trade values for all product at HS2 and a specific partner
-# sub_dta1 <- sub_dta %>%
-#   group_by(ExporterISO3) %>%
-#   filter(any(Trade_value_USD != 0)) %>%   # keep only groups where at least ONE value is non-zero
-#   ungroup()
-# 
-# 
-# library(fixest)
-# reg <- fepois(
-#   Trade_value_USD ~ 
-#     contig + dist + comlang_off + Colonial_ties + rta + fta_and_eia +
-#     Importer_GDP + Exporter_wto + Exporter_eu + Exporter_GDP_current_USD + 
-#     Exporter_Gross_Cap_formation_current_USD + Exporter_Ag_land_K2 + 
-#     Exporter_Exchange_rate_LCU_per_USD + log(1+Applied_tariff)  | year + month^hs6_H5 + ExporterISO3^hs6_H5,
-#   data   = sub_dta1,  vcov   = ~ ExporterISO3   )
-# reg
-# 
-# reg <- fepois(
-#   Trade_value_USD ~ 
-#     contig + dist + comlang_off + Colonial_ties + 
-#     Importer_GDP + Exporter_wto + Exporter_eu + Exporter_GDP_current_USD + 
-#     Exporter_Gross_Cap_formation_current_USD + Exporter_Ag_land_K2 + 
-#     Exporter_Exchange_rate_LCU_per_USD + log(1+Applied_tariff)  | year + month^ExporterISO3^hs6_H5,
-#   data   = sub_dta1,  vcov   = ~ ExporterISO3   )
-# reg
-# idx <- obs(reg)
-# resid_vec <- resid(reg)
-# sub_dta1$resid_change <- NA_real_
-# sub_dta1$resid_change[idx] <- resid_vec
-# 
-# sub_dta1 <- sub_dta1 %>%mutate(
-#   country_res = if_else(ExporterISO3 == "USA", "USA", "ROW"))
-# table(sub_dta1$country_res)
-# 
-# 
-# ggplot(subset(sub_dta1, year %in% c(2017:2020)),aes(x = resid_change, fill = factor(year))) +
-#   geom_density(alpha = 0.35) +
-#   facet_wrap(~ country_res, scales = "free") +
-#   # coord_cartesian(xlim = c(-1500000, 1500000)) +   # ⬅️ truncate x-axis here
-#   labs(  title = "Density of Residual Changes by Country Group",
-#     x = "Residual Change",
-#     y = "Density",
-#     fill = "Year"  ) +
-#   theme_minimal(base_size = 14)
-# 
-# 
-# 
-# USA <- sub_dta1 %>% filter(ExporterISO3 == "USA")
-# USA <- USA %>%  mutate(    date = as.Date(paste(year, month, "01", sep = "-"))  )
-# 
-# plot <-  ggplot(subset(USA, year %in% c(2018:2020)), aes(x = date, y = resid_change)) +
-#   geom_hline(yintercept = 0, color = "red", linetype = "dotted", size = 1) +
-#   geom_smooth(color = "blue", size = 1.1) +
-#   labs(  title = "Change in Residuals for USA Over Time",
-#          x = "time",
-#          y = "Residual Change"  ) +
-#   theme_minimal(base_size = 14)
-# plot
-# 
-# plot <-  ggplot(USA, aes(x = date, y = resid_change)) +
-#   geom_hline(yintercept = 0, color = "red", linetype = "dotted", size = 1) +
-#   geom_smooth(color = "blue", size = 1.1) +
-#   labs(  title = "Change in Residuals for USA Over Time",
-#          x = "time",
-#          y = "Residual Change"  ) +
-#   theme_minimal(base_size = 14)
-# plot
-# 
-# 
-# 
-# plot <- ggplot(subset(USA, year %in% 2017:2020),
-#  aes(x = resid_change, fill = factor(year))) +
-#   geom_density(alpha = 0.35) +
-#   labs(title = "Distribution of Residual Changes for USA (2015–2020)",
-#     x = "Residual Change",
-#     y = "Density",
-#     color = "Year") +
-#   theme_minimal(base_size = 14)
-# plot
-# 
-# 
-# plot <- ggplot(subset(USA, year %in% 2016:2020),
-#                aes(x = resid_change)) +
-#   geom_density(alpha = 0.35) +
-#   facet_wrap(~year)+
-#   labs(title = "Distribution of Residual Changes for USA (2015–2020)",
-#        x = "Residual Change",
-#        y = "Density",
-#        color = "Year") +
-#   theme_minimal(base_size = 14)
-# plot
 
 ##############################################################################
 # 4) Residual approach: In a loop for each HS 2 level: Poisson specification
@@ -257,7 +150,7 @@ for (i in seq_along(unique_HS2)) {
     filter(any(Trade_value_USD != 0, na.rm = TRUE)) %>%
     ungroup()
   sub_dta1 <- sub_dta1 %>%
-    mutate(fe_id = interaction(month, year, ExporterISO3, hs4, drop = TRUE))
+    mutate(fe_id = interaction(year, ExporterISO3, hs4, drop = TRUE))
   
   # 3. run regression
   reg <- fepois(

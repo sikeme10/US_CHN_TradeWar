@@ -65,12 +65,13 @@ dta1 <- dta1 %>%
     log_Trade_value_USD_mean_15_17 = mean(log_Trade_value_USD[year %in% 2015:2017], na.rm = TRUE),
     log_Trade_value_USD_mean = mean(log_Trade_value_USD, na.rm = TRUE),
     # log_Trade_value_USD_demeaned = log_Trade_value_USD - log_Trade_value_USD_mean_15_17,
-    log_Trade_value_USD_demeaned = log_Trade_value_USD - log_Trade_value_USD_mean,
-    log_tariff = log(1+Applied_tariff)) %>%
+    log_Trade_value_USD_demeaned = log_Trade_value_USD - log_Trade_value_USD_mean) %>%
   ungroup()
 summary(dta1$log_Trade_value_USD_demeaned)
 
-
+# get log of tariff 
+dta1 <- dta1 %>% mutate(log_tariff = log(1+Applied_tariff/100))
+  
 
 
 

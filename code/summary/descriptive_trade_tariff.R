@@ -111,10 +111,6 @@ dta_naics3 <- tot_dta_naics3 %>% group_by(year, month, naics3) %>%
             fajgel_simple_average = mean(fajgel_tariff_2, na.rm= TRUE),
             teti_weighted_average = mean((CHN_export_val_USD/tot_export_CHN_naics3)*teti_tariff_2, na.rm= TRUE),
             fajgel_weighted_average = mean((CHN_export_val_USD/tot_export_CHN_naics3)*fajgel_tariff_2, na.rm= TRUE)            )
-unique(merge_US_export_naics3$naics3)  
-names(merge_US_export_naics3)
-
-
 
 #details on naics code 
 
@@ -183,19 +179,28 @@ ggplot(  d_long,  aes(x = date, y = value, color = sector_desc,  linetype = vari
     legend.title = element_text(face = "bold"),
     plot.title = element_text(face = "bold", hjust = 0.5)  )
 # with geom_smooth
-p <- ggplot(d_long, aes(x = date, color = sector_desc)) +
+p <- ggplot(subset(d_long, year < 2020), aes(x = date, color = sector_desc)) +
   # --- SMOOTH for share_CHN_export ---
-  geom_smooth(data = d_long %>% filter(variable == "share_CHN_export"),
+  geom_smooth(data = subset(d_long, year < 2020) %>% filter(variable == "share_CHN_export"),
     aes(y = value, linetype = variable),  se = FALSE,   size = 1  ) +
     # --- LINE for teti_weighted_average ---
-  geom_line(  data = d_long %>% filter(variable == "teti_weighted_average"),
+  geom_line(  data = subset(d_long, year < 2020) %>% filter(variable == "teti_weighted_average"),
     aes(y = value, linetype = variable),    size = 1  ) +
   facet_wrap(~ sector_desc, scales = "free_y") +
   scale_linetype_manual(values = c("share_CHN_export" = "solid","teti_weighted_average" = "dotted"),
-      labels = c("share_CHN_export" = "% export to China","teti_weighted_average" = "CHM weighted average tariff"  )  ) +
-  labs(  x = "Date",  y = "Value",  color = "Sector",   linetype = "Series",  title = "Share of U.S. Exports to China and Chinese Tariffs Over Time by Sector"  ) +
+      labels = c("share_CHN_export" = "% export to China","teti_weighted_average" = "CHM weighted tariff"  )  ) +
+  labs(  x = "Date",  y = "Value",  color = "Sector",   linetype = "Series",  title = "Share of U.S. exports to China and chinese retaliatory tariffs over time"  ) +
   theme_minimal(base_size = 14) +
-  theme(  legend.position = "bottom",   legend.title = element_text(face = "bold"),  plot.title = element_text(face = "bold", hjust = 0.5)  )
+  theme(  legend.position = "bottom",   
+          plot.title = element_text(size = 11, hjust = 0.5),
+          panel.background = element_rect(fill = "white", color = NA),
+          plot.background  = element_rect(fill = "white", color = NA) ,
+          axis.text.x = element_text(size = 9), # Axis text (tick labels)
+          axis.text.y = element_text(size = 9),
+          axis.title.x = element_text(size = 10), # Axis titles
+          axis.title.y = element_text(size = 10),
+          legend.text  = element_text(size = 9), # Legend text and title
+          legend.title = element_text(size = 9))
 p
 ggsave( filename = paste0(exp, "US_export_trend/US_export_share_tariff_naics3_ag.png"), plot = p,  width = 10, height = 6, units = "in",  dpi = 300,  bg = "white")
 

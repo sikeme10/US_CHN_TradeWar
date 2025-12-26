@@ -48,7 +48,9 @@ FE <- coef_significant %>% group_by(term) %>%
   summarise( mean_estimates = mean(estimate, na.rm = TRUE),
              median_estimates = median(estimate, na.rm = TRUE),
              mean_se= mean(se, na.rm = TRUE),
-             median_se = median(estimate, na.rm = TRUE))
+             median_se = median(estimate, na.rm = TRUE),
+             mean_pseudo_R2 = mean(pr2, na.rm = TRUE),
+             median_pseudo_R2 = median(pr2, na.rm = TRUE))
 
 write_csv(FE, paste0(exp, "summary_stat_coef_FE.csv"))
 

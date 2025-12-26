@@ -50,13 +50,19 @@ TN <- coef_significant %>% filter(model == "TN") %>% group_by(term) %>%
   summarise( mean_estimates = mean(estimate, na.rm = TRUE),
              median_estimates = median(estimate, na.rm = TRUE),
              mean_se= mean(se, na.rm = TRUE),
-             median_se = median(estimate, na.rm = TRUE))
+             median_se = median(estimate, na.rm = TRUE),
+             mean_gamma = mean(gamma, na.rm = TRUE),
+             share_significant_LR_test = sum(p_ineff < 0.05, na.rm = TRUE) / n(),
+             .groups = "drop")
 
 TN_tariff <- coef_significant %>% filter(model == "TN_muTariff") %>% group_by(term) %>% 
   summarise( mean_estimates = mean(estimate, na.rm = TRUE),
              median_estimates = median(estimate, na.rm = TRUE),
              mean_se= mean(se, na.rm = TRUE),
-             median_se = median(estimate, na.rm = TRUE))
+             median_se = median(estimate, na.rm = TRUE),
+             mean_gamma = mean(gamma, na.rm = TRUE),
+             share_significant_LR_test = sum(p_ineff < 0.05, na.rm = TRUE) / n(),
+             .groups = "drop")
 
 
 # tariffs <- coef %>% filter( term == "log_tariff")

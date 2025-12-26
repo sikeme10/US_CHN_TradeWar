@@ -26,14 +26,14 @@ library(frontier)
 # directory: 
 setwd("/data/sikeme/TRADE/US_CHN_TradeWar_git")
 
-exp <- "/data/sikeme/TRADE/US_CHN_TradeWar_git/output/stochastic/"
+exp <- "/data/sikeme/TRADE/US_CHN_TradeWar_git/output/stochastic/yearly/"
 
 ################################################################################
 # 1) Load data 
 ################################################################################
 
 
-dta <- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/data/created_gravity/dta_CHN_gravity_3.csv")
+dta <- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/data/created_gravity/dta_CHN_gravity_yearly.csv")
 names(dta)
 colSums(is.na(dta))
 
@@ -59,7 +59,7 @@ dta1 <- dta %>% group_by(ExporterISO3, hs6_H5) %>% filter((Trade_value_USD != 0)
 
 names(dta1)
 dta1 <- dta1 %>% 
-  group_by( month, hs6_H5) %>%
+  group_by( hs6_H5) %>%
   mutate(
     log_Trade_value_USD = log(Trade_value_USD+1),
     log_Trade_value_USD_mean_15_17 = mean(log_Trade_value_USD[year %in% 2015:2017], na.rm = TRUE),

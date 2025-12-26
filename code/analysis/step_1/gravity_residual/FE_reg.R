@@ -25,7 +25,7 @@ library(frontier)
 ################################################################################
 # directory: 
 setwd("/data/sikeme/TRADE/US_CHN_TradeWar_git")
-exp <- "/data/sikeme/TRADE/US_CHN_TradeWar_git/output/summary/prelim_reg/"
+exp <- "/data/sikeme/TRADE/US_CHN_TradeWar_git/output/FE/monthly/"
 
 ################################################################################
 # 1) Load data 

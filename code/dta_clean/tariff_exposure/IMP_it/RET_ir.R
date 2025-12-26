@@ -25,7 +25,7 @@ rm(list=ls())
 setwd("/data/sikeme/TRADE/US_CHN_TradeWar_git/data")
 getwd()
 
-exp <- "/data/sikeme/TRADE/US_CHN_TradeWar_git/data/created_exposure"
+exp <- "/data/sikeme/TRADE/US_CHN_TradeWar_git/output/summary/exposure_maps"
 
 
 ################################################################################
@@ -109,39 +109,36 @@ map_data_conus <- map_data %>%
   ))
 
 # Plot the intensity map
-ggplot(map_data_conus) +
+plot <- ggplot(map_data_conus) +
   geom_sf(aes(fill = RET_tariff_r), color = NA) +
   scale_fill_viridis_c(option = "magma", na.value = "grey90", direction = -1) +
   labs(
-    title = "Share Intensity by County",
-    fill  = "Share"
-  ) +
+    title =  "County level labor exposure to retaliatory tariffs in the Crop industry (NAICS 111) ",
+    fill  = "RET_ir"  ) +
   coord_sf(xlim = c(-125, -66), ylim = c(24, 50), expand = FALSE) +
   theme_minimal() +
   theme(
+    plot.title = element_text(size = 12, hjust = 0.5),
     axis.text  = element_blank(),
     axis.title = element_blank(),
     axis.ticks = element_blank(),
-    panel.grid = element_blank()
-  )
-
+    panel.grid = element_blank()  )
+plot
+ggsave(filename = file.path(exp,  "RET_ir_tariff_NAICS_111.png"),plot = plot, width = 8, height = 5, dpi = 300)
 
 # Plot the intensity map
-ggplot(map_data_conus) +
+plot <- ggplot(map_data_conus) +
   geom_sf(aes(fill = RET_NTB_r), color = NA) +
   scale_fill_viridis_c(option = "magma", na.value = "grey90", direction = -1) +
-  labs(
-    title = "Share Intensity by County",
-    fill  = "Share"
-  ) +
+  labs(title = "County level labor exposure to retaliatory Chinese NTMs in the Crop industry (NAICS 111) ",
+    fill  = "RET_ir"  ) +
   coord_sf(xlim = c(-125, -66), ylim = c(24, 50), expand = FALSE) +
   theme_minimal() +
   theme(
     axis.text  = element_blank(),
     axis.title = element_blank(),
     axis.ticks = element_blank(),
-    panel.grid = element_blank()
-  )
-
-
+    panel.grid = element_blank()  )
+plot
+ggsave(filename = file.path(exp,  "RET_ir_NTM_NAICS_111.png"),plot = plot, width = 8, height = 5, dpi = 300)
 
