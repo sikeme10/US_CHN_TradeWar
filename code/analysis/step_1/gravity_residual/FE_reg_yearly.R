@@ -48,6 +48,7 @@ dta <- dta %>%  mutate(hs2 = substr( hs6_H5 ,1,2),
          hs4 = substr( hs6_H5 ,1,4))
 length(unique((dta$hs2)))
 length(unique((dta$hs4)))
+length(unique((dta$hs6_H5)))
 
 # get log of tariffs:
 dta <- dta %>% mutate(log_tariff = log(1+Applied_tariff/100))
@@ -120,6 +121,7 @@ dta <- dta %>% mutate(log_tariff = log(1+Applied_tariff/100))
 # # 5) Fixed effect approach : In a loop for each HS 2 level: With fixed effeccts 
 # ##############################################################################
 
+# a) with only exporter*HS4*year fixed effects
 
 library(dplyr)
 library(fixest)
@@ -137,7 +139,7 @@ names(coef_list) <- unique_HS2
 names(r2_vec)    <- unique_HS2
 
 for (i in seq_along(unique_HS2)) {
-  # i <- 1
+   #i <- 3
   HS_val <- unique_HS2[i]
   message("Running HS2 = ", HS_val)
   
@@ -145,24 +147,23 @@ for (i in seq_along(unique_HS2)) {
   sub_dta <- dta %>% filter(hs2 == HS_val)
   
   # 2. drop exporters with all-zero trade
-  sub_dta1 <- sub_dta %>%
-    group_by(ExporterISO3) %>%
+  sub_dta1 <- sub_dta %>%    group_by(ExporterISO3) %>%
     filter(any(Trade_value_USD != 0, na.rm = TRUE)) %>%
     ungroup()
-  sub_dta1 <- sub_dta1 %>%
-    mutate(fe_id = interaction(year, ExporterISO3, hs4, drop = TRUE))
+  # create fixed effect of interest 
+  sub_dta1 <- sub_dta1 %>% mutate(fe_id = interaction(year, ExporterISO3, hs4, drop = TRUE))
   
   # 3. run regression
-  reg <- fepois(
-    Trade_value_USD ~ 
+  reg <- fepois(Trade_value_USD ~ 
       contig + dist + comlang_off + Colonial_ties + rta + fta_and_eia +
       Importer_GDP + Exporter_wto + Exporter_eu + Exporter_GDP_current_USD + 
       Exporter_Gross_Cap_formation_current_USD + Exporter_Ag_land_K2 + 
       Exporter_Exchange_rate_LCU_per_USD + log_tariff  | 
-      fe_id,
+      fe_id ,
     data = sub_dta1,
     vcov = ~ ExporterISO3)
   
+
   # 4. extract residuals matched to original data rows
   idx <- obs(reg)        # row indices inside sub_dta1
   resid_vec <- resid(reg)
@@ -189,8 +190,7 @@ for (i in seq_along(unique_HS2)) {
     estimate = ct[, "Estimate"],
     std_error = ct[, "Std. Error"],
     p_value   = ct[, "Pr(>|z|)"],
-    row.names = NULL
-  )
+    row.names = NULL  )
   
   # 🔹 7. store pseudo-R² (or other fit stat)
   # "pr2" = pseudo-R² (McFadden-like) in fixest
@@ -220,7 +220,7 @@ write_csv(final_dta_with_residuals, paste0(exp, "gravity_pois_FE.csv"))
 
 
 
-# 
+
 # ##############################################################################
 # # 5) In a loop for each HS 2 level: PPML specification
 # ##############################################################################

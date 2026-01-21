@@ -38,6 +38,9 @@ exp <- "/data/sikeme/TRADE/US_CHN_TradeWar_git/output/stochastic/"
 coef <- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/output/stochastic/sfaR_coef_HS2_average_new.csv")
 names(coef)
 
+coef <- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/output/stochastic/yearly/sfaR_coef_HS2_average_new_exp.csv")
+
+
 ################################################################################
 
 # get average of coefs estimated

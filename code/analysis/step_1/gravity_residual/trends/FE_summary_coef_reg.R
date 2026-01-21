@@ -25,11 +25,12 @@ library(frontier)
 ################################################################################
 # directory: 
 setwd("/data/sikeme/TRADE/US_CHN_TradeWar_git")
-exp <- "/data/sikeme/TRADE/US_CHN_TradeWar_git/output/summary/prelim_reg/"
+exp <- "/data/sikeme/TRADE/US_CHN_TradeWar_git/output/FE/yearly/"
 
 ################################################################################
 
-coefs <- read_csv( "/data/sikeme/TRADE/US_CHN_TradeWar_git/output/summary/prelim_reg/gravity_pois_FE_coeff.csv")
+coefs <- read_csv( "/data/sikeme/TRADE/US_CHN_TradeWar_git/output/FE/monthly/gravity_pois_FE_coeff.csv")
+coefs <- read_csv( "/data/sikeme/TRADE/US_CHN_TradeWar_git/output/FE/yearly/gravity_pois_FE_coeff.csv")
 
 ################################################################################
 
@@ -47,8 +48,10 @@ coef_significant <- coefs %>% filter(p_value < 0.05)
 FE <- coef_significant %>% group_by(term) %>% 
   summarise( mean_estimates = mean(estimate, na.rm = TRUE),
              median_estimates = median(estimate, na.rm = TRUE),
-             mean_se= mean(se, na.rm = TRUE),
-             median_se = median(estimate, na.rm = TRUE),
+             Q25_estimates = quantile(estimate, probs = 0.25, na.rm = TRUE),
+             Q75_estimates = quantile(estimate, probs = 0.75, na.rm = TRUE),            
+             mean_se= mean(std_error, na.rm = TRUE),
+             median_se = median(std_error, na.rm = TRUE),
              mean_pseudo_R2 = mean(pr2, na.rm = TRUE),
              median_pseudo_R2 = median(pr2, na.rm = TRUE))
 

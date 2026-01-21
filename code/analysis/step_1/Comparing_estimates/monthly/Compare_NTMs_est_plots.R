@@ -28,7 +28,7 @@ library(frontier)
 ################################################################################
 # directory: 
 setwd("/data/sikeme/TRADE/US_CHN_TradeWar_git")
-exp <- "/data/sikeme/TRADE/US_CHN_TradeWar_git/output/Compare_values/"
+exp <- "/data/sikeme/TRADE/US_CHN_TradeWar_git/output/Compare_values/monthly/"
 
 ################################################################################
 # 1) Load data 
@@ -47,6 +47,11 @@ unique(US_ag$year)
 unique(US_ag$hs2)
 unique(US_ag$hs_section)
 length(unique(US_ag$hs6_H5))
+
+
+################################################################################
+# 2) Create Trade weights 
+################################################################################
 
 # Ag sector level: create weight in trade (hs6/total US export)
 # weights for hs6 to aggregate to sector level
@@ -70,8 +75,10 @@ US_ag_2017_hs_sect <- US_ag %>%  filter(year == 2017) %>%
   ungroup()
 US_ag <-left_join(US_ag,US_ag_2017_hs_sect )
 
+################################################################################
+# 3) Add Chen et al estimates
+################################################################################
 
-############################################################################
 
 # add Chen et al. estimations 
 Chen <- read_csv("data/chen_NTB_tariff/hs2_agriculture_manufacturing_clean.csv")
@@ -113,12 +120,26 @@ US_ag <-left_join(US_ag, US_ag_2017_hs_sect_chen )
 
 US_ag <- US_ag %>% filter(year>2017)
 
+################################################################################
+# 4) Plot change in ln(1+AVE)
+################################################################################
+
+# create a theme for ggplot 
+theme_trade <- theme_minimal(base_size = 14) +
+  theme(panel.spacing.x = unit(1.2, "lines"),
+    plot.title = element_text(size = 11, hjust = 0.5),
+    panel.background = element_rect(fill = "white", color = NA),
+    plot.background  = element_rect(fill = "white", color = NA),
+    axis.text.x = element_text(size = 9),
+    axis.text.y = element_text(size = 9),
+    axis.title.x = element_text(size = 11),
+    axis.title.y = element_text(size = 11),
+    legend.text  = element_text(size = 10),
+    legend.title = element_text(size = 10)  )
 
 ################################################################################
-# plot change in ln(1+AVE)
+# a) sector level 
 ################################################################################
-
-# sector level 
 
 # trade weighted and simple average trade costs :
 names(US_ag)
@@ -126,44 +147,47 @@ names(US_ag)
 US_ag_w <- US_ag %>%  filter(sector == "Ag", year > 2017) %>%  group_by(year, date) %>%
   summarise( 
     w_FE        = weighted.mean(diff_ln_AVE_FE,        w = weight_sector, na.rm = TRUE),
+    w_FE_bench        = weighted.mean(diff_ln_AVE_FE_bench,        w = weight_sector, na.rm = TRUE),
     w_sf        = weighted.mean(diff_ln_AVE_u,         w = weight_sector, na.rm = TRUE),
+    w_sf_bench        = weighted.mean(diff_ln_AVE_u_bench,         w = weight_sector, na.rm = TRUE),
     w_sf_tariff = weighted.mean(diff_ln_AVE_u_tariff,  w = weight_sector, na.rm = TRUE),
+    w_sf_tariff_bench = weighted.mean(diff_ln_AVE_u_tariff_bench,  w = weight_sector, na.rm = TRUE),
     w_chen      = weighted.mean(diff_ln_AVE_chen,      w = weight_sector_chen, na.rm = TRUE),
     w_tariff    = weighted.mean(diff_log_tariff_2017,  w = weight_sector, na.rm = TRUE),
     s_FE        = mean(diff_ln_AVE_FE,         na.rm = TRUE),
+    s_FE_bench  = mean(diff_ln_AVE_FE_bench,   na.rm = TRUE),
     s_sf        = mean(diff_ln_AVE_u,          na.rm = TRUE),
+    s_sf_bench  = mean(diff_ln_AVE_u_bench,    na.rm = TRUE),
     s_sf_tariff = mean(diff_ln_AVE_u_tariff,   na.rm = TRUE),
+    s_sf_tariff_bench = mean(diff_ln_AVE_u_tariff_bench, na.rm = TRUE),
     s_chen      = mean(diff_ln_AVE_chen,       na.rm = TRUE),
     s_tariff    = mean(diff_log_tariff_2017,   na.rm = TRUE)  ) %>% ungroup() %>%
   mutate( w_chen = mean(w_chen, na.rm=TRUE),    s_chen = mean(s_chen, na.rm = TRUE))
 
 
+# average weighted
 plot <- ggplot(subset(US_ag_w, year %in% c(2018,2019))) +
-  geom_line(aes(x = date, y = w_FE,        color = "FE")) +
-  geom_line(aes(x = date, y = w_sf,        color = "sf")) +
-  geom_line(aes(x = date, y = w_sf_tariff, color = "sf_tariff")) +
- # geom_line(aes(x = date, y = w_chen,      color = "Chen_et_al")) +
-  geom_line(aes(x = date, y = w_tariff,    color = "tariff")) +
-  scale_color_manual( values = c(
-      "FE"         = "steelblue",   "sf"         = "darkorange",
-      "sf_tariff"  = "firebrick",       "tariff"     = "darkgreen"    ),
-      labels = c(  "FE"         = "FE",
-                   "sf"         = "SF",
-                   "sf_tariff"  = "Tariff-adjusted SF",  "tariff"     = "Tariff"    ),    name = "Variables"  ) +
-  labs(title = "Weighted average Δ ln(1+AVE) for agricultural sector (relative to 2017)",
-    x = "Date",   y = "Weighted Δ ln(1+AVE)"  ) +
-  theme_minimal(base_size = 14) +
-  theme(
-    panel.spacing.x = unit(1.2, "lines"),   # ← MORE HORIZONTAL SPACE
-    plot.title = element_text(size = 11, hjust = 0.5),
-    panel.background = element_rect(fill = "white", color = NA),
-    plot.background  = element_rect(fill = "white", color = NA) ,
-    axis.text.x = element_text(size = 9), # Axis text (tick labels)
-    axis.text.y = element_text(size = 9),
-    axis.title.x = element_text(size = 11), # Axis titles
-    axis.title.y = element_text(size = 11),
-    legend.text  = element_text(size = 10), # Legend text and title
-    legend.title = element_text(size = 10)  )
+  geom_line(aes(x = date, y = w_FE,              color = "FE")) +
+  geom_line(aes(x = date, y = w_sf,              color = "sf")) +
+  geom_line(aes(x = date, y = w_sf_tariff,       color = "sf_tariff")) +
+  # geom_line(aes(x = date, y = w_chen,            color = "Chen_et_al")) +
+  geom_line(aes(x = date, y = w_tariff,          color = "tariff")) +
+  # benchmark lines
+  geom_line(aes(x = date, y = w_FE_bench,        color = "FE_bench"), linetype = "dashed") +
+  geom_line(aes(x = date, y = w_sf_bench,        color = "sf_bench"), linetype = "dashed") +
+  geom_line(aes(x = date, y = w_sf_tariff_bench, color = "sf_tariff_bench"), linetype = "dashed") +
+  scale_color_manual(
+    values = c( "FE"  = "steelblue", "sf" = "darkorange",  "sf_tariff" = "firebrick",      
+                "tariff" = "darkgreen",  "FE_bench" = "blue", "sf_bench" = "brown",
+                "sf_tariff_bench"  = "pink"),
+    labels = c(  "FE" = "FE", "sf"   = "SF", "sf_tariff" = "Tariff-adjusted SF",
+                 "tariff" = "Tariff", "FE_bench" = "FE (benchmark)",
+                 "sf_bench" = "SF (benchmark)",  "sf_tariff_bench"  = "Tariff-adjusted SF (benchmark)"  ),
+    name = "Variables"  ) +
+  labs(    title = "Weighted average Δ ln(1+AVE) for agricultural sector (relative to 2017)",
+           x = "Year",
+           y = "Weighted Δ ln(1+AVE)"  ) +
+  theme_trade
 plot
 ggsave(filename = file.path(exp, "plot/", "Compare_ln_AVE_Ag_weight.png"),plot = plot, width = 8, height = 5, dpi = 300)
 
@@ -173,80 +197,78 @@ plot <- ggplot(subset(US_ag_w, year %in% c(2018,2019))) +
   geom_line(aes(x = date, y = s_FE,        color = "FE")) +
   geom_line(aes(x = date, y = s_sf,        color = "sf")) +
   geom_line(aes(x = date, y = s_sf_tariff, color = "sf_tariff")) +
+  # benchmark lines
+  geom_line(aes(x = date, y = s_FE_bench,        color = "FE_bench"), linetype = "dashed") +
+  geom_line(aes(x = date, y = s_sf_bench,        color = "sf_bench"), linetype = "dashed") +
+  geom_line(aes(x = date, y = s_sf_tariff_bench, color = "sf_tariff_bench"), linetype = "dashed") +
   #geom_line(aes(x = date, y = s_chen,      color = "Chen_et_al")) +
   geom_line(aes(x = date, y = s_tariff,    color = "tariff")) +
-  scale_color_manual(  values = c(  "FE"         = "steelblue",
-      "sf"         = "darkorange","sf_tariff"  = "firebrick",    "tariff"     = "darkgreen"    ),
-      labels = c(  "FE"         = "FE",
-                   "sf"         = "SF",
-                   "sf_tariff"  = "Tariff-adjusted SF", "tariff"     = "Tariff"    ),    name = "Variables"  ) +
-  labs(  title = "Simple average Δ ln(1+AVE) for agricultural sector (relative to 2017)",
-    x = "Date",    y = "Simple average Δ ln(1+AVE)"  ) +
-  theme_minimal(base_size = 14) +
-  theme(
-    panel.spacing.x = unit(1.2, "lines"),   # ← MORE HORIZONTAL SPACE
-    plot.title = element_text(size = 11, hjust = 0.5),
-    panel.background = element_rect(fill = "white", color = NA),
-    plot.background  = element_rect(fill = "white", color = NA) ,
-    axis.text.x = element_text(size = 9), # Axis text (tick labels)
-    axis.text.y = element_text(size = 9),
-    axis.title.x = element_text(size = 10), # Axis titles
-    axis.title.y = element_text(size = 10),
-    legend.text  = element_text(size = 9), # Legend text and title
-    legend.title = element_text(size = 9)  )
+  scale_color_manual(
+    values = c( "FE"  = "steelblue", "sf" = "darkorange",  "sf_tariff" = "firebrick",      
+                "tariff" = "darkgreen",  "FE_bench" = "blue", "sf_bench" = "brown",
+                "sf_tariff_bench"  = "pink"),
+    labels = c(  "FE" = "FE", "sf"   = "SF", "sf_tariff" = "Tariff-adjusted SF",
+                 "tariff" = "Tariff", "FE_bench" = "FE (benchmark)",
+                 "sf_bench" = "SF (benchmark)",  "sf_tariff_bench"  = "Tariff-adjusted SF (benchmark)"  ),
+    name = "Variables"  ) +
+  labs(    title = "Simple average Δ ln(1+AVE) for agricultural sector (relative to 2017)",
+           x = "Year",
+           y = "Weighted Δ ln(1+AVE)"  ) +
+  theme_trade
 plot
 ggsave(filename = file.path(exp, "plot/", "Compare_ln_AVE_Ag_simple.png"),plot = plot, width = 8, height = 5, dpi = 300)
 
 
+################################################################################
+# a) HS section level
+################################################################################
 
-#############################################################
-# HS section level 
 
 names(US_ag)
 US_ag_w_sect <- US_ag %>% filter(sector == "Ag", year > 2017) %>%
   group_by(year, date, hs_section) %>% summarise( 
-    w_FE        = weighted.mean(diff_ln_AVE_FE,        w = weight_hs_sect,       na.rm = TRUE),
-    w_sf        = weighted.mean(diff_ln_AVE_u,         w = weight_hs_sect,       na.rm = TRUE),
-    w_sf_tariff = weighted.mean(diff_ln_AVE_u_tariff,  w = weight_hs_sect,       na.rm = TRUE),
+    w_FE        = weighted.mean(diff_ln_AVE_FE,        w = weight_hs_sect, na.rm = TRUE),
+    w_FE_bench  = weighted.mean(diff_ln_AVE_FE_bench,  w = weight_hs_sect, na.rm = TRUE),
+    w_sf        = weighted.mean(diff_ln_AVE_u,         w = weight_hs_sect, na.rm = TRUE),
+    w_sf_bench  = weighted.mean(diff_ln_AVE_u_bench,   w = weight_hs_sect, na.rm = TRUE),
+    w_sf_tariff = weighted.mean(diff_ln_AVE_u_tariff,  w = weight_hs_sect, na.rm = TRUE),
+    w_sf_tariff_bench = weighted.mean(diff_ln_AVE_u_tariff_bench,  w = weight_hs_sect, na.rm = TRUE),
     w_chen      = weighted.mean(diff_ln_AVE_chen,      w = weight_hs_sect_Chen,  na.rm = TRUE),
     w_tariff    = weighted.mean(diff_log_tariff_2017,  w = weight_hs_sect,       na.rm = TRUE),
     s_FE        = mean(diff_ln_AVE_FE,         na.rm = TRUE),
+    s_FE_bench  = mean(diff_ln_AVE_FE_bench,   na.rm = TRUE),
     s_sf        = mean(diff_ln_AVE_u,          na.rm = TRUE),
+    s_sf_bench  = mean(diff_ln_AVE_u_bench,    na.rm = TRUE),
     s_sf_tariff = mean(diff_ln_AVE_u_tariff,   na.rm = TRUE),
+    s_sf_tariff_bench = mean(diff_ln_AVE_u_tariff_bench,  na.rm = TRUE),
     s_chen      = mean(diff_ln_AVE_chen,       na.rm = TRUE),
     s_tariff    = mean(diff_log_tariff_2017,   na.rm = TRUE),
     .groups = "drop"  ) %>%  group_by(hs_section) %>%
   mutate(  w_chen = mean(w_chen, na.rm = TRUE),   s_chen = mean(s_chen, na.rm = TRUE)  )
 
 
-
 plot <- ggplot(subset(US_ag_w_sect, year %in% c(2018,2019))) +
   geom_line(aes(x = date, y = w_FE,        color = "FE")) +
   geom_line(aes(x = date, y = w_sf,        color = "sf")) +
   geom_line(aes(x = date, y = w_sf_tariff, color = "sf_tariff")) +
+  geom_line(aes(x = date, y = w_FE_bench,        color = "FE_bench"), linetype = "dashed") +
+  geom_line(aes(x = date, y = w_sf_bench,        color = "sf_bench"), linetype = "dashed") +
+  geom_line(aes(x = date, y = w_sf_tariff_bench, color = "sf_tariff_bench"), linetype = "dashed") +
   # geom_line(aes(x = date, y = w_chen,      color = "Chen_et_al")) +
   geom_line(aes(x = date, y = w_tariff,    color = "tariff")) +
-  scale_color_manual(  values = c(  "FE"         = "steelblue",
-                                    "sf"         = "darkorange","sf_tariff"  = "firebrick", "tariff"     = "darkgreen"    ),
-                       labels = c(  "FE"         = "FE",
-                                    "sf"         = "SF",
-                                    "sf_tariff"  = "Tariff-adjusted SF",  "tariff"     = "Tariff"    ),    name = "Variables"  ) +
+  scale_color_manual(
+    values = c( "FE"  = "steelblue", "sf" = "darkorange",  "sf_tariff" = "firebrick",      
+                "tariff" = "darkgreen",  "FE_bench" = "blue", "sf_bench" = "brown",
+                "sf_tariff_bench"  = "pink"),
+    labels = c(  "FE" = "FE", "sf"   = "SF", "sf_tariff" = "Tariff-adjusted SF",
+                 "tariff" = "Tariff", "FE_bench" = "FE (benchmark)",
+                 "sf_bench" = "SF (benchmark)",  "sf_tariff_bench"  = "Tariff-adjusted SF (benchmark)"  ),
+    name = "Variables"  ) +
   facet_wrap(~hs_section)+
   labs(  title = "Weighted average Δ ln(1+AVE) for agricultural sector by HS section(relative to 2017) ",
          x = "Date",
          y = "Weighted Δ ln(1+AVE)"  ) +
-  theme_minimal(base_size = 14)+
-  theme(
-    panel.spacing.x = unit(2, "lines"),   # ← MORE HORIZONTAL SPACE
-    plot.title = element_text(size = 11, hjust = 0.5),
-    panel.background = element_rect(fill = "white", color = NA),
-    plot.background  = element_rect(fill = "white", color = NA) ,
-    axis.text.x = element_text(size = 9), # Axis text (tick labels)
-    axis.text.y = element_text(size = 9),
-    axis.title.x = element_text(size = 10), # Axis titles
-    axis.title.y = element_text(size = 10),
-    legend.text  = element_text(size = 9), # Legend text and title
-    legend.title = element_text(size = 9)  )
+  theme_trade
 plot
 ggsave(filename = file.path(exp, "plot/", "Compare_ln_AVE_Ag_hs_sect_weight.png"),plot = plot, width = 9, height = 5, dpi = 300)
 
@@ -255,29 +277,24 @@ plot <- ggplot(subset(US_ag_w_sect, year %in% c(2018,2019))) +
   geom_line(aes(x = date, y = s_FE,        color = "FE")) +
   geom_line(aes(x = date, y = s_sf,        color = "sf")) +
   geom_line(aes(x = date, y = s_sf_tariff, color = "sf_tariff")) +
+  geom_line(aes(x = date, y = s_FE_bench,        color = "FE_bench"), linetype = "dashed") +
+  geom_line(aes(x = date, y = s_sf_bench,        color = "sf_bench"), linetype = "dashed") +
+  geom_line(aes(x = date, y = s_sf_tariff_bench, color = "sf_tariff_bench"), linetype = "dashed") +
   # geom_line(aes(x = date, y = s_chen,      color = "Chen_et_al")) +
   geom_line(aes(x = date, y = s_tariff,    color = "tariff")) +
-  scale_color_manual(  values = c(  "FE"         = "steelblue",
-                                    "sf"         = "darkorange","sf_tariff"  = "firebrick", "tariff"     = "darkgreen"    ),
-                       labels = c(  "FE"         = "FE",
-                                    "sf"         = "SF",
-                                    "sf_tariff"  = "Tariff-adjusted SF",  "tariff"     = "Tariff"    ),    name = "Variables"  ) +
+  scale_color_manual(
+    values = c( "FE"  = "steelblue", "sf" = "darkorange",  "sf_tariff" = "firebrick",      
+                "tariff" = "darkgreen",  "FE_bench" = "blue", "sf_bench" = "brown",
+                "sf_tariff_bench"  = "pink"),
+    labels = c(  "FE" = "FE", "sf"   = "SF", "sf_tariff" = "Tariff-adjusted SF",
+                 "tariff" = "Tariff", "FE_bench" = "FE (benchmark)",
+                 "sf_bench" = "SF (benchmark)",  "sf_tariff_bench"  = "Tariff-adjusted SF (benchmark)"  ),
+    name = "Variables"  ) +
   facet_wrap(~hs_section)+
   labs(  title = "Simple average Δ ln(1+AVE) for agricultural sector by HS section (relative to 2017) ",
          x = "Date",
          y = "Simple average Δ ln(1+AVE)"  ) +
-  theme_minimal(base_size = 14) +
-  theme(
-    panel.spacing.x = unit(1.2, "lines"),   # ← MORE HORIZONTAL SPACE
-    plot.title = element_text(size = 11, hjust = 0.5),
-    panel.background = element_rect(fill = "white", color = NA),
-    plot.background  = element_rect(fill = "white", color = NA) ,
-    axis.text.x = element_text(size = 9), # Axis text (tick labels)
-    axis.text.y = element_text(size = 9),
-    axis.title.x = element_text(size = 10), # Axis titles
-    axis.title.y = element_text(size = 10),
-    legend.text  = element_text(size = 9), # Legend text and title
-    legend.title = element_text(size = 9)  )
+  theme_trade
 plot
 ggsave(filename = file.path(exp, "plot/", "Compare_ln_AVE_Ag_hs_sect_simple.png"),plot = plot, width = 8, height = 5, dpi = 300)
 
@@ -326,17 +343,7 @@ plot <- ggplot(subset(US_ag_w_hs2, hs2 %in% HS)) +
   facet_wrap(  ~ hs2,  scales   = "free_y",  labeller = as_labeller(hs2_names)  ) +
   labs( title = "Weighted average Δ ln(1+AVE) for agricultural sector by HS section (relative to 2017)",
     x = "Date",    y = "Weighted Δ ln(1+AVE)"  ) +
-  theme_minimal(base_size = 14) +
-  theme(panel.spacing.x = unit(2, "lines"),
-    plot.title      = element_text(size = 11, hjust = 0.5),
-    panel.background = element_rect(fill = "white", color = NA),
-    plot.background  = element_rect(fill = "white", color = NA),
-    axis.text.x     = element_text(size = 9),
-    axis.text.y     = element_text(size = 9),
-    axis.title.x    = element_text(size = 10),
-    axis.title.y    = element_text(size = 10),
-    legend.text     = element_text(size = 9),
-    legend.title    = element_text(size = 9)  )
+  theme_trade
 
 plot
 ggsave(filename = file.path(exp, "plot/", "Compare_ln_AVE_Ag_hs2_weighted.png"),plot = plot, width = 8, height = 5, dpi = 300)
@@ -389,34 +396,28 @@ write_xlsx( list("hs2_summary" = summary),  path = file.path(exp, "hs2_summary.x
 ################################################################################
   
 
+
+
 plot <- ggplot(subset(US_ag_w, year %in% c(2018,2019))) +
   geom_line(aes(x = date, y = w_FE,        color = "FE")) +
   geom_line(aes(x = date, y = w_sf,        color = "sf")) +
   geom_line(aes(x = date, y = w_sf_tariff, color = "sf_tariff")) +
+  geom_line(aes(x = date, y = w_FE_bench,        color = "FE_bench"), linetype = "dashed") +
+  geom_line(aes(x = date, y = w_sf_bench,        color = "sf_bench"), linetype = "dashed") +
+  geom_line(aes(x = date, y = w_sf_tariff_bench, color = "sf_tariff_bench"), linetype = "dashed") +
   geom_line(aes(x = date, y = w_chen,      color = "Chen_et_al")) +
   geom_line(aes(x = date, y = w_tariff,    color = "tariff")) +
-  scale_color_manual( values = c(
-    "FE"         = "steelblue",   "sf"         = "darkorange",
-    "sf_tariff"  = "firebrick",    "Chen_et_al" = "purple",      # ← Added color
-    "tariff"     = "darkgreen"    ),
-    labels = c(  "FE"         = "FE",
-                 "sf"         = "SF",
-                 "sf_tariff"  = "Tariff-adjusted SF",
-                 "Chen_et_al" = "Chen et al.",   "tariff"     = "Tariff"    ),    name = "Variables"  ) +
+  scale_color_manual(
+    values = c( "FE"  = "steelblue", "sf" = "darkorange",  "sf_tariff" = "firebrick",      
+                "tariff" = "darkgreen",  "FE_bench" = "blue", "sf_bench" = "brown",
+                "sf_tariff_bench"  = "pink", "Chen_et_al" = "purple"),
+    labels = c(  "FE" = "FE", "sf"   = "SF", "sf_tariff" = "Tariff-adjusted SF",
+                 "tariff" = "Tariff", "FE_bench" = "FE (benchmark)",
+                 "sf_bench" = "SF (benchmark)",  "sf_tariff_bench"  = "Tariff-adjusted SF (benchmark)" ,"Chen_et_al" = "Chen et al." ),
+    name = "Variables"  ) +
   labs(title = "Weighted average Δ ln(1+AVE) for agricultural sector (relative to 2017)",
        x = "Date",   y = "Weighted Δ ln(1+AVE)"  ) +
-  theme_minimal(base_size = 14) +
-  theme(
-    panel.spacing.x = unit(1.2, "lines"),   # ← MORE HORIZONTAL SPACE
-    plot.title = element_text(size = 11, hjust = 0.5),
-    panel.background = element_rect(fill = "white", color = NA),
-    plot.background  = element_rect(fill = "white", color = NA) ,
-    axis.text.x = element_text(size = 9), # Axis text (tick labels)
-    axis.text.y = element_text(size = 9),
-    axis.title.x = element_text(size = 11), # Axis titles
-    axis.title.y = element_text(size = 11),
-    legend.text  = element_text(size = 10), # Legend text and title
-    legend.title = element_text(size = 10)  )
+  theme_trade
 plot
 ggsave(filename = file.path(exp, "plot/", "Compare_ln_AVE_Ag_weight_chen.png"),plot = plot, width = 8, height = 5, dpi = 300)
 
@@ -437,18 +438,7 @@ plot <- ggplot(US_ag_w) +
                                     "Chen_et_al" = "Chen et al.",   "tariff"     = "Tariff"    ),    name = "Variables"  ) +
   labs(  title = "Simple average Δ ln(1+AVE) for agricultural sector (relative to 2017)",
          x = "Date",    y = "Simple average Δ ln(1+AVE)"  ) +
-  theme_minimal(base_size = 14) +
-  theme(
-    panel.spacing.x = unit(1.2, "lines"),   # ← MORE HORIZONTAL SPACE
-    plot.title = element_text(size = 11, hjust = 0.5),
-    panel.background = element_rect(fill = "white", color = NA),
-    plot.background  = element_rect(fill = "white", color = NA) ,
-    axis.text.x = element_text(size = 9), # Axis text (tick labels)
-    axis.text.y = element_text(size = 9),
-    axis.title.x = element_text(size = 10), # Axis titles
-    axis.title.y = element_text(size = 10),
-    legend.text  = element_text(size = 9), # Legend text and title
-    legend.title = element_text(size = 9)  )
+  theme_trade
 plot
 ggsave(filename = file.path(exp, "plot/", "Compare_ln_AVE_Ag_simple_chen.png"),plot = plot, width = 8, height = 5, dpi = 300)
 
@@ -464,31 +454,23 @@ plot <- ggplot(US_ag_w_sect) +
   geom_line(aes(x = date, y = w_FE,        color = "FE")) +
   geom_line(aes(x = date, y = w_sf,        color = "sf")) +
   geom_line(aes(x = date, y = w_sf_tariff, color = "sf_tariff")) +
+  geom_line(aes(x = date, y = w_FE_bench,        color = "FE_bench"), linetype = "dashed") +
+  geom_line(aes(x = date, y = w_sf_bench,        color = "sf_bench"), linetype = "dashed") +
+  geom_line(aes(x = date, y = w_sf_tariff_bench, color = "sf_tariff_bench"), linetype = "dashed") +
   geom_line(aes(x = date, y = w_chen,      color = "Chen_et_al")) +
   geom_line(aes(x = date, y = w_tariff,    color = "tariff")) +
-  scale_color_manual(  values = c(  "FE"         = "steelblue",
-                                    "sf"         = "darkorange","sf_tariff"  = "firebrick",
-                                    "Chen_et_al" = "purple",      "tariff"     = "darkgreen"    ),
-                       labels = c(  "FE"         = "FE",
-                                    "sf"         = "SF",
-                                    "sf_tariff"  = "Tariff-adjusted SF",
-                                    "Chen_et_al" = "Chen et al.",   "tariff"     = "Tariff"    ),    name = "Variables"  ) +
+  scale_color_manual(
+    values = c( "FE"  = "steelblue", "sf" = "darkorange",  "sf_tariff" = "firebrick",      
+                "tariff" = "darkgreen",  "FE_bench" = "blue", "sf_bench" = "brown",
+                "sf_tariff_bench"  = "pink", "Chen_et_al" = "purple"),
+    labels = c(  "FE" = "FE", "sf"   = "SF", "sf_tariff" = "Tariff-adjusted SF",
+                 "tariff" = "Tariff", "FE_bench" = "FE (benchmark)",
+                 "sf_bench" = "SF (benchmark)",  "sf_tariff_bench"  = "Tariff-adjusted SF (benchmark)" ,"Chen_et_al" = "Chen et al." ),
+    name = "Variables"  ) +
   facet_wrap(~hs_section)+
   labs(  title = "Weighted average Δ ln(1+AVE) for agricultural sector by HS section(relative to 2017) ",
-         x = "Date",
-         y = "Weighted Δ ln(1+AVE)"  ) +
-  theme_minimal(base_size = 14)+
-  theme(
-    panel.spacing.x = unit(2, "lines"),   # ← MORE HORIZONTAL SPACE
-    plot.title = element_text(size = 11, hjust = 0.5),
-    panel.background = element_rect(fill = "white", color = NA),
-    plot.background  = element_rect(fill = "white", color = NA) ,
-    axis.text.x = element_text(size = 9), # Axis text (tick labels)
-    axis.text.y = element_text(size = 9),
-    axis.title.x = element_text(size = 10), # Axis titles
-    axis.title.y = element_text(size = 10),
-    legend.text  = element_text(size = 9), # Legend text and title
-    legend.title = element_text(size = 9)  )
+         x = "Date",         y = "Weighted Δ ln(1+AVE)"  ) +
+  theme_trade
 plot
 ggsave(filename = file.path(exp, "plot/", "Compare_ln_AVE_Ag_hs_sect_weight_chen.png"),plot = plot, width = 9, height = 5, dpi = 300)
 
@@ -510,18 +492,7 @@ plot <- ggplot(US_ag_w_sect) +
   labs(  title = "Simple average Δ ln(1+AVE) for agricultural sector by HS section (relative to 2017) ",
          x = "Date",
          y = "Simple average Δ ln(1+AVE)"  ) +
-  theme_minimal(base_size = 14) +
-  theme(
-    panel.spacing.x = unit(1.2, "lines"),   # ← MORE HORIZONTAL SPACE
-    plot.title = element_text(size = 11, hjust = 0.5),
-    panel.background = element_rect(fill = "white", color = NA),
-    plot.background  = element_rect(fill = "white", color = NA) ,
-    axis.text.x = element_text(size = 9), # Axis text (tick labels)
-    axis.text.y = element_text(size = 9),
-    axis.title.x = element_text(size = 10), # Axis titles
-    axis.title.y = element_text(size = 10),
-    legend.text  = element_text(size = 9), # Legend text and title
-    legend.title = element_text(size = 9)  )
+  theme_trade
 plot
 ggsave(filename = file.path(exp, "plot/", "Compare_ln_AVE_Ag_hs_sect_simple_chen.png"),plot = plot, width = 8, height = 5, dpi = 300)
 

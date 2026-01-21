@@ -59,11 +59,17 @@ table(merge_data$area_fips)
 
 # create exposure indicator
 merge_data <- merge_data %>% mutate(
-  RET_tariff_r = gamma_iju_tau_CHN_tariffs*share_labor_ir,
-  RET_NTB_r = gamma_iju_tau_NTB*share_labor_ir
-)
-summary(merge_data$RET_tariff_r)
-summary(merge_data$RET_NTB_r)
+  RET_tariff_ir = gamma_iju_tau_CHN_tariffs*share_labor_ir,
+  RET_NTB_ir = gamma_iju_tau_NTB*share_labor_ir)
+
+summary(merge_data$RET_tariff_ir)
+summary(merge_data$RET_NTB_ir)
+
+# create a sector variable
+merge_data <- merge_data %>%mutate( sector = case_when( naics3 %in% 111:115 ~ "Ag",
+                                                        naics3 %in% 311:339 ~ "Manu",  TRUE ~ "NonAg"       )  )
+
+
 
 ###############################################################################
 # pick industry of interest to get RET_ir
@@ -71,8 +77,19 @@ unique(merge_data$naics3)
 
 merge_data_crop <- merge_data %>% filter(naics3 == 111 )
 names(merge_data_crop)
-summary(merge_data_crop$RET_tariff_r)
-summary(merge_data_crop$RET_NTB_r)
+summary(merge_data_crop$RET_tariff_ir)
+summary(merge_data_crop$RET_NTB_ir)
+
+
+# pick all industries (Ag, manufacturing)
+names(merge_data)
+merge_data_Ag_Manu <- merge_data %>% filter(sector %in% c("Ag","Manu" )) %>% 
+  group_by(area_fips, area_title, year) %>% 
+  summarise(
+    RET_tariff_r = sum(RET_tariff_ir, na.rm = TRUE),
+    RET_NTB_r = sum(RET_NTB_ir, na.rm = TRUE)  )
+summary(merge_data_Ag_Manu$RET_tariff_r)  
+summary(merge_data_Ag_Manu$RET_NTB_r)  
 
 
 ################################################################################ 
@@ -86,7 +103,11 @@ library(ggplot2)
 options(tigris_use_cache = TRUE)
 
 # Data
-dta <- merge_data_crop %>%  mutate(area_fips = str_pad(area_fips, width = 5, pad = "0"))
+
+dta <- merge_data_crop
+dta <- merge_data_Ag_Manu
+
+dta <- dta %>%  mutate(area_fips = str_pad(area_fips, width = 5, pad = "0"))
 
 # Counties shapefile with CRS
 counties_sf <- tigris::counties(cb = TRUE, year = 2013) %>%
@@ -108,9 +129,60 @@ map_data_conus <- map_data %>%
     "78"  # US Virgin Islands
   ))
 
+
+
+
+################################################################################
+
+
 # Plot the intensity map
 plot <- ggplot(map_data_conus) +
   geom_sf(aes(fill = RET_tariff_r), color = NA) +
+  scale_fill_viridis_c(option = "magma", na.value = "grey90", direction = -1,     limits = c(0, 0.02)   ) +
+  labs(
+    title =  "County level labor exposure to Chinese retaliatory tariffs (RET) ",
+    fill  = "RET_ir"  ) +
+  coord_sf(xlim = c(-125, -66), ylim = c(24, 50), expand = FALSE) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 12, hjust = 0.5),
+    panel.background = element_rect(fill = "white", color = NA),
+    plot.background  = element_rect(fill = "white", color = NA) ,
+    axis.text  = element_blank(),
+    axis.title = element_blank(),
+    axis.ticks = element_blank(),
+    panel.grid = element_blank()  )
+plot
+ggsave(filename = file.path(exp,  "RET_r_tariff.png"),plot = plot, width = 8, height = 5, dpi = 300)
+
+# Plot the intensity map
+plot <- ggplot(map_data_conus) +
+  geom_sf(aes(fill = RET_NTB_r), color = NA) +
+  scale_fill_viridis_c(option = "magma", na.value = "grey90", direction = -1,     limits = c(0, 0.02)   ) +
+  labs(title = "County level labor exposure to retaliatory Chinese NTMs (RET)",
+       fill  = "RET_r"  ) +
+  coord_sf(xlim = c(-125, -66), ylim = c(24, 50), expand = FALSE) +
+  theme_minimal() +
+  theme(
+    axis.text  = element_blank(),
+    panel.background = element_rect(fill = "white", color = NA),
+    plot.background  = element_rect(fill = "white", color = NA) ,
+    axis.title = element_blank(),
+    axis.ticks = element_blank(),
+    panel.grid = element_blank()  )
+plot
+ggsave(filename = file.path(exp,  "RET_r_NTM.png"),plot = plot, width = 8, height = 5, dpi = 300)
+
+
+
+
+################################################################################
+# For Crop industry only 
+
+
+# Plot the intensity map
+plot <- ggplot(map_data_conus) +
+  geom_sf(aes(fill = RET_tariff_ir), color = NA) +
   scale_fill_viridis_c(option = "magma", na.value = "grey90", direction = -1) +
   labs(
     title =  "County level labor exposure to retaliatory tariffs in the Crop industry (NAICS 111) ",
@@ -128,7 +200,7 @@ ggsave(filename = file.path(exp,  "RET_ir_tariff_NAICS_111.png"),plot = plot, wi
 
 # Plot the intensity map
 plot <- ggplot(map_data_conus) +
-  geom_sf(aes(fill = RET_NTB_r), color = NA) +
+  geom_sf(aes(fill = RET_NTB_ir), color = NA) +
   scale_fill_viridis_c(option = "magma", na.value = "grey90", direction = -1) +
   labs(title = "County level labor exposure to retaliatory Chinese NTMs in the Crop industry (NAICS 111) ",
     fill  = "RET_ir"  ) +
