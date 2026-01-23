@@ -428,7 +428,7 @@ for (HS2 in hs2_vals) {
   message("=== HS2 = ", HS2, " ===")
 
   # test
-   # HS2 <- hs2_vals[1]
+   HS2 <- hs2_vals[3]
 
   # Subset and drop rows with NA in SFA vars
   dta2 <- dta1 %>% filter(hs2 == HS2) %>%

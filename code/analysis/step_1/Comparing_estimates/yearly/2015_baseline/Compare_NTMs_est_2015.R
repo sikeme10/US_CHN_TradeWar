@@ -36,23 +36,23 @@ exp <- "/data/sikeme/TRADE/US_CHN_TradeWar_git/output/Compare_values/yearly/robu
 
 # Load FE estimates 
 fe <- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/output/FE/yearly/gravity_pois_FE.csv")
-sf <- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/output/stochastic/yearly/sfaR_efficiency_average_merged.csv")
+sf <- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/output/stochastic/yearly/sfaR_efficiency_average_merged_new.csv")
 
 ################################################################################
 # 1) merge the data from different estimation methods
 ################################################################################
 
 
+
 # select data we want 
 names(fe)
 colSums(is.na(fe))
-names(res)
 names(sf)
 
 
 fe <- fe %>% select(year,hs2, hs4, hs6_H5, ExporterISO3, ImporterISO3,Trade_value_USD, Applied_tariff, fe_id, FE)
 sf <- sf %>% select(year,hs2, hs4, hs6_H5, ExporterISO3, ImporterISO3,Applied_tariff, u,teJLMS,
-                    u_tariff , teJLMS_tariff)
+                    u_tariff , teJLMS_tariff, u_exp ,u_exp_tariff ,teJLMS_exp, teJLMS_exp_tariff)
 
 # merge all data 
 
@@ -131,31 +131,35 @@ names(dta)
 
 
 ################################################################################
-# Chnages in AVEs
+# Changes in AVEs
 ################################################################################
-
 # add FE country bechmarks:
 
 # If we want to create a benchmark for each values 
 # we take the max value of the FE and u among all exporter for a specific product, month, year
-
 dta <- dta %>% group_by(year, hs6_H5) %>%
-  mutate( FE_bench_exp = {
+  mutate( FE_bench = {
     m <- max(FE, na.rm = TRUE)
     ifelse(is.infinite(m), NA_real_, m)
-    },
-    u_bench_exp = {
-      m <- min(u, na.rm = TRUE)
-      ifelse(is.infinite(m), NA_real_, m)
-      } ,
-    u_tariff_bench_exp = {
-      m <- min(u_tariff, na.rm = TRUE)
-      ifelse(is.infinite(m), NA_real_, m)
-    } ) %>%  ungroup()
-summary(dta$FE_bench_exp)
-summary(dta$u_bench_exp)
-summary(dta$u_tariff_bench_exp)
-
+  },
+  u_bench = {
+    m <- min(u, na.rm = TRUE)
+    ifelse(is.infinite(m), NA_real_, m)
+  } ,
+  u_tariff_bench = {
+    m <- min(u_tariff, na.rm = TRUE)
+    ifelse(is.infinite(m), NA_real_, m)
+  } ,
+  u_exp_bench = {
+    m <- min(u_exp, na.rm = TRUE)
+    ifelse(is.infinite(m), NA_real_, m)
+  } 
+  ) %>%  ungroup()
+summary(dta$FE_bench)
+summary(dta$u_bench)
+summary(dta$u_tariff_bench)
+summary(dta$u_exp_bench)
+summary(dta$u_exp_tariff_bench)
 
 # we want to look at changes in FE and u relative to 2015 levels
 
@@ -165,14 +169,20 @@ summary(dta$u_tariff_bench_exp)
 #     u_pre_2015_m = mean(u[year %in% c(2015, 2015)], na.rm = TRUE),
 #     u_tariff_pre_2015_m = mean(u_tariff[year %in% c(2015, 2015)], na.rm = TRUE) ) %>%  ungroup()
 
+
 # save values of u and FE in pre trade war period, but also for the benchmark part 
 dta <- dta %>%  group_by(ExporterISO3, hs6_H5) %>%
   mutate( FE_pre_2015 = mean(FE[year %in% c(2015)], na.rm = TRUE),
-          FE_pre_2015_bench = mean(FE_bench_exp[year %in% c(2015)], na.rm = TRUE),
+          FE_pre_2015_bench = mean(FE_bench[year %in% c(2015)], na.rm = TRUE),
+          #Sf
           u_pre_2015 = mean(u[year %in% c(2015)], na.rm = TRUE),
-          u_pre_2015_bench = mean(u_bench_exp[year %in% c(2015)], na.rm = TRUE),
+          u_pre_2015_bench = mean(u_bench[year %in% c(2015)], na.rm = TRUE),
           u_tariff_pre_2015 = mean(u_tariff[year %in% c(2015)], na.rm = TRUE),
-          u_tariff_pre_2015_bench = mean(u_tariff_bench_exp[year %in% c(2015)], na.rm = TRUE),
+          u_tariff_pre_2015_bench = mean(u_tariff_bench[year %in% c(2015)], na.rm = TRUE),
+          # sf with exp
+          u_exp_pre_2015 = mean(u_exp[year %in% c(2015)], na.rm = TRUE),
+          u_exp_pre_2015_bench = mean(u_exp_bench[year %in% c(2015)], na.rm = TRUE),
+          
           log_tariff_pre_2015 = mean(log_tariff[year %in% c(2015)], na.rm = TRUE)) %>%  ungroup()
 
 summary(dta$log_tariff)
@@ -193,25 +203,26 @@ dta <- dta %>% arrange(year, hs6_H5)
 # create differences in AVEs
 ################################################################################
 
+
 # create adjusted values of efficiency and FE estimates
 # do the difference with 2015 baseline 
 dta <- dta %>%
   mutate(
     # Difference in FE relative to 2015 baseline
     diff_FE_2015 = if_else( year > 2015 & !is.na(FE) & !is.na(FE_pre_2015),
-      FE - FE_pre_2015,      NA_real_    ),
+                            FE - FE_pre_2015,      NA_real_    ),
     
     # Difference in FE with benchmarks relative to 2015 baseline
     diff_FE_2015_bench = if_else( year > 2015 & !is.na(FE) & !is.na(FE_pre_2015),
-                            (FE - FE_bench_exp) - (FE_pre_2015 - FE_pre_2015_bench),      NA_real_    ),
+                                  (FE - FE_bench) - (FE_pre_2015 - FE_pre_2015_bench),      NA_real_    ),
     
     # Difference in u (inefficiency)  relative to 2015 baseline
     diff_u_2015 = if_else(year > 2015 & !is.na(u) & !is.na(u_pre_2015),
-        - u + u_pre_2015,      NA_real_    ),
+                          - u + u_pre_2015,      NA_real_    ),
     
     # Difference in u (inefficiency) with benchmarks relative to 2015 baseline
     diff_u_2015_bench = if_else(year > 2015 & !is.na(u) & !is.na(u_pre_2015),
-                          (- u + u_bench_exp) + (u_pre_2015 -  u_pre_2015_bench),      NA_real_    ),
+                                (- u + u_bench) + (u_pre_2015 -  u_pre_2015_bench),      NA_real_    ),
     
     # Difference in tariff-adjusted u relative to 2015 baseline
     diff_u_tariff_2015 = if_else( year > 2015 & !is.na(u_tariff) & !is.na(u_tariff_pre_2015),
@@ -219,11 +230,21 @@ dta <- dta %>%
     
     # Difference in tariff-adjusted u with benchmarks relative to 2015 baseline
     diff_u_tariff_2015_bench = if_else( year > 2015 & !is.na(u_tariff) & !is.na(u_tariff_pre_2015),
-                                  (- u_tariff + u_tariff_bench_exp) +  (u_tariff_pre_2015 - u_tariff_pre_2015_bench ) ,     NA_real_    ),
+                                        (- u_tariff + u_tariff_bench) +  (u_tariff_pre_2015 - u_tariff_pre_2015_bench ) ,     NA_real_    ),
     
+    
+    # Difference in u_exp (inefficiency)  relative to 2015 baseline
+    diff_u_exp_2015 = if_else(year > 2015 & !is.na(u_exp) & !is.na(u_exp_pre_2015),
+                              - u_exp + u_exp_pre_2015,      NA_real_    ),
+    
+    # Difference in u_exp (inefficiency) with benchmarks relative to 2015 baseline
+    diff_u_exp_2015_bench = if_else(year > 2015 & !is.na(u_exp) & !is.na(u_exp_pre_2015),
+                                    (- u_exp + u_exp_bench) + (u_exp_pre_2015 -  u_exp_pre_2015_bench),      NA_real_    ),
+    
+  
     # Difference in log tariffs relative to 2015 baseline
     diff_log_tariff_2015 = if_else(  year > 2015 & !is.na(log_tariff) & !is.na(log_tariff_pre_2015),
-      log_tariff - log_tariff_pre_2015,      NA_real_    )  )
+                                     log_tariff - log_tariff_pre_2015,      NA_real_    )  )
 
 test  <- dta %>% filter(year >2015)
 colSums(is.na(test))
@@ -233,10 +254,11 @@ summary(dta$diff_u_2015)
 summary(dta$diff_u_2015_bench)
 summary(dta$diff_u_tariff_2015)
 summary(dta$diff_u_tariff_2015_bench)
+summary(dta$diff_u_exp_2015)
+summary(dta$diff_u_exp_2015_bench)
+
 summary(dta$diff_log_tariff_2015)
 ################################################################################
-
-# estimate ln(1+T) and changes in ln(1+T)
 
 dta <- dta %>%
   mutate(
@@ -246,11 +268,13 @@ dta <- dta %>%
     diff_ln_AVE_FE =if_else(year %in% c(2016:2020), (1/(1-elasticities))*diff_FE_2015, NA) ,
     diff_ln_AVE_u =if_else(year %in% c(2016:2020), (1/(1-elasticities))*diff_u_2015, NA) ,
     diff_ln_AVE_u_tariff =if_else(year %in% c(2016:2020), (1/(1-elasticities))*diff_u_tariff_2015, NA),
+    diff_ln_AVE_u_exp =if_else(year %in% c(2016:2020), (1/(1-elasticities))*diff_u_exp_2015, NA) ,
     # with benchmarks:
     diff_ln_AVE_FE_bench =if_else(year %in% c(2016:2020), (1/(1-elasticities))*diff_FE_2015_bench, NA) ,
     diff_ln_AVE_u_bench =if_else(year %in% c(2016:2020), (1/(1-elasticities))*diff_u_2015_bench, NA) ,
     diff_ln_AVE_u_tariff_bench =if_else(year %in% c(2016:2020), (1/(1-elasticities))*diff_u_tariff_2015_bench, NA),
-    )
+    diff_ln_AVE_u_exp_bench =if_else(year %in% c(2016:2020), (1/(1-elasticities))*diff_u_exp_2015_bench, NA) ,
+  )
 summary(dta$ln_AVE_FE)
 summary(dta$ln_AVE_u)
 summary(dta$ln_AVE_u_tariff)
@@ -259,15 +283,19 @@ summary(dta$diff_ln_AVE_u)
 summary(dta$diff_ln_AVE_u_tariff)
 colSums(is.na(dta))
 
+################################################################################
+# export results
 
-write_csv(dta , paste0(exp, "estimates_reduced_form1.csv"))
+write_csv(dta , paste0(exp, "estimates_reduced_form_base_2015.csv"))
 
-dta <- read_csv( paste0(exp, "estimates_reduced_form1.csv"))
-summary(dta$log)
+dta <- read_csv( paste0(exp, "estimates_reduced_form_base_2015.csv"))
+
 
 ################################################################################
 # get US data 
 ################################################################################
+
+
 US <- dta  %>% filter(ExporterISO3 == "USA")
 
 summary(US)
@@ -275,7 +303,7 @@ names(US)
 unique(US$hs2)
 unique(US$hs_section)
 # US1 <- US %>% filter(year %in% c(2018,2019))
-write_csv(US, paste0(exp, "US_ln_NTMs.csv"))
+write_csv(US, paste0(exp, "US_ln_NTMs_base_2015.csv"))
 
 
-US <- read_csv(paste0(exp, "US_ln_NTMs.csv"))
+US <- read_csv(paste0(exp, "US_ln_NTMs_base_2015.csv"))

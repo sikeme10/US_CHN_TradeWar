@@ -35,9 +35,14 @@ exp <- "/data/sikeme/TRADE/US_CHN_TradeWar_git/output/Compare_values/"
 # 1) Load data 
 ################################################################################
 
-
+#truncated normal
 dta <- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/output/stochastic/yearly/sfaR_efficiency_average.csv")
 dta_mu <- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/output/stochastic/yearly/sfaR_efficiency_average_mu.csv")
+
+#exponential 
+dta_exp <- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/output/stochastic/yearly/sfaR_efficiency_average_exp.csv")
+dta_exp_mu <- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/output/stochastic/yearly/sfaR_efficiency_average_exp_mu.csv")
+
 names(dta)
 colSums(is.na(dta))
 colSums(is.na(dta_mu))
@@ -46,18 +51,32 @@ colSums(is.na(dta_mu))
 # merge dta 
 
 names(dta)
-
 dta <- dta %>% select(hs2, hs4, hs6_H5, ExporterISO3,ImporterISO3 , year , Applied_tariff,  log_tariff , u,teJLMS)
 
+names(dta_mu)
 dta_mu <- dta_mu %>%  select(hs2, hs4, hs6_H5, ExporterISO3, year ,Applied_tariff, log_tariff , u,teJLMS) %>% rename(
   u_tariff = u, teJLMS_tariff = teJLMS)
 
+names(dta_exp)
+dta_exp <- dta_exp %>%  select(hs2, hs4, hs6_H5, ExporterISO3, year ,Applied_tariff, log_tariff , u,teJLMS) %>% rename(
+  u_exp = u, teJLMS_exp = teJLMS)
+
+
+names(dta_exp_mu)
+dta_exp_mu <- dta_exp_mu %>%  select(hs2, hs4, hs6_H5, ExporterISO3, year ,Applied_tariff, log_tariff , u,teJLMS) %>% rename(
+  u_exp_tariff = u, teJLMS_exp_tariff = teJLMS)
+
+
+# check duplicates
 dups <- dta %>%   group_by(hs6_H5, ExporterISO3, year , log_tariff , u,teJLMS) %>% 
   filter(n() > 1)
 
 # join and export the dta
 dta <- full_join(dta, dta_mu)
-write_csv(dta, "/data/sikeme/TRADE/US_CHN_TradeWar_git/output/stochastic/yearly/sfaR_efficiency_average_merged.csv")
+dta <- full_join(dta, dta_exp)
+dta <- full_join(dta, dta_exp_mu)
+
+write_csv(dta, "/data/sikeme/TRADE/US_CHN_TradeWar_git/output/stochastic/yearly/sfaR_efficiency_average_merged_new.csv")
 
 
 

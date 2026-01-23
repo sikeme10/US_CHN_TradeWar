@@ -34,7 +34,7 @@ exp <- "/data/sikeme/TRADE/US_CHN_TradeWar_git/output/Compare_values/yearly/robu
 # 1) Load data 
 ################################################################################
 
-US <- read_csv(paste0(exp, "US_ln_NTMs.csv"))
+US <- read_csv(paste0(exp, "US_ln_NTMs_base_2015.csv"))
 
 ################################################################################
 
@@ -148,10 +148,13 @@ US_ag_w <- US_ag %>%  filter(sector == "Ag") %>%  group_by(year) %>%
   summarise( 
     w_FE        = weighted.mean(diff_ln_AVE_FE,        w = weight_sector, na.rm = TRUE),
     w_FE_bench  = weighted.mean(diff_ln_AVE_FE_bench,  w = weight_sector, na.rm = TRUE),
-    w_sf        = weighted.mean(diff_ln_AVE_u,         w = weight_sector, na.rm = TRUE),
+    w_sf        = weighted.mean(diff_ln_AVE_u,         w = weight_sector, na.rm = TRUE),# sf
     w_sf_bench  = weighted.mean(diff_ln_AVE_u_bench,   w = weight_sector, na.rm = TRUE),
     w_sf_tariff = weighted.mean(diff_ln_AVE_u_tariff,  w = weight_sector, na.rm = TRUE),
-    w_sf_tariff_bench = weighted.mean(diff_ln_AVE_u_tariff_bench,  w = weight_sector, na.rm = TRUE),
+    w_sf_tariff_bench = weighted.mean(diff_ln_AVE_u_tariff_bench,  w = weight_sector, na.rm = TRUE), # with exp
+    w_sf_exp        = weighted.mean(diff_ln_AVE_u_exp,        w = weight_sector, na.rm = TRUE),
+    w_sf_bench_exp  = weighted.mean(diff_ln_AVE_u_exp_bench,  w = weight_sector, na.rm = TRUE),
+
     w_chen      = weighted.mean(diff_ln_AVE_chen,      w = weight_sector_chen, na.rm = TRUE),
     w_tariff    = weighted.mean(diff_log_tariff_2015,  w = weight_sector, na.rm = TRUE),
     s_FE        = mean(diff_ln_AVE_FE,         na.rm = TRUE),
@@ -159,8 +162,11 @@ US_ag_w <- US_ag %>%  filter(sector == "Ag") %>%  group_by(year) %>%
     s_sf        = mean(diff_ln_AVE_u,          na.rm = TRUE),
     s_sf_bench  = mean(diff_ln_AVE_u_bench,    na.rm = TRUE),
     s_sf_tariff = mean(diff_ln_AVE_u_tariff,   na.rm = TRUE),
-    s_sf_tariff_bench = mean(diff_ln_AVE_u_tariff_bench, na.rm = TRUE),
-    s_chen      = mean(diff_ln_AVE_chen,       na.rm = TRUE),
+    s_sf_tariff_bench = mean(diff_ln_AVE_u_tariff_bench, na.rm = TRUE), 
+    s_sf_exp        = mean(diff_ln_AVE_u_exp,          na.rm = TRUE), # with exp
+    s_sf_bench_exp  = mean(diff_ln_AVE_u_exp_bench,    na.rm = TRUE),
+
+    s_chen      = mean(diff_ln_AVE_chen,       na.rm = TRUE),# chen
     s_tariff    = mean(diff_log_tariff_2015,   na.rm = TRUE)  ) %>% ungroup() %>%
   mutate( w_chen = mean(w_chen, na.rm=TRUE),    s_chen = mean(s_chen, na.rm = TRUE))
 
@@ -169,22 +175,26 @@ plot <- ggplot(subset(US_ag_w)) +
   geom_line(aes(x = year, y = w_FE,              color = "FE")) +
   geom_line(aes(x = year, y = w_sf,              color = "sf")) +
   geom_line(aes(x = year, y = w_sf_tariff,       color = "sf_tariff")) +
+  geom_line(aes(x = year, y = w_sf_exp,              color = "sf_exp")) +
   # geom_line(aes(x = year, y = w_chen,            color = "Chen_et_al")) +
   geom_line(aes(x = year, y = w_tariff,          color = "tariff")) +
   # benchmark lines
   geom_line(aes(x = year, y = w_FE_bench,        color = "FE_bench"),linetype = "dashed") +
   geom_line(aes(x = year, y = w_sf_bench,        color = "sf_bench"),linetype = "dashed") +
   geom_line(aes(x = year, y = w_sf_tariff_bench, color = "sf_tariff_bench"), linetype = "dashed") +
+  geom_line(aes(x = year, y = w_sf_bench_exp,        color = "sf_bench_exp"),linetype = "dashed") +
   scale_color_manual(
-    values = c( "FE"  = "steelblue", "sf" = "darkorange",  "sf_tariff" = "firebrick",      
-                "tariff" = "darkgreen",  "FE_bench" = "blue", "sf_bench" = "brown",
-                "sf_tariff_bench"  = "pink"),
-    labels = c(  "FE" = "FE", "sf"   = "SF", "sf_tariff" = "Tariff-adjusted SF",
-                 "tariff" = "Tariff", "FE_bench" = "FE (benchmark)",
-                 "sf_bench" = "SF (benchmark)",  "sf_tariff_bench"  = "Tariff-adjusted SF (benchmark)"  ),
-    name = "Variables"  ) +
+    values = c( "FE"  = "blue",  "sf" = "darkorange",      "sf_tariff" = "red",
+      "sf_exp" = "purple",  "tariff" = "darkgreen",
+      "FE_bench" = "blue", "sf_bench" = "darkorange",  "sf_tariff_bench" = "red",
+      "sf_bench_exp" = "purple"  ),
+    labels = c(  "FE" = "FE",    "sf" = "SF",    "sf_tariff" = "Tariff-adjusted SF",
+      "sf_exp" = "SF (exp)",      "tariff" = "Tariff",
+      "FE_bench" = "FE (benchmark)",  "sf_bench" = "SF (benchmark)",
+      "sf_tariff_bench" = "Tariff-adjusted SF (benchmark)",    "sf_bench_exp" = "SF exp (benchmark)"   ),    name = "Variables"  ) +
   labs(    title = "Weighted average Δ ln(1+AVE) for agricultural sector (relative to 2015)",
     x = "Year",    y = "Weighted Δ ln(1+AVE)"  ) +
+ # scale_y_continuous(limits = c(-0.1, 0.25))+
   theme_trade
 plot
 
@@ -206,9 +216,9 @@ plot <- ggplot(subset(US_ag_w)) +
   geom_line(aes(x = year, y = s_sf_bench,        color = "sf_bench"),linetype = "dashed") +
   geom_line(aes(x = year, y = s_sf_tariff_bench, color = "sf_tariff_bench"), linetype = "dashed") +
   scale_color_manual(
-    values = c( "FE"  = "steelblue", "sf" = "darkorange",  "sf_tariff" = "firebrick",      
-                "tariff" = "darkgreen",  "FE_bench" = "blue", "sf_bench" = "brown",
-                "sf_tariff_bench"  = "pink"),
+    values = c( "FE"  = "blue", "sf" = "darkorange",  "sf_tariff" = "red",      
+                "tariff" = "darkgreen",  "FE_bench" = "blue", "sf_bench" = "darkorange",
+                "sf_tariff_bench"  = "red"),
     labels = c(  "FE" = "FE", "sf"   = "SF", "sf_tariff" = "Tariff-adjusted SF",
                  "tariff" = "Tariff", "FE_bench" = "FE (benchmark)",
                  "sf_bench" = "SF (benchmark)",  "sf_tariff_bench"  = "Tariff-adjusted SF (benchmark)"  ),
@@ -263,9 +273,9 @@ plot <- ggplot(subset(US_ag_w_sect)) +
   geom_line(aes(x = year, y = w_sf_bench,        color = "sf_bench"),linetype = "dashed") +
   geom_line(aes(x = year, y = w_sf_tariff_bench, color = "sf_tariff_bench"), linetype = "dashed") +
   scale_color_manual(
-    values = c( "FE"  = "steelblue", "sf" = "darkorange",  "sf_tariff" = "firebrick",      
-                "tariff" = "darkgreen",  "FE_bench" = "blue", "sf_bench" = "brown",
-                "sf_tariff_bench"  = "pink"),
+    values = c( "FE"  = "blue", "sf" = "darkorange",  "sf_tariff" = "red",      
+                "tariff" = "darkgreen",  "FE_bench" = "blue", "sf_bench" = "darkorange",
+                "sf_tariff_bench"  = "red"),
     labels = c(  "FE" = "FE", "sf"   = "SF", "sf_tariff" = "Tariff-adjusted SF",
                  "tariff" = "Tariff", "FE_bench" = "FE (benchmark)",
                  "sf_bench" = "SF (benchmark)",  "sf_tariff_bench"  = "Tariff-adjusted SF (benchmark)"  ),
@@ -290,9 +300,9 @@ plot <- ggplot(subset(US_ag_w_sect)) +
   geom_line(aes(x = year, y = s_sf_bench,        color = "sf_bench"),linetype = "dashed") +
   geom_line(aes(x = year, y = s_sf_tariff_bench, color = "sf_tariff_bench"), linetype = "dashed") +
   scale_color_manual(
-    values = c( "FE"  = "steelblue", "sf" = "darkorange",  "sf_tariff" = "firebrick",      
-                "tariff" = "darkgreen",  "FE_bench" = "blue", "sf_bench" = "brown",
-                "sf_tariff_bench"  = "pink"),
+    values = c( "FE"  = "blue", "sf" = "darkorange",  "sf_tariff" = "red",      
+                "tariff" = "darkgreen",  "FE_bench" = "blue", "sf_bench" = "darkorange",
+                "sf_tariff_bench"  = "red"),
     labels = c(  "FE" = "FE", "sf"   = "SF", "sf_tariff" = "Tariff-adjusted SF",
                  "tariff" = "Tariff", "FE_bench" = "FE (benchmark)",
                  "sf_bench" = "SF (benchmark)",  "sf_tariff_bench"  = "Tariff-adjusted SF (benchmark)"  ),

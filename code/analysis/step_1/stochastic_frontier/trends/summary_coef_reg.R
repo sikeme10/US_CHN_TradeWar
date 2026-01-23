@@ -39,7 +39,7 @@ coef <- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/output/stochastic/sfaR_
 names(coef)
 
 coef <- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/output/stochastic/yearly/sfaR_coef_HS2_average_new_exp.csv")
-
+unique(coef$model)
 
 ################################################################################
 
@@ -49,6 +49,15 @@ coef_significant <- coef %>% filter(pvalue < 0.05)
 
 unique(coef$model)
 
+# look at best fit across models
+Fit <- coef %>% group_by(model) %>% summarise(
+  mean_AIC = mean(AIC, na.rm = TRUE),
+  mean_BIC = mean(BIC, na.rm = TRUE),
+  mean_logLik = mean(logLik, na.rm = TRUE),
+  mean_gamma = mean(gamma, na.rm = TRUE))
+
+
+# check coeffs by model
 TN <- coef_significant %>% filter(model == "TN") %>% group_by(term) %>% 
   summarise( mean_estimates = mean(estimate, na.rm = TRUE),
              median_estimates = median(estimate, na.rm = TRUE),
@@ -59,6 +68,24 @@ TN <- coef_significant %>% filter(model == "TN") %>% group_by(term) %>%
              .groups = "drop")
 
 TN_tariff <- coef_significant %>% filter(model == "TN_muTariff") %>% group_by(term) %>% 
+  summarise( mean_estimates = mean(estimate, na.rm = TRUE),
+             median_estimates = median(estimate, na.rm = TRUE),
+             mean_se= mean(se, na.rm = TRUE),
+             median_se = median(estimate, na.rm = TRUE),
+             mean_gamma = mean(gamma, na.rm = TRUE),
+             share_significant_LR_test = sum(p_ineff < 0.05, na.rm = TRUE) / n(),
+             .groups = "drop")
+
+EXP <- coef_significant %>% filter(model == "EXP") %>% group_by(term) %>% 
+  summarise( mean_estimates = mean(estimate, na.rm = TRUE),
+             median_estimates = median(estimate, na.rm = TRUE),
+             mean_se= mean(se, na.rm = TRUE),
+             median_se = median(estimate, na.rm = TRUE),
+             mean_gamma = mean(gamma, na.rm = TRUE),
+             share_significant_LR_test = sum(p_ineff < 0.05, na.rm = TRUE) / n(),
+             .groups = "drop")
+
+EXP_tariff <- coef_significant %>% filter(model == "EXP_muTariff") %>% group_by(term) %>% 
   summarise( mean_estimates = mean(estimate, na.rm = TRUE),
              median_estimates = median(estimate, na.rm = TRUE),
              mean_se= mean(se, na.rm = TRUE),
