@@ -35,17 +35,17 @@ exp <- "/data/sikeme/TRADE/US_CHN_TradeWar_git/output/Compare_values/yearly/robu
 ################################################################################
 
 # Load FE estimates 
-dta <- read_csv( paste0(exp, "estimates_reduced_form_base_2015.csv"))
+dta <- read_csv( paste0(exp, "/estimates_reduced_form_base_2015.csv"))
 unique(dta$ExporterISO3)
 colSums(is.na(dta))
 unique(dta$year)
+names(dta)
 ################################################################################
 
 
 # create a theme for ggplot 
 theme_trade <- theme_minimal(base_size = 14) +
-  theme(
-    panel.spacing.x = unit(1.2, "lines"),
+  theme(panel.spacing.x = unit(1.2, "lines"),
     plot.title = element_text(size = 11, hjust = 0.5),
     panel.background = element_rect(fill = "white", color = NA),
     plot.background  = element_rect(fill = "white", color = NA),
@@ -54,14 +54,11 @@ theme_trade <- theme_minimal(base_size = 14) +
     axis.title.x = element_text(size = 11),
     axis.title.y = element_text(size = 11),
     legend.text  = element_text(size = 10),
-    legend.title = element_text(size = 10)
-  )
+    legend.title = element_text(size = 10)  )
 
 
 ################################################################################
-
-# Pick countries to plot robustness
-
+# 1) Pick countries to plot robustness
 ################################################################################
 
 
@@ -176,7 +173,7 @@ make_ag_lnAVE_plot("UKR", dta, save = TRUE, exp = exp)
 
 
 ################################################################################
-# if put all countries together in facet wrap
+# 2) if put all countries together in facet wrap
 ################################################################################
 
 make_ag_lnAVE_facet <- function(dta, countries = NULL, save = FALSE, exp = NULL) {
@@ -246,7 +243,6 @@ make_ag_lnAVE_facet <- function(dta, countries = NULL, save = FALSE, exp = NULL)
     coord_cartesian(ylim = c(-5, 5)) +
     facet_wrap(~ ExporterISO3, scales = "fixed") +
     theme_trade
-  
   print(plot)
   
   # 5. Optional saving
@@ -263,16 +259,14 @@ make_ag_lnAVE_facet <- function(dta, countries = NULL, save = FALSE, exp = NULL)
   invisible(plot)
 }
 countries_vec <- c("BRA", "MEX", "AUS", "CAN", "UKR", "RUS")
-
 make_ag_lnAVE_facet(dta, countries = countries_vec)
-
 # To save:
 make_ag_lnAVE_facet(dta, countries = countries_vec, save = TRUE, exp = exp)
 
 
 
 ################################################################################
-# ifcompare other countries to US 
+# 3) if compare other countries to US 
 ################################################################################
 
 # 1. Filter data to chosen countries + Ag sector, build year
@@ -313,12 +307,9 @@ ag_w <- ag %>% filter(year %in% 2016:2020) %>%
 
 ag_w <- ag_w %>%  mutate(is_US = ExporterISO3 == "USA")
 
+# pick countries
 countries_vec <- unique(ag_w$ExporterISO3)
-
-
-countries_vec <- c("USA", "BRA", "MEX", "AUS", "CAN", "UKR", "RUS")
-
-
+#countries_vec <- c("USA", "BRA", "MEX", "AUS", "CAN", "UKR", "RUS")
 
 plot_FE <- ag_w %>%
   filter(ExporterISO3 %in% countries_vec) %>%
@@ -332,11 +323,11 @@ plot_FE <- ag_w %>%
     x = "Year",  y = "Weighted Δ ln(1+AVE)" )
 
 plot_FE
-ggsave(filename = file.path(exp, "/plot/", "change_ln_AVE_US_others_FE.png"),
+ggsave(filename = file.path(exp, "/plot/", "change_ln_AVE_US_others_Ag_FE.png"),
        plot = plot_FE, width = 10, height = 7, dpi = 300)
 
 
-
+# for FE with benchmark 
 plot_FE_bench<- ag_w %>%
   filter(ExporterISO3 %in% countries_vec) %>%
   ggplot(aes(x = year, y = w_FE_bench, group = ExporterISO3, color = is_US)) +
@@ -348,10 +339,14 @@ plot_FE_bench<- ag_w %>%
   labs(title = "Weighted average Δ ln(1+AVE) (FE model with benchmark) \n in the Agricultural sector",
        x = "Year",  y = "Weighted Δ ln(1+AVE)" )
 plot_FE_bench
-ggsave(filename = file.path(exp, "/plot/", "change_ln_AVE_US_others_FE_bench.png"),
+ggsave(filename = file.path(exp, "/plot/", "change_ln_AVE_US_others_Ag_FE_bench.png"),
        plot = plot_FE_bench, width = 10, height = 7, dpi = 300)
 
+test <- ag_w %>% group_by(ExporterISO3) %>%
+  filter(any(w_FE_bench > 5, na.rm = TRUE)) %>%
+  ungroup()
 
+# for tariffs
 plot_tariff <- ag_w %>%
   filter(ExporterISO3 %in% countries_vec) %>%
   ggplot(aes(x = year, y = w_tariff, group = ExporterISO3, color = is_US)) +
@@ -364,15 +359,29 @@ plot_tariff <- ag_w %>%
        x = "Year",  y = "Weighted Δ ln(1+tariff)" )
 
 plot_tariff
-ggsave(filename = file.path(exp, "/plot/", "change_ln_AVE_US_others_tariff.png"),
+ggsave(filename = file.path(exp, "/plot/", "change_ln_AVE_US_others_Ag_tariff.png"),
        plot = plot_tariff, width = 10, height = 7, dpi = 300)
 
 
-test <- ag_w %>% group_by(ExporterISO3) %>%
-  filter(any(w_FE_bench > 5, na.rm = TRUE)) %>%
+# check how stable is the benchmark FE value  over time 
+names(dta)
+summary(dta$FE_bench)
+ # get at HS4 level FE
+
+FE_bench_hs4 <- dta %>%
+  filter(sector == "Ag") %>%
+  group_by(year, hs4) %>%
+  summarise(FE_bench_hs4 = mean(FE_bench, na.rm = TRUE), .groups = "drop_last") %>%
   ungroup()
 
+plot_bemchmark <- FE_bench_hs4 %>%
+  ggplot(aes(x = year, y = FE_bench_hs4, color= hs4)) +
+  geom_line(linewidth = 0.5) +
+  theme_trade +
+  labs(title = "Benchmark FE value in the Agricultural sector",
+       x = "Year",  y = "Benchmark FE" )
 
+plot_bemchmark
 
 
 ################################################################################

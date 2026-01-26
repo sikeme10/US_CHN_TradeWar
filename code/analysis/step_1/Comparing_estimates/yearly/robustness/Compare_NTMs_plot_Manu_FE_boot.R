@@ -34,7 +34,7 @@ exp <- "/data/sikeme/TRADE/US_CHN_TradeWar_git/output/Compare_values/yearly/robu
 # 1) Load data 
 ################################################################################
 
-US <- read_csv(paste0(exp, "US_ln_NTMs_base_2015.csv"))
+US <- read_csv(paste0(exp, "US_ln_NTMs_base_2015_FE_boot.csv"))
 
 ################################################################################
 
@@ -88,7 +88,7 @@ names(US_manu)
 
 # create weights for Chen et al at sector level and HS section
 
-# manu sector level: create weight in trade (hs6/total US export)
+# Manu sector level: create weight in trade (hs6/total US export)
 # weights for hs6 to aggregate to sector level
 US_manu_2015_hs2_chen <- US_manu %>%
   filter(year == 2015) %>%  group_by(hs2) %>%
@@ -144,86 +144,59 @@ theme_trade <- theme_minimal(base_size = 14) +
 # trade weighted and simple average trade costs :
 names(US_manu)
 
-US_manu_w <- US_manu %>%  filter(sector == "Manu") %>%  group_by(year) %>%
+US_manu_w <- US_manu %>%  filter(sector == "Manu") %>%  group_by(year, draw) %>%
   summarise( 
     w_FE        = weighted.mean(diff_ln_AVE_FE,        w = weight_sector, na.rm = TRUE),
-    w_FE_bench  = weighted.mean(diff_ln_AVE_FE_bench,  w = weight_sector, na.rm = TRUE),
-    w_sf        = weighted.mean(diff_ln_AVE_u,         w = weight_sector, na.rm = TRUE),# sf
-    w_sf_bench  = weighted.mean(diff_ln_AVE_u_bench,   w = weight_sector, na.rm = TRUE),
-    w_sf_tariff = weighted.mean(diff_ln_AVE_u_tariff,  w = weight_sector, na.rm = TRUE),
-    w_sf_tariff_bench = weighted.mean(diff_ln_AVE_u_tariff_bench,  w = weight_sector, na.rm = TRUE), # with exp
-    w_sf_exp        = weighted.mean(diff_ln_AVE_u_exp,        w = weight_sector, na.rm = TRUE),
-    w_sf_bench_exp  = weighted.mean(diff_ln_AVE_u_exp_bench,  w = weight_sector, na.rm = TRUE),
-
+    w_FE_bench  = weighted.mean(diff_ln_AVE_FE_bench,  w = weight_sector, na.rm = TRUE), # get quantiles 
+    # 95% CI (across draws)
+    FE_lo   = quantile(w_FE, 0.025, na.rm = TRUE),
+    FE_hi   = quantile(w_FE, 0.975, na.rm = TRUE),
+    
     w_chen      = weighted.mean(diff_ln_AVE_chen,      w = weight_sector_chen, na.rm = TRUE),
     w_tariff    = weighted.mean(diff_log_tariff_2015,  w = weight_sector, na.rm = TRUE),
+    
+    
     s_FE        = mean(diff_ln_AVE_FE,         na.rm = TRUE),
     s_FE_bench  = mean(diff_ln_AVE_FE_bench,   na.rm = TRUE),
-    s_sf        = mean(diff_ln_AVE_u,          na.rm = TRUE),
-    s_sf_bench  = mean(diff_ln_AVE_u_bench,    na.rm = TRUE),
-    s_sf_tariff = mean(diff_ln_AVE_u_tariff,   na.rm = TRUE),
-    s_sf_tariff_bench = mean(diff_ln_AVE_u_tariff_bench, na.rm = TRUE), 
-    s_sf_exp        = mean(diff_ln_AVE_u_exp,          na.rm = TRUE), # with exp
-    s_sf_bench_exp  = mean(diff_ln_AVE_u_exp_bench,    na.rm = TRUE),
 
     s_chen      = mean(diff_ln_AVE_chen,       na.rm = TRUE),# chen
     s_tariff    = mean(diff_log_tariff_2015,   na.rm = TRUE)  ) %>% ungroup() %>%
   mutate( w_chen = mean(w_chen, na.rm=TRUE),    s_chen = mean(s_chen, na.rm = TRUE))
 
+US_manu_q <- US_manu_w %>%  group_by(year) %>%
+  summarise(FE_mean = mean(w_FE, na.rm = TRUE),
+            FE_lo   = quantile(w_FE, 0.025, na.rm = TRUE),
+            FE_hi   = quantile(w_FE, 0.975, na.rm = TRUE),
+            
+            FEb_mean = mean(w_FE_bench, na.rm = TRUE),
+            chen_mean = mean(w_chen, na.rm = TRUE),
+            tariff_mean = mean(w_tariff, na.rm = TRUE),    .groups = "drop"  )
 
-plot <- ggplot(subset(US_manu_w)) +
-  geom_line(aes(x = year, y = w_FE,              color = "FE")) +
-  geom_line(aes(x = year, y = w_sf,              color = "sf")) +
-  geom_line(aes(x = year, y = w_sf_tariff,       color = "sf_tariff")) +
-  geom_line(aes(x = year, y = w_chen,            color = "Chen_et_al")) +
-  geom_line(aes(x = year, y = w_tariff,          color = "tariff")) +
-  # benchmark lines
-  geom_line(aes(x = year, y = w_FE_bench,        color = "FE_bench"),linetype = "dashed") +
-  geom_line(aes(x = year, y = w_sf_bench,        color = "sf_bench"),linetype = "dashed") +
-  geom_line(aes(x = year, y = w_sf_tariff_bench, color = "sf_tariff_bench"), linetype = "dashed") +
+
+
+
+plot <- ggplot(US_manu_q, aes(x = year)) +
+  
+  ## FE CI
+  geom_ribbon(  aes(ymin = FE_lo, ymax = FE_hi), fill = "blue", alpha = 0.2  ) +
+  geom_line(aes(y = FE_mean, color = "FE"),    linewidth = 1  ) +
+  
+  ## Tariff
+  geom_line(aes(y = tariff_mean, color = "tariff"),   linewidth = 1  ) +
+  
+  ## Benchmark
+  geom_line(  aes(y = FEb_mean, color = "FE_bench"),  linetype = "dashed",  linewidth = 1  ) +
+  
   scale_color_manual(
-    values = c( "FE"  = "blue",  "sf" = "darkorange",      "sf_tariff" = "red", "tariff" = "darkgreen",
-      "FE_bench" = "blue", "sf_bench" = "darkorange",  "sf_tariff_bench" = "red" ),
-    labels = c(  "FE" = "FE",    "sf" = "SF",    "sf_tariff" = "Tariff-adjusted SF",
-      "sf_exp" = "SF (exp)",      "tariff" = "Tariff",
-      "FE_bench" = "FE (benchmark)",  "sf_bench" = "SF (benchmark)",
-      "sf_tariff_bench" = "Tariff-adjusted SF (benchmark)",    "sf_bench_exp" = "SF exp (benchmark)"   ),    name = "Variables"  ) +
-  labs(    title = "Weighted average Δ ln(1+AVE) for manufacturing sector (relative to 2015)",
+    values = c( "FE" = "blue","tariff" = "darkgreen", "FE_bench" = "blue"),    name = "Variables"  ) +
+  labs(  title = "Weighted average Δ ln(1+AVE), Manufacturing (relative to 2015)",
     x = "Year",    y = "Weighted Δ ln(1+AVE)"  ) +
- # scale_y_continuous(limits = c(-0.1, 0.25))+
   theme_trade
+
 plot
-
-ggsave(filename = file.path(exp, "plot/", "Compare_ln_AVE_Manu_weight.png"),plot = plot, width = 8, height = 5, dpi = 300)
-
+ggsave(filename = file.path(exp, "plot/", "Compare_ln_AVE_Manu_weight_boot.png"),plot = plot, width = 8, height = 5, dpi = 300)
 
 
-
-
-# simple average 
-plot <- ggplot(subset(US_manu_w)) +
-  geom_line(aes(x = year, y = s_FE,              color = "FE")) +
-  geom_line(aes(x = year, y = s_sf,              color = "sf")) +
-  geom_line(aes(x = year, y = s_sf_tariff,       color = "sf_tariff")) +
-  # geom_line(aes(x = year, y = w_chen,            color = "Chen_et_al")) +
-  geom_line(aes(x = year, y = s_tariff,          color = "tariff")) +
-  # benchmark lines
-  geom_line(aes(x = year, y = s_FE_bench,        color = "FE_bench"),linetype = "dashed") +
-  geom_line(aes(x = year, y = s_sf_bench,        color = "sf_bench"),linetype = "dashed") +
-  geom_line(aes(x = year, y = s_sf_tariff_bench, color = "sf_tariff_bench"), linetype = "dashed") +
-  scale_color_manual(
-    values = c( "FE"  = "blue", "sf" = "darkorange",  "sf_tariff" = "red",      
-                "tariff" = "darkgreen",  "FE_bench" = "blue", "sf_bench" = "darkorange",
-                "sf_tariff_bench"  = "red"),
-    labels = c(  "FE" = "FE", "sf"   = "SF", "sf_tariff" = "Tariff-adjusted SF",
-                 "tariff" = "Tariff", "FE_bench" = "FE (benchmark)",
-                 "sf_bench" = "SF (benchmark)",  "sf_tariff_bench"  = "Tariff-adjusted SF (benchmark)"  ),
-    name = "Variables"  ) +
-  labs(  title = "Simple average Δ ln(1+AVE) for manufacturing sector (relative to 2015)",
-    x = "Date",    y = "Simple average Δ ln(1+AVE)"  ) +
-  theme_trade
-plot
-ggsave(filename = file.path(exp, "plot/", "Compare_ln_AVE_Manu_simple.png"),plot = plot, width = 8, height = 5, dpi = 300)
 
 
 
@@ -236,87 +209,69 @@ ggsave(filename = file.path(exp, "plot/", "Compare_ln_AVE_Manu_simple.png"),plot
 
 names(US_manu)
 US_manu_w_sect <- US_manu %>% filter(sector == "Manu") %>%
-  group_by(year,  hs_section) %>% summarise( 
+  group_by(year, draw,  hs_section) %>% summarise( 
     w_FE        = weighted.mean(diff_ln_AVE_FE,        w = weight_hs_sect, na.rm = TRUE),
     w_FE_bench  = weighted.mean(diff_ln_AVE_FE_bench,  w = weight_hs_sect, na.rm = TRUE),
-    w_sf        = weighted.mean(diff_ln_AVE_u,         w = weight_hs_sect, na.rm = TRUE),
-    w_sf_bench  = weighted.mean(diff_ln_AVE_u_bench,   w = weight_hs_sect, na.rm = TRUE),
-    w_sf_tariff = weighted.mean(diff_ln_AVE_u_tariff,  w = weight_hs_sect, na.rm = TRUE),
-    w_sf_tariff_bench = weighted.mean(diff_ln_AVE_u_tariff_bench,  w = weight_hs_sect, na.rm = TRUE),
+   
     w_chen      = weighted.mean(diff_ln_AVE_chen,      w = weight_hs_sect_Chen, na.rm = TRUE),
     w_tariff    = weighted.mean(diff_log_tariff_2015,  w = weight_hs_sect, na.rm = TRUE),
     s_FE        = mean(diff_ln_AVE_FE,         na.rm = TRUE),
     s_FE_bench  = mean(diff_ln_AVE_FE_bench,   na.rm = TRUE),
-    s_sf        = mean(diff_ln_AVE_u,          na.rm = TRUE),
-    s_sf_bench  = mean(diff_ln_AVE_u_bench,    na.rm = TRUE),
-    s_sf_tariff = mean(diff_ln_AVE_u_tariff,   na.rm = TRUE),
-    s_sf_tariff_bench = mean(diff_ln_AVE_u_tariff_bench, na.rm = TRUE),
+    
     s_chen      = mean(diff_ln_AVE_chen,       na.rm = TRUE),
     s_tariff    = mean(diff_log_tariff_2015,   na.rm = TRUE) ,
     .groups = "drop"  ) %>%  group_by(hs_section) %>%
   mutate(  w_chen = mean(w_chen, na.rm = TRUE),   s_chen = mean(s_chen, na.rm = TRUE)  )
 
+US_manu_q_sect <- US_manu_w_sect %>%  group_by(year, hs_section) %>%
+  summarise(  FE_mean = mean(w_FE, na.rm = TRUE),
+    FE_lo   = quantile(w_FE, 0.025, na.rm = TRUE),
+    FE_hi   = quantile(w_FE, 0.975, na.rm = TRUE),
+    FEb_mean = mean(w_FE_bench, na.rm = TRUE),
+    tariff_mean = mean(w_tariff, na.rm = TRUE),
+    # optional: Chen CI too (comment out if you don't want it)
+    chen_mean = mean(w_chen, na.rm = TRUE),
+    chen_lo   = quantile(w_chen, 0.025, na.rm = TRUE),
+    chen_hi   = quantile(w_chen, 0.975, na.rm = TRUE),    .groups = "drop"  )
 
 
-plot <- ggplot(subset(US_manu_w_sect)) +
-  geom_line(aes(x = year, y = w_FE,              color = "FE")) +
-  geom_line(aes(x = year, y = w_sf,              color = "sf")) +
-  geom_line(aes(x = year, y = w_sf_tariff,       color = "sf_tariff")) +
-  # geom_line(aes(x = year, y = w_chen,            color = "Chen_et_al")) +
-  geom_line(aes(x = year, y = w_tariff,          color = "tariff")) +
-  # benchmark lines
-  geom_line(aes(x = year, y = w_FE_bench,        color = "FE_bench"),linetype = "dashed") +
-  geom_line(aes(x = year, y = w_sf_bench,        color = "sf_bench"),linetype = "dashed") +
-  geom_line(aes(x = year, y = w_sf_tariff_bench, color = "sf_tariff_bench"), linetype = "dashed") +
+plot <- ggplot(US_manu_q_sect, aes(x = year)) +
+  
+  # FE CI band
+  geom_ribbon(aes(ymin = FE_lo, ymax = FE_hi), fill = "blue", alpha = 0.2) +
+  geom_line(aes(y = FE_mean, color = "FE"), linewidth = 1) +
+  
+  # tariff
+  geom_line(aes(y = tariff_mean, color = "tariff"), linewidth = 1) +
+  
+  # benchmark (dashed)
+  geom_line(aes(y = FEb_mean, color = "FE_bench"), linetype = "dashed", linewidth = 1) +
+  
+  # optional: Chen CI + line
+  geom_line(aes(y = chen_mean, color = "Chen_et_al"), linewidth = 1) +
+  
   scale_color_manual(
-    values = c( "FE"  = "blue", "sf" = "darkorange",  "sf_tariff" = "red",      
-                "tariff" = "darkgreen",  "FE_bench" = "blue", "sf_bench" = "darkorange",
-                "sf_tariff_bench"  = "red"),
-    labels = c(  "FE" = "FE", "sf"   = "SF", "sf_tariff" = "Tariff-adjusted SF",
-                 "tariff" = "Tariff", "FE_bench" = "FE (benchmark)",
-                 "sf_bench" = "SF (benchmark)",  "sf_tariff_bench"  = "Tariff-adjusted SF (benchmark)"  ),
+    values = c("FE" = "blue", "tariff" = "darkgreen", "FE_bench" = "blue", "Chen_et_al" = "purple"),
+    labels = c("FE" = "FE", "tariff" = "Tariff", "FE_bench" = "FE (benchmark)", "Chen_et_al" = "Chen et al."),
     name = "Variables"  ) +
-  facet_wrap(~hs_section,  scales = "free_y")+
-  labs(  title = "Weighted average Δ ln(1+AVE) for manufacturing sector /n by HS section (relative to 2015) ",
-         x = "Date",
-         y = "Weighted Δ ln(1+AVE)"  )+
+  facet_wrap(~ hs_section, scales = "free_y") +
+  labs(   title = "Weighted average Δ ln(1+AVE), Manufacturing by HS section (relative to 2015)",
+    x = "Year",    y = "Weighted Δ ln(1+AVE)"  ) +
   theme_trade
+  
 plot
-ggsave(filename = file.path(exp, "plot/", "Compare_ln_AVE_Manu_hs_sect_weight.png"),plot = plot, width = 9, height = 5, dpi = 300)
 
-# simple averages
-plot <- ggplot(subset(US_manu_w_sect)) +
-  geom_line(aes(x = year, y = s_FE,              color = "FE")) +
-  geom_line(aes(x = year, y = s_sf,              color = "sf")) +
-  geom_line(aes(x = year, y = s_sf_tariff,       color = "sf_tariff")) +
-  # geom_line(aes(x = year, y = w_chen,            color = "Chen_et_al")) +
-  geom_line(aes(x = year, y = s_tariff,          color = "tariff")) +
-  # benchmark lines
-  geom_line(aes(x = year, y = s_FE_bench,        color = "FE_bench"),linetype = "dashed") +
-  geom_line(aes(x = year, y = s_sf_bench,        color = "sf_bench"),linetype = "dashed") +
-  geom_line(aes(x = year, y = s_sf_tariff_bench, color = "sf_tariff_bench"), linetype = "dashed") +
-  scale_color_manual(
-    values = c( "FE"  = "blue", "sf" = "darkorange",  "sf_tariff" = "red",      
-                "tariff" = "darkgreen",  "FE_bench" = "blue", "sf_bench" = "darkorange",
-                "sf_tariff_bench"  = "red"),
-    labels = c(  "FE" = "FE", "sf"   = "SF", "sf_tariff" = "Tariff-adjusted SF",
-                 "tariff" = "Tariff", "FE_bench" = "FE (benchmark)",
-                 "sf_bench" = "SF (benchmark)",  "sf_tariff_bench"  = "Tariff-adjusted SF (benchmark)"  ),
-    name = "Variables"  ) +
-  facet_wrap(~hs_section)+
-  labs(  title = "Simple average Δ ln(1+AVE) for manufacturing sector by HS section (relative to 2015) ",
-         x = "Date",
-         y = "Simple average Δ ln(1+AVE)"  ) +
-  theme_trade
-plot
-ggsave(filename = file.path(exp, "plot/", "Compare_ln_AVE_Manu_hs_sect_simple.png"),plot = plot, width = 8, height = 5, dpi = 300)
+ggsave(filename = file.path(exp, "plot/", "Compare_ln_AVE_Manu_hs_sect_weight_boot.png"),plot = plot, width = 9, height = 5, dpi = 300)
+
+
+
 
 ###################################################
 # at HS 2 level
 
-names(US_manu)
-US_manu_w_hs2 <- US_manu %>% filter(sector == "Manu") %>%
-  group_by(year, hs2) %>% summarise( 
+names(US_ag)
+US_ag_w_hs2 <- US_ag %>% filter(sector == "Ag") %>%
+  group_by(date, hs2) %>% summarise( 
     w_FE        = weighted.mean(diff_ln_AVE_FE,        w = weight_hs_sect,       na.rm = TRUE),
     w_sf        = weighted.mean(diff_ln_AVE_u,         w = weight_hs_sect,       na.rm = TRUE),
     w_sf_tariff = weighted.mean(diff_ln_AVE_u_tariff,  w = weight_hs_sect,       na.rm = TRUE),
@@ -330,7 +285,7 @@ US_manu_w_hs2 <- US_manu %>% filter(sector == "Manu") %>%
     .groups = "drop"  ) %>%  group_by(hs2) %>%
   mutate(  w_chen = mean(w_chen, na.rm = TRUE),   s_chen = mean(s_chen, na.rm = TRUE)  )
 
-unique(US_manu_w_hs2$hs2)
+unique(US_ag_w_hs2$hs2)
 HS <- c( 2, 8,10, 12,15, 16, 22,23)
 HS <- c(1:9)
 HS <- c(11:23)
@@ -354,7 +309,7 @@ plot <- ggplot(subset(US_ag_w_hs2, hs2 %in% HS)) +
       labels = c(     "FE"        = "FE",      "sf"        = "SF",      "sf_tariff" = "Tariff-adjusted SF",
       "tariff"    = "Tariff"    ),    name = "Variables"  ) +
   facet_wrap(  ~ hs2,  scales   = "free_y",  labeller = as_labeller(hs2_names)  ) +
-  labs( title = "Weighted average Δ ln(1+AVE) for manufacturing sector by HS section (relative to 2015)",
+  labs( title = "Weighted average Δ ln(1+AVE) for agricultural sector by HS section (relative to 2015)",
     x = "Date",    y = "Weighted Δ ln(1+AVE)"  ) +
   theme_minimal(base_size = 14) +
   theme(panel.spacing.x = unit(2, "lines"),
