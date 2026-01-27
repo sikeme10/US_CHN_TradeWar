@@ -124,8 +124,7 @@ US_ag <- US_ag %>% filter(year>2015)
 
   # create a theme for ggplot 
 theme_trade <- theme_minimal(base_size = 14) +
-  theme(
-    panel.spacing.x = unit(1.2, "lines"),
+  theme(    panel.spacing.x = unit(1.2, "lines"),
     plot.title = element_text(size = 11, hjust = 0.5),
     panel.background = element_rect(fill = "white", color = NA),
     plot.background  = element_rect(fill = "white", color = NA),
@@ -134,8 +133,7 @@ theme_trade <- theme_minimal(base_size = 14) +
     axis.title.x = element_text(size = 11),
     axis.title.y = element_text(size = 11),
     legend.text  = element_text(size = 10),
-    legend.title = element_text(size = 10)
-  )
+    legend.title = element_text(size = 10)  )
 
 ################################################################################
 # a) sector level 
@@ -315,12 +313,15 @@ plot <- ggplot(subset(US_ag_w_sect)) +
 plot
 ggsave(filename = file.path(exp, "plot/", "Compare_ln_AVE_Ag_hs_sect_simple.png"),plot = plot, width = 8, height = 5, dpi = 300)
 
-###################################################
-# at HS 2 level
+
+################################################################################
+# a) HS 2 level level
+################################################################################
+
 
 names(US_ag)
 US_ag_w_hs2 <- US_ag %>% filter(sector == "Ag") %>%
-  group_by(date, hs2) %>% summarise( 
+  group_by(year, hs2) %>% summarise( 
     w_FE        = weighted.mean(diff_ln_AVE_FE,        w = weight_hs_sect,       na.rm = TRUE),
     w_sf        = weighted.mean(diff_ln_AVE_u,         w = weight_hs_sect,       na.rm = TRUE),
     w_sf_tariff = weighted.mean(diff_ln_AVE_u_tariff,  w = weight_hs_sect,       na.rm = TRUE),
@@ -348,6 +349,8 @@ hs2_names <- c(
   "16" = "Prep. of meat, fish etc. (HS 16)",
   "22" = "Beverages, spirits & vinegar (HS 22)",
   "23" = "Residues & animal feed (HS 23)")
+
+
 plot <- ggplot(subset(US_ag_w_hs2, hs2 %in% HS)) +
   geom_line(aes(x = date, y = w_FE,        color = "FE")) +
   geom_line(aes(x = date, y = w_sf,        color = "sf")) +
@@ -360,18 +363,7 @@ plot <- ggplot(subset(US_ag_w_hs2, hs2 %in% HS)) +
   facet_wrap(  ~ hs2,  scales   = "free_y",  labeller = as_labeller(hs2_names)  ) +
   labs( title = "Weighted average Δ ln(1+AVE) for agricultural sector by HS section (relative to 2015)",
     x = "Date",    y = "Weighted Δ ln(1+AVE)"  ) +
-  theme_minimal(base_size = 14) +
-  theme(panel.spacing.x = unit(2, "lines"),
-    plot.title      = element_text(size = 11, hjust = 0.5),
-    panel.background = element_rect(fill = "white", color = NA),
-    plot.background  = element_rect(fill = "white", color = NA),
-    axis.text.x     = element_text(size = 9),
-    axis.text.y     = element_text(size = 9),
-    axis.title.x    = element_text(size = 10),
-    axis.title.y    = element_text(size = 10),
-    legend.text     = element_text(size = 9),
-    legend.title    = element_text(size = 9)  )
-
+  theme_trade
 plot
 ggsave(filename = file.path(exp, "plot/", "Compare_ln_AVE_Ag_hs2_weighted.png"),plot = plot, width = 8, height = 5, dpi = 300)
 
@@ -412,6 +404,8 @@ hs2_desc <- data.frame(
     "Tobacco and substitutes"  ),  stringsAsFactors = FALSE)
 hs2_desc$hs2 <- as.numeric(hs2_desc$hs2)
 summary <- summary %>%  left_join(hs2_desc, by = "hs2")
+
+
 write_csv(summary, file.path(exp,  "hs2_summary.csv"))
 library(writexl)
 write_xlsx( list("hs2_summary" = summary),  path = file.path(exp, "hs2_summary.xlsx"))
