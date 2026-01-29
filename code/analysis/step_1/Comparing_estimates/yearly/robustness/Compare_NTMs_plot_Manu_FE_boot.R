@@ -305,10 +305,12 @@ US_manu_w_hs2 <- US_manu %>%  filter(sector == "Manu") %>%  group_by(year, draw,
 
 summary <- US_manu_w_hs2 %>%  filter(year %in% c(2018,2019)) %>% group_by(hs2) %>%
   summarise(FE_mean = mean(w_FE, na.rm = TRUE),
+            FE_med = median(w_FE, na.rm = TRUE),
             FE_lo   = quantile(w_FE, 0.025, na.rm = TRUE),
             FE_hi   = quantile(w_FE, 0.975, na.rm = TRUE),
             
             FEbench_mean = mean(w_FE_bench, na.rm = TRUE),
+            FEbench_med = median(w_FE_bench, na.rm = TRUE),
             FEbench_lo   = quantile(w_FE_bench, 0.025, na.rm = TRUE),
             FEbench_hi   = quantile(w_FE_bench, 0.975, na.rm = TRUE),
             
