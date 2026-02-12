@@ -121,6 +121,34 @@ dta <- dta %>% mutate(log_tariff = log(1+Applied_tariff/100))
 # # 5) Fixed effect approach : In a loop for each HS 2 level: With fixed effeccts 
 # ##############################################################################
 
+names(dta)
+
+dta <- dta %>% mutate(trade_war = if_else(year %in% c(2018:2019) & ExporterISO3 == "USA", 1,0 ),
+                      US = if_else(ExporterISO3 == "USA", 1,0 ))
+table(dta$ExporterISO3, dta$trade_war)
+table(dta$year, dta$trade_war)
+colSums(is.na(dta))
+
+reg <- fepois(Trade_value_USD ~ Exporter_GDP_current_USD + 
+                Exporter_Gross_Cap_formation_current_USD + Exporter_Ag_land_K2 + 
+                Exporter_Exchange_rate_LCU_per_USD + log_tariff + 
+                contig + dist + comlang_off + Colonial_ties + rta + fta_and_eia +
+                Importer_GDP + Exporter_wto + Exporter_eu   | 
+                ExporterISO3^hs6_H4 + hs6_H5 + trade_war^hs6_H4,
+              data = dta,
+              vcov = ~ ExporterISO3)
+
+reg <- fepois(Trade_value_USD ~ Exporter_GDP_current_USD + 
+                Exporter_Gross_Cap_formation_current_USD + Exporter_Ag_land_K2 + 
+                Exporter_Exchange_rate_LCU_per_USD + log_tariff + 
+                contig + dist + comlang_off + Colonial_ties + rta + fta_and_eia +
+                Importer_GDP + Exporter_wto + Exporter_eu   | 
+                ExporterISO3^hs6_H4 + hs6_H5 + US^hs6_H4^year,
+              data = dta,
+              vcov = ~ ExporterISO3)
+
+
+
 # a) with only exporter*HS4*year fixed effects
 
 library(dplyr)
