@@ -169,7 +169,8 @@ library(fixest)
 library(readr)
 
 set.seed(123)
-B <- 50
+# B <- 50
+B <- 100
 
 unique_HS2 <- unique(dta$hs2)
 
@@ -295,7 +296,8 @@ library(fixest)
 library(readr)
 
 set.seed(123)
-B <- 50
+#B <- 50
+B <- 100
 
 unique_HS2 <- unique(dta$hs2)
 

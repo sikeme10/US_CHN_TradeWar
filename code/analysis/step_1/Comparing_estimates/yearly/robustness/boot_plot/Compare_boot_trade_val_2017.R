@@ -180,9 +180,16 @@ df <- subset(US_hs4, year %in% c(2018, 2019))
 yl <- range(df$change_trade_USD, na.rm = TRUE)
 
 common_theme <- theme_minimal() +
-  theme(legend.position = "bottom",  plot.title = element_text(size = 11),
-    panel.background = element_rect(fill = "white", color = NA),
-    plot.background  = element_rect(fill = "white", color = NA)  )
+  theme(    panel.spacing.x = unit(1.2, "lines"),
+            plot.title = element_text(size = 11, hjust = 0.5),
+            panel.background = element_rect(fill = "white", color = NA),
+            plot.background  = element_rect(fill = "white", color = NA),
+            axis.text.x = element_text(size = 9),
+            axis.text.y = element_text(size = 9),
+            axis.title.x = element_text(size = 11),
+            axis.title.y = element_text(size = 11),
+            legend.text  = element_text(size = 10),
+            legend.title = element_text(size = 10)  )
 # 1) Tariff (LEFT)
 p_tariff <- ggplot(df, aes(x = mean_diff_log_tariff_2017, y = change_trade_USD)) +
   geom_point(size = 2, alpha = 0.6) +
@@ -290,8 +297,8 @@ ggsave(filename = paste0(exp , "plot/tariff_AVE_perc_trade_changes_2018_2019_bas
 
 
 ###################################################################################
-
 # Looking at distribution by percentage change in trade 
+###################################################################################
 
 names(US_hs4)
 
@@ -299,39 +306,31 @@ US_hs4 <- US_hs4 %>%
   mutate( above_50 = if_else(perc_change_trade_USD_bis < -50, 1, 0),
     above_50 = factor(above_50, levels = c(0, 1),   labels = c(">= -50%", "< -50%"))  ,
     change_cat = case_when(
-      perc_change_trade_USD_bis > 0                      ~ "Positive",
+      perc_change_trade_USD_bis > 0  ~ ">0",
       perc_change_trade_USD_bis <= 0  & perc_change_trade_USD_bis > -25  ~ "0 to -25",
       perc_change_trade_USD_bis <= -25 & perc_change_trade_USD_bis > -50  ~ "-25 to -50",
       perc_change_trade_USD_bis <= -50 & perc_change_trade_USD_bis > -75  ~ "-50 to -75",
       perc_change_trade_USD_bis <= -75 & perc_change_trade_USD_bis >= -100 ~ "-75 to -100",
       TRUE ~ NA_character_  ) ,
-    change_cat = factor(change_cat, levels = c( "Positive", "0 to -25", "-25 to -50",
+    change_cat = factor(change_cat, levels = c( ">0", "0 to -25", "-25 to -50",
         "-50 to -75","-75 to -100"),ordered = TRUE  ))
 table(US_hs4$above_50)
+table(US_hs4$change_cat)
 
-
-# binary for 50
-plot <- ggplot(subset(US_hs4, !is.na(above_50)), aes(x = mean_FE_wmean_w, color = above_50)) +
-  geom_density(linewidth = 1) +
-  common_theme +
-  labs(  x = "Weighted mean AVE change",y = "Density",color = "Trade drop"  )
-plot
-
-plot <- ggplot(subset(US_hs4, !is.na(above_50)), aes(x = mean_FE_wmean_w, fill = above_50)) +
-  geom_histogram(position = "identity", alpha = 0.4, bins = 60) +
-  common_theme +
-  labs( x = "Weighted mean AVE change",   y = "Count",  fill = "Trade drop" )
-plot
-
-################
+#################################################################################
 
 # multiple categories
 plot_w <- ggplot(subset(US_hs4, !is.na(above_50)), aes(x = mean_FE_wmean_w, color = change_cat)) +
   geom_density(linewidth = 1) +
   coord_cartesian(xlim= c(-5,25))+
   common_theme +
-  labs(  x = "AVE change (FE demean)",y = "Density",color = "Trade change relative to 2017"  )
+  labs(  title = "Distribution of Changes in AVEs Imposed by CHN on U.S.",, x = " Δ ln(1+T_US,CHN) (FE demean)",
+         y = "Density",color = "% Change U.S. Exports to \n CHN (relative to 2017)" ,
+         )
 plot_w
+ggsave(filename = paste0(exp , "plot/distribution/distribution_AVEs_perc_change_trade_2017_wmean.png"),
+       plot = plot_w, width = 12,height = 6, units = "in", dpi = 300,bg = "white")
+
 
 plot <- ggplot(subset(US_hs4, !is.na(above_50)), aes(x = mean_FE_w, color = change_cat)) +
   geom_density(linewidth = 1) +
@@ -368,6 +367,10 @@ plot <- ggplot(subset(US_hs4, !is.na(change_cat)), aes(x = mean_FE_wmean_w, fill
   labs( x = "Weighted mean AVE change",   y = "Count",  fill = "Trade drop" )
 plot
 
+
+
+###################################################################################
+# regressions
 ###################################################################################
 
 reg <- lm(  change_trade_USD ~ mean_FE_w + mean_diff_log_tariff_2017 ,

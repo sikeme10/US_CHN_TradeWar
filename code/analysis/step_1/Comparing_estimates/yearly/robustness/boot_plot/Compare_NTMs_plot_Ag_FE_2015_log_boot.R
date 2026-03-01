@@ -36,8 +36,8 @@ exp <- "/data/sikeme/TRADE/US_CHN_TradeWar_git/output/Compare_values/yearly/robu
 
 US <- read_csv(paste0(exp, "US_ln_NTMs_base_2015_FE_boot.csv"))
 
-################################################################################
 
+################################################################################
 # For US ag: 
 
 # create simple average change and weighted average change in 
@@ -49,7 +49,9 @@ unique(US_ag$hs2)
 unique(US_ag$hs_section)
 length(unique(US_ag$hs6_H5))
 
-
+################################################################################
+# Construct weights 
+################################################################################
 
 # 1) Base 2015 (draw==1) totals at hs6 (this is the "atom" you use everywhere)
 base2015_hs6 <- US_ag %>% filter(year == 2015, draw == 1) %>% group_by(hs6_H5, hs_section, hs2, hs4) %>%
@@ -137,6 +139,7 @@ US_ag <-left_join(US_ag, US_ag_2015_hs_sect_chen )
 ################################################################################
 
 US_ag <- US_ag %>% filter(year>2015)
+summary(US_ag)
 
 ################################################################################
 # 4) Plot change in ln(1+AVE)

@@ -21,9 +21,9 @@ library(frontier)
 ################################################################################
 # USER CHOICES (change these only)
 ################################################################################
-BASE_YEAR <- 2015
-# SECTOR    <- "Ag"   # e.g. "Ag", "Manuf", etc.
- SECTOR    <- "Manu" 
+BASE_YEAR <- 2017
+SECTOR    <- "Ag"   # e.g. "Ag", "Manuf", etc.
+# SECTOR    <- "Manu" 
 
 
 # nice label used in titles/filenames
@@ -253,7 +253,7 @@ ggsave( filename = file.path(OUT_PLOT_DIR, paste0("Compare_ln_AVE_", SECTOR, "_s
 p_sector <- ggplot(US_dta_q, aes(x = year)) +
   geom_line(aes(y = FEm_mean,   color = "FE_demeaned"), linewidth = 1) +
   geom_line(aes(y = tariff_mean,color = "tariff"),      linewidth = 1) +
-  geom_line(aes(y = chen_mean,  color = "Chen_et_al"),  linetype = "dashed", linewidth = 1) +
+  # geom_line(aes(y = chen_mean,  color = "Chen_et_al"),  linetype = "dashed", linewidth = 1) +
   scale_color_manual(values = legend_colors,
                      breaks = legend_breaks,
                      labels = legend_labels,
@@ -337,7 +337,7 @@ ggsave(  filename = file.path(OUT_PLOT_DIR, paste0("Compare_ln_AVE_", SECTOR, "_
 p_hs_sect <- ggplot(US_dta_q_sect, aes(x = year)) +
   geom_line(aes(y = FEm_mean,    color = "FE_demeaned"), linewidth = 1) +
   geom_line(aes(y = tariff_mean, color = "tariff"),      linewidth = 1) +
-  geom_line(aes(y = chen_mean,  color = "Chen_et_al"),  linetype = "dashed", linewidth = 1) +
+  # geom_line(aes(y = chen_mean,  color = "Chen_et_al"),  linetype = "dashed", linewidth = 1) +
   scale_color_manual(values = legend_colors,
                      breaks = legend_breaks,
                      labels = legend_labels,
