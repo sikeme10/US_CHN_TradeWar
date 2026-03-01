@@ -19,7 +19,7 @@ library(vroom)
 
 rm(list=ls())
 # Set directory
-setwd("/data/sikeme/TRADE/NTM_trade_war/data")
+setwd("/data/sikeme/TRADE/US_CHN_TradeWar_git/data")
 getwd()
 
 
@@ -28,8 +28,8 @@ getwd()
 
 
 library(haven)
-dta_schott <- read_csv("/data/sikeme/TRADE/NTM_trade_war/data/crosswalk/schott/naics_HS_schott_2012.csv")
-dta_D <- read_csv("/data/sikeme/TRADE/NTM_trade_war/data/crosswalk/HS6_NAICS_Diane/NAICS_HS_2012.csv")
+dta_schott <- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/data/crosswalk/schott/naics_HS_schott_2012.csv")
+dta_D <- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/data/crosswalk/HS6_NAICS_Diane/NAICS_HS_2012.csv")
 
 
 

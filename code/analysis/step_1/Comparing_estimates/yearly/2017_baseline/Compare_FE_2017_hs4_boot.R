@@ -48,7 +48,8 @@ table(trade$ExporterISO3)
 fe_boot <- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/output/FE/yearly/boot/gravity_pois_FE_boot_fixef.csv")
 #LOAD POISSON WITH LOG LINEAR
 fe_log_boot <- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/output/FE/yearly/boot/gravity_logOLS_FE_boot_fixef_drop0.csv")
-unique()
+names(fe_boot)
+unique(fe_boot$draw)
 
 
 ################################################################################
@@ -60,51 +61,44 @@ unique()
 # create fe_id value for FE 
 names(trade)
 trade <- trade %>%  mutate(hs2 = substr( hs6_H5 ,1,2), hs4 = substr( hs6_H5 ,1,4))
-trade<- trade %>% mutate(log_tariff = log(1+Applied_tariff/100))
 trade <- trade %>% mutate(fe_id = interaction(year, ExporterISO3, hs4, drop = TRUE))
-colSums(is.na(trade))
+
+
+# aggregate trade data at hs4: (by doing weighted average of )
+trade_hs4 <- trade %>%  group_by(year, hs2, hs4, ExporterISO3, ImporterISO3, fe_id) %>%
+  summarise(Trade_value_USD = sum(Trade_value_USD, na.rm = TRUE),  .groups = "drop" )
 
 # balance trade data to get 50 draws on each (repeat each of the values  50 times for draw to appear to get balanced data )
-trade_with_draws <- trade %>%  tidyr::crossing(draw = 1:50)
+D <- length(unique(fe_boot$draw))
+D
+trade_with_draws <- trade_hs4 %>%  tidyr::crossing(draw = 1:D)
 colSums(is.na(trade_with_draws))
 table(trade_with_draws$draw)
+summary(trade_hs4)
+
+
 
 
 
 
 ################################################################################
+# merge trade data and NTMs \
 
 # select data we want 
 names(fe_boot)
 names(fe_log_boot)
 
-
-
 # rename vars
 fe_log_boot <- fe_log_boot %>% rename(FE_log = FE)
 
 # merge the two 
-
 dta <- full_join(fe_boot, fe_log_boot)
+
+names(trade_with_draws)
 dta <- full_join(trade_with_draws, dta)
 table(dta$year)
-
-dta <- dta %>% select(year,hs2, hs4, hs6_H5, ExporterISO3, ImporterISO3, Trade_value_USD, 
-                      Applied_tariff,log_tariff, draw, fe_id, FE,FE_log)
-colSums(is.na(dta))
-
-
-# merge all data 
-
-
-# create a log of tariff 
-summary(dta$log_tariff)
-summary(dta$Applied_tariff)
 names(dta)
-
-# drop Nas
-# dta <- dta %>%  filter(!if_all(c(FE,FE_log), is.na))
-
+colSums(is.na(dta))
 
 
 ################################################################################
@@ -116,10 +110,10 @@ summary(dta$FE)
 summary(dta$FE_log)
 
 # add HS section for each HS6 product code 
-class(dta$hs6_H5)
-unique(nchar(dta$hs6_H5))
-unique(dta$hs2)
-table(dta$hs2)
+# class(dta$hs6_H5)
+# unique(nchar(dta$hs6_H5))
+# unique(dta$hs2)
+# table(dta$hs2)
 
 dta$hs2 <- as.numeric(dta$hs2)
 dta <- dta %>% mutate(
@@ -149,11 +143,11 @@ dta <- dta %>% mutate(
     hs_section %in% 1:4   ~ "Ag",
     hs_section %in% 5:20  ~ "Manu",
     TRUE                  ~ "Other"))
-table(dta$sector)
-table(dta$hs_section)
-table(dta$hs2)
-table(dta$hs2, dta$hs_section)
-names(dta)
+# unique(dta$sector)
+# unique(dta$hs_section)
+# unique(dta$hs2)
+# table(dta$hs2, dta$hs_section)
+
 
 ################################################################################
 # create weights for trade from other countries 
@@ -174,7 +168,7 @@ colSums(is.na(dta))
 summary(dta$share_hs4_trade)
 
 test <- dta %>% filter(is.na(share_hs4_trade))
-
+  
 ################################################################################
 # Changes in AVEs
 ################################################################################
@@ -182,14 +176,14 @@ test <- dta %>% filter(is.na(share_hs4_trade))
 
 # If we want to create a benchmark for each values 
 # we take the max value of the FE and u among all exporter for a specific product, month, year
-dta <- dta %>% group_by(year, draw, hs6_H5) %>%
+dta <- dta %>% group_by(year, draw, hs4) %>%
   mutate(
     FE_bench = {
-      m <- max(FE, na.rm = TRUE)
+      m <- max(FE[ExporterISO3 != "USA"], na.rm = TRUE)
       ifelse(is.infinite(m), NA_real_, m)
     },
     FE_log_bench = {
-      m <- max(FE_log, na.rm = TRUE)
+      m <- max(FE_log[ExporterISO3 != "USA"], na.rm = TRUE)
       ifelse(is.infinite(m), NA_real_, m)
     },
     # Weighted mean excluding USA
@@ -202,8 +196,7 @@ dta <- dta %>% group_by(year, draw, hs6_H5) %>%
       m <- weighted.mean(FE_log[ExporterISO3 != "USA"],  w = share_hs4_trade[ExporterISO3 != "USA"], na.rm = TRUE)
       ifelse(is.nan(m), NA_real_, m)
     }
-  ) %>% 
-  ungroup()
+  ) %>%   ungroup()
 summary(dta$FE_bench)
 summary(dta$FE_log_bench)
 summary(dta$FE_wmean)
@@ -213,19 +206,16 @@ summary(dta$FE_wmean)
 
 
 # save values of FE in pre trade war period, but also for the benchmark part 
-dta <- dta %>%  group_by(ExporterISO3, draw, hs6_H5) %>%
+dta <- dta %>%  group_by(ExporterISO3, draw, hs4) %>%
   mutate( FE_pre_2017 = mean(FE[year %in% c(2017)], na.rm = TRUE),
           FE_pre_2017_bench = mean(FE_bench[year %in% c(2017)], na.rm = TRUE),
           FE_pre_2017_wmean = mean(FE_wmean[year %in% c(2017)], na.rm = TRUE),
           
           FE_log_pre_2017 = mean(FE_log[year == 2017], na.rm = TRUE),
           FE_log_pre_2017_bench = mean(FE_log_bench[year == 2017], na.rm = TRUE),
-          FE_log_pre_2017_wmean = mean(FE_log_wmean[year == 2017], na.rm = TRUE),
-          
-          log_tariff_pre_2017 = mean(log_tariff[year %in% c(2017)], na.rm = TRUE)) %>%  ungroup()
+          FE_log_pre_2017_wmean = mean(FE_log_wmean[year == 2017], na.rm = TRUE)) %>%  ungroup()
 
-summary(dta$log_tariff)
-test  <- dta %>% filter(is.na(log_tariff_pre_2017))
+
 
 
 ################################################################################
@@ -238,7 +228,7 @@ dta <- dta %>% mutate(elasticities = case_when(sector == "Ag" ~  3 ,
                                                sector == "Manu" ~ 1.97,
                                                sector == "Other" ~ 5 ))
 
-dta <- dta %>% arrange(year, hs6_H5)
+dta <- dta %>% arrange(year, hs4)
 
 ################################################################################
 # create differences in AVEs
@@ -257,7 +247,7 @@ dta <- dta %>%
     diff_FE_2017_bench = if_else( year > 2017 & !is.na(FE) & !is.na(FE_pre_2017),
                                   (FE - FE_bench) - (FE_pre_2017 - FE_pre_2017_bench), NA_real_    ),
     
-    # Difference in FE with de meaned relative to 2017 baseline
+   # Difference in FE with de meaned relative to 2017 baseline
     diff_FE_2017_wmean = if_else( year > 2017 & !is.na(FE) & !is.na(FE_pre_2017),
                                   (FE - FE_wmean) - (FE_pre_2017 - FE_pre_2017_wmean), NA_real_    ),
     
@@ -268,14 +258,10 @@ dta <- dta %>%
     # Difference in FE_log with benchmarks relative to 2017 baseline
     diff_FE_log_2017_bench = if_else( year > 2017 & !is.na(FE_log) & !is.na(FE_log_pre_2017),
                                       (FE_log - FE_log_bench) - (FE_log_pre_2017 - FE_log_pre_2017_bench), NA_real_ ),
-    
-    # Difference in FE_log with de meaned relative to 2017 baseline
-    diff_FE_log_2017_wmean = if_else( year > 2017 & !is.na(FE_log) & !is.na(FE_log_pre_2017),
-                                      (FE_log - FE_log_wmean) - (FE_log_pre_2017 - FE_log_pre_2017_wmean), NA_real_ ), 
-    
-    # Difference in log tariffs relative to 2017 baseline
-    diff_log_tariff_2017 = if_else(  year > 2017 & !is.na(log_tariff) & !is.na(log_tariff_pre_2017),
-                                     log_tariff - log_tariff_pre_2017,      NA_real_    )  )
+   
+   # Difference in FE_log with de meaned relative to 2017 baseline
+   diff_FE_log_2017_wmean = if_else( year > 2017 & !is.na(FE_log) & !is.na(FE_log_pre_2017),
+                                     (FE_log - FE_log_wmean) - (FE_log_pre_2017 - FE_log_pre_2017_wmean), NA_real_ ) )
 
 test  <- dta %>% filter(year >2017)
 unique(test$year)
@@ -283,7 +269,6 @@ colSums(is.na(test))
 summary(dta$diff_FE_2017)
 summary(dta$diff_FE_2017_bench)
 
-summary(dta$diff_log_tariff_2017)
 ################################################################################
 
 dta <- dta %>%
@@ -303,18 +288,69 @@ colSums(is.na(dta))
 
 ################################################################################
 # export results
+write_csv(dta , paste0(exp, "estimates_reduced_form_base_2017_FE_boot_100.csv"))
 
-write_csv(dta , paste0(exp, "estimates_reduced_form_base_2017_FE_boot.csv"))
+################################################################################
 
-dta <- read_csv( paste0(exp, "estimates_reduced_form_base_2017_FE_boot.csv"))
+
+dta <- read_csv( paste0(exp, "estimates_reduced_form_base_2017_FE_boot_100.csv"))
 names(dta)
 
+
+# merge back with trade data (have to aggregate tariff data at HS 4 )
+tariffs <- read_csv(paste0(exp, "estimates_log_tariff_FE_boot.csv"))
+names(tariffs)
+
+tariffs <- tariffs %>% select(year, hs4, hs6_H5, ExporterISO3, ImporterISO3, Trade_value_USD,
+                              Applied_tariff, log_tariff, 
+                              log_tariff_pre_2015, diff_log_tariff_2015,
+                              log_tariff_pre_2017, diff_log_tariff_2017)
+
+
+
+
+# HS4 weights
+w_hs4_2015 <- tariffs %>% filter(year == 2015) %>%  group_by(hs4, hs6_H5) %>%
+  summarise(Trade_value_USD = sum(Trade_value_USD), .groups = "drop_last") %>%
+  mutate(tot = sum(Trade_value_USD),
+         weight_hs4_2015 = if_else(tot > 0, Trade_value_USD / tot, 0)) %>%
+  ungroup() %>%  select(hs4, hs6_H5, weight_hs4_2015)
+w_hs4_2017 <- tariffs %>% filter(year == 2017) %>%  group_by(hs4, hs6_H5) %>%
+  summarise(Trade_value_USD = sum(Trade_value_USD), .groups = "drop_last") %>%
+  mutate(tot = sum(Trade_value_USD),
+         weight_hs4_2017 = if_else(tot > 0, Trade_value_USD / tot, 0)) %>%
+  ungroup() %>%  select(hs4, hs6_H5, weight_hs4_2017)
+
+tariffs <- tariffs %>% left_join(w_hs4_2015,     by = c("hs4", "hs6_H5")) %>%
+  left_join(w_hs4_2017,     by = c("hs4", "hs6_H5"))
+
+tariffs_hs4 <- tariffs %>%
+  group_by(year, hs4, ExporterISO3, ImporterISO3) %>%
+  summarise(
+    Trade_value_USD = sum(Trade_value_USD, na.rm = TRUE),
+    
+    diff_log_tariff_2015 = if (first(year) > 2015)
+      weighted.mean(diff_log_tariff_2015, w = weight_hs4_2015, na.rm = TRUE)
+    else NA_real_,
+    
+    diff_log_tariff_2017 = if (first(year) > 2017)
+      weighted.mean(diff_log_tariff_2017, w = weight_hs4_2017, na.rm = TRUE)
+    else NA_real_, .groups = "drop"  )
+colSums(is.na(tariffs_hs4))
+any(duplicated(tariffs_hs4[, c("year", "hs4",  "ExporterISO3", "ImporterISO3")]))
+
+
+dta1 <- full_join(dta, tariffs_hs4)
+colSums(is.na(dta))
+colSums(is.na(dta1))
+
+
 ################################################################################
-# get US data 
+# get US data
 ################################################################################
 
 
-US <- dta  %>% filter(ExporterISO3 == "USA")
+US <- dta1  %>% filter(ExporterISO3 == "USA")
 
 summary(US)
 names(US)
@@ -322,10 +358,10 @@ unique(US$hs2)
 unique(US$hs_section)
 names(US)
 # US1 <- US %>% filter(year %in% c(2018,2019))
-write_csv(US, paste0(exp, "US_ln_NTMs_base_2017_FE_boot.csv"))
+write_csv(US, paste0(exp, "US_ln_NTMs_base_2017_FE_boot_hs4.csv"))
 
 
-US <- read_csv(paste0(exp, "US_ln_NTMs_base_2017_FE_boot.csv"))
+# US <- read_csv(paste0(exp, "US_ln_NTMs_base_2017_FE_boot_100.csv"))
 
 
 

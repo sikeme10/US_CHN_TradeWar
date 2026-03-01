@@ -11,20 +11,22 @@ library(tidyverse)
 library(vroom)
 
 
-
+################################################################################
 
 rm(list=ls())
+
+
 # Set directory
-setwd("/data/sikeme/TRADE/NTM_trade_war/data")
+setwd("/data/sikeme/TRADE/US_CHN_TradeWar_git/data")
 getwd()
 
 
-
+################################################################################
 
 
 library(readxl)
 
-dta <- read_excel("/data/sikeme/TRADE/NTM_trade_war/data/Census_output/ag_census.xlsx")
+dta <- read_excel("/data/sikeme/TRADE/US_CHN_TradeWar_git/data/Census_output/ag_census.xlsx")
 names(dta)
 
 dta$NAICS <- as.numeric(gsub(".*\\(([0-9]+)\\).*", "\\1", dta$NAICS_description))
@@ -37,12 +39,24 @@ dta <- dta %>%  mutate(NAICS_label = if_else(NAICS_description == "Total", "ag_t
 unique(dta$NAICS_label)
 
 
-write_csv(dta, "/data/sikeme/TRADE/NTM_trade_war/data/Census_output/ag_census_clean.csv")
+write_csv(dta, "/data/sikeme/TRADE/US_CHN_TradeWar_git/data/Census_output/ag_census_clean.csv")
 
 #################################################################################
 
+unique(nchar(dta$NAICS))
 
-# use NAICS 4 digiti level 
+# Use NAICS 6 digit level
+dta_NAICS6 <- dta %>% filter(nchar(NAICS) == 6)
+
+names(dta_NAICS6)
+dta_NAICS6 <- dta_NAICS6 %>% select(NAICS,NAICS_description, Total_in_1000dollars) %>%
+  rename(Tot_output_1000dollars = Total_in_1000dollars, NAICS6_2012 = NAICS)%>%
+  mutate(  year = 2012, 
+           sector = "agriculture")  
+write_csv(dta_NAICS6, "/data/sikeme/TRADE/US_CHN_TradeWar_git/data/Census_output/ag_output_NAICS_6.csv")
+
+
+# use NAICS 4 digit level 
 
 dta_NAICS4 <- dta %>% filter(nchar(NAICS) == 4)
 
@@ -51,8 +65,10 @@ dta_NAICS4 <- dta_NAICS4 %>% select(NAICS,NAICS_description, Total_in_1000dollar
   rename(Tot_output_1000dollars = Total_in_1000dollars, NAICS4_2012 = NAICS)%>%
   mutate(  year = 2012, 
            sector = "agriculture")  
-write_csv(dta_NAICS4, "/data/sikeme/TRADE/NTM_trade_war/data/Census_output/ag_output_NAICS_4.csv")
+write_csv(dta_NAICS4, "/data/sikeme/TRADE/US_CHN_TradeWar_git/data/Census_output/ag_output_NAICS_4.csv")
 
+
+# use NAICS 3 digit level 
 
 dta_NAICS3 <- dta %>% filter(nchar(NAICS) == 3)
 dta_NAICS3 <- dta_NAICS3 %>% select(NAICS,NAICS_description, Total_in_1000dollars) %>%
@@ -61,4 +77,4 @@ dta_NAICS3 <- dta_NAICS3 %>% select(NAICS,NAICS_description, Total_in_1000dollar
            sector = "agriculture")  
 
 
-write_csv(dta_NAICS3, "/data/sikeme/TRADE/NTM_trade_war/data/Census_output/ag_output_NAICS_3.csv")
+write_csv(dta_NAICS3, "/data/sikeme/TRADE/US_CHN_TradeWar_git/data/Census_output/ag_output_NAICS_3.csv")
