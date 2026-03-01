@@ -24,7 +24,7 @@ rm(list=ls())
 setwd("/data/sikeme/TRADE/NTM_trade_war/data")
 getwd()
 
-exp <- "/data/sikeme/TRADE/NTM_trade_war/data/created_exposure"
+exp <- "/data/sikeme/TRADE/NTM_trade_war/data/created_exposure/NAICS6"
 
 ################################################################################
 # 1) load data:

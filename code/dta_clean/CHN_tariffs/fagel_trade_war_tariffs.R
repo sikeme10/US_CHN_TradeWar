@@ -63,6 +63,8 @@ CHN_US_export1 <- CHN_US_export %>% select(cty_name,  year,month,mdate,  hs10, h
 # export  data
 write_csv(CHN_US_export1,"data/tariff_dta/CHN_tariff_HS10_Fagel.csv" )
 
+
+CHN_US_export1  <- read_csv("data/tariff_dta/CHN_tariff_HS10_Fagel.csv" )
 ################################################################################
 
 # 3) HS Product Aggregation
@@ -73,6 +75,8 @@ write_csv(CHN_US_export1,"data/tariff_dta/CHN_tariff_HS10_Fagel.csv" )
 # simple average = is just an average 
 
 names(CHN_US_export1)
+library(dplyr)
+
 # create tot export at HS 6
 CHN_US_export2 <- CHN_US_export1 %>%
   group_by(cty_name, year,month,mdate, hs6) %>%
@@ -81,24 +85,38 @@ CHN_US_export2 <- CHN_US_export1 %>%
 # create export shares
 CHN_US_export2 <- CHN_US_export2 %>% mutate(
   share_export_HS6 =  export_val_mil_USD_HS10 / tot_export_val_HS6)
+summary(CHN_US_export2$share_export_HS6)
 
-
-# create weighted average and simple average tariff values:
+# create weighted average and simple average tariff values: at the month-year-hs6 level 
+# aggregate at product level
+# aggregate at monthly level (drop mdate)
 CHN_US_export3 <- CHN_US_export2 %>%
-  group_by(cty_name,  year,month,mdate,hs6) %>%
+  group_by(cty_name,  year,month,hs6, mdate) %>%
   summarise(
-    weighted_x_stattariff1 = sum(share_export_HS6 * x_stattariff1, na.rm = TRUE),
-    weighted_x_stattariff2 = sum(share_export_HS6 * x_stattariff2, na.rm = TRUE),
-    weighted_x_mfn_tariff  = sum(share_export_HS6 * x_mfn_tariff,  na.rm = TRUE),
-    weighted_x_increase    = sum(share_export_HS6 * x_increase,    na.rm = TRUE),
+    weighted_x_stattariff1 = if_else(sum(share_export_HS6, na.rm = TRUE) == 0, NA_real_,
+      weighted.mean(x_stattariff1, w = share_export_HS6, na.rm = TRUE)    ),
+    weighted_x_stattariff2 = if_else(sum(share_export_HS6, na.rm = TRUE) == 0, NA_real_,
+      weighted.mean(x_stattariff2, w = share_export_HS6, na.rm = TRUE)    ),
+    weighted_x_mfn_tariff = if_else(sum(share_export_HS6, na.rm = TRUE) == 0, NA_real_,
+      weighted.mean(x_mfn_tariff, w = share_export_HS6, na.rm = TRUE)  ),
+    weighted_x_increase = if_else(sum(share_export_HS6, na.rm = TRUE) == 0, NA_real_,
+      weighted.mean(x_increase, w = share_export_HS6, na.rm = TRUE)  ),
     simple_x_stattariff1 = mean(x_stattariff1, na.rm = TRUE),
     simple_x_stattariff2 = mean(x_stattariff2, na.rm = TRUE),
     simple_x_mfn_tariff  = mean(x_mfn_tariff,  na.rm = TRUE),
-    simple_x_increase    = mean(x_increase,    na.rm = TRUE),
-    .groups = "drop"
-  )  
+    simple_x_increase    = mean(x_increase,    na.rm = TRUE),    .groups = "drop"  )  
+summary(CHN_US_export3)
 
+CHN_US_export4 <- CHN_US_export3 %>% group_by(cty_name, year, month, hs6) %>%
+  summarise(across(  c(weighted_x_stattariff1, weighted_x_stattariff2, weighted_x_mfn_tariff, weighted_x_increase,
+        simple_x_stattariff1, simple_x_stattariff2, simple_x_mfn_tariff, simple_x_increase),
+      ~ if (all(is.na(.x))) NA_real_ else max(.x, na.rm = TRUE)  ),   .groups = "drop"  )
+summary(CHN_US_export4)
 
 
 # export  data
-write_csv(CHN_US_export3,"data/tariff_dta/CHN_tariff_HS6_Fagel.csv" )
+write_csv(CHN_US_export4,"data/tariff_dta/CHN_tariff_HS6_Fagel.csv" )
+
+
+
+

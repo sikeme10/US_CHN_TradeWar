@@ -49,40 +49,51 @@ unique(US_ag$hs2)
 unique(US_ag$hs_section)
 length(unique(US_ag$hs6_H5))
 
-# Ag sector level: create weight in trade (hs6/total US export)
-# weights for hs6 to aggregate to sector level
-US_ag_2017_hs6 <- US_ag %>%
-  filter(year == 2017  & draw == 1) %>%
-  group_by(hs6_H5) %>%
-  summarise(Trade_value_USD_2017 = sum(Trade_value_USD, na.rm = TRUE),  .groups = "drop"  ) %>%
-  mutate(  tot_Trade_value_USD_2017 = sum(Trade_value_USD_2017),
-           weight_sector = Trade_value_USD_2017 / tot_Trade_value_USD_2017  )
-length(unique(US_ag_2017_hs6$hs6_H5))
-US_ag <-left_join(US_ag,US_ag_2017_hs6 )
 
 
-# HS section level : weights for hs6 to aggregate to HS-section
-US_ag_2017_hs_sect <- US_ag %>%  filter(year == 2017 & draw == 1) %>%
-  group_by(hs_section, hs6_H5) %>%
-  summarise( Trade_value_USD_2017 = sum(Trade_value_USD, na.rm = TRUE),  .groups = "drop_last"    ) %>%
-  group_by(hs_section) %>%
-  mutate(  hs_sect_tot_Trade_value_USD_2017 = sum(Trade_value_USD_2017),
-    weight_hs_sect = if_else( hs_sect_tot_Trade_value_USD_2017 > 0,   
-                              Trade_value_USD_2017 / hs_sect_tot_Trade_value_USD_2017,    NA_real_ )) %>%
-  ungroup()
-US_ag <-left_join(US_ag,US_ag_2017_hs_sect )
+# 1) Base 2017 (draw==1) totals at hs6 (this is the "atom" you use everywhere)
+base2017_hs6 <- US_ag %>% filter(year == 2017, draw == 1) %>% group_by(hs6_H5, hs_section, hs2, hs4) %>%
+  summarise(Trade_value_USD_2017 = sum(Trade_value_USD, na.rm = TRUE), .groups = "drop")
 
+# 2) Build weights for each aggregation level, then bind into ONE table
 
-# HS2 level : weights for hs6 to aggregate to Hs2
-US_ag_2017_hs2 <- US_ag %>%  filter(year == 2017 & draw == 1) %>%
-  group_by(hs2, hs6_H5) %>%
-  summarise( Trade_value_USD_2017 = sum(Trade_value_USD, na.rm = TRUE),  .groups = "drop_last"    ) %>%
-  group_by(hs2) %>%
-  mutate(  hs2_tot_Trade_value_USD_2017 = sum(Trade_value_USD_2017),
-           weight_hs2 = if_else( hs2_tot_Trade_value_USD_2017 > 0,   
-                                 Trade_value_USD_2017 / hs2_tot_Trade_value_USD_2017,    NA_real_ )) %>%
-  ungroup()
-US_ag <-left_join(US_ag,US_ag_2017_hs2 )
+# sector level weight: HS6 to sector 
+w_sector <- base2017_hs6 %>%  group_by(hs6_H5) %>%
+  summarise(Trade_value_USD_2017 = sum(Trade_value_USD_2017), .groups = "drop") %>%
+  mutate(tot_Trade_value_USD_2017 = sum(Trade_value_USD_2017),
+         weight_sector = if_else(tot_Trade_value_USD_2017 > 0, Trade_value_USD_2017 / tot_Trade_value_USD_2017, 0)) %>%
+  select(hs6_H5, weight_sector)
+
+# HS section level weight: HS6 to HS section 
+w_hs_sect <- base2017_hs6 %>%  group_by(hs_section, hs6_H5) %>%
+  summarise(Trade_value_USD_2017 = sum(Trade_value_USD_2017), .groups = "drop_last") %>%
+  mutate(hs_sect_tot_Trade_value_USD_2017 = sum(Trade_value_USD_2017),
+         weight_hs_sect = if_else(hs_sect_tot_Trade_value_USD_2017 > 0,
+                                  Trade_value_USD_2017 / hs_sect_tot_Trade_value_USD_2017, 0) ) %>%
+  ungroup() %>% select(hs_section, hs6_H5, weight_hs_sect)
+
+# HS2 level weight: HS6 to HS2 
+w_hs2 <- base2017_hs6 %>%  group_by(hs2, hs6_H5) %>%
+  summarise(Trade_value_USD_2017 = sum(Trade_value_USD_2017), .groups = "drop_last") %>%
+  mutate(hs2_tot_Trade_value_USD_2017 = sum(Trade_value_USD_2017),
+         weight_hs2 = if_else(hs2_tot_Trade_value_USD_2017 > 0,
+                              Trade_value_USD_2017 / hs2_tot_Trade_value_USD_2017, 0)) %>%
+  ungroup() %>% select(hs2, hs6_H5, weight_hs2)
+
+# HS4 level weight: HS6 to HS4
+w_hs4 <- base2017_hs6 %>% group_by(hs4, hs6_H5) %>%
+  summarise(Trade_value_USD_2017 = sum(Trade_value_USD_2017), .groups = "drop_last") %>%
+  mutate(hs4_tot_Trade_value_USD_2017 = sum(Trade_value_USD_2017),
+         weight_hs4 = if_else(hs4_tot_Trade_value_USD_2017 > 0,
+                              Trade_value_USD_2017 / hs4_tot_Trade_value_USD_2017, 0)) %>%
+  ungroup() %>% select(hs4, hs6_H5, weight_hs4)
+
+# 3) Single join (instead of 4 joins)
+US_ag <- US_ag %>% left_join(w_sector,  by = "hs6_H5") %>%
+  left_join(w_hs_sect, by = c("hs_section", "hs6_H5")) %>%
+  left_join(w_hs2,     by = c("hs2", "hs6_H5")) %>%
+  left_join(w_hs4,     by = c("hs4", "hs6_H5"))
+
 
 
 ################################################################################
@@ -227,7 +238,7 @@ US_ag_q <- US_ag_w %>%
 
 plot <- ggplot(US_ag_q, aes(x = year)) +
   ## FE CI
-  geom_ribbon(  aes(ymin = FE_lo, ymax = FE_hi), fill = "blue", alpha = 0.2  ) +
+  # geom_ribbon(  aes(ymin = FE_lo, ymax = FE_hi), fill = "blue", alpha = 0.2  ) +
   geom_line(aes(y = FE_mean, color = "FE"),    linewidth = 1  ) +
   ## Tariff
   geom_line(aes(y = tariff_mean, color = "tariff"),   linewidth = 1  ) +
@@ -312,8 +323,7 @@ ggsave(filename = file.path(exp, "plot/", "Compare_ln_AVE_Ag_weight_2017_boot_lo
 ################################################################################
 # get trade weighted values 
 names(US_ag)
-US_ag_w_sect <- US_ag %>% 
-  filter(sector == "Ag") %>%
+US_ag_w_sect <- US_ag %>% filter(sector == "Ag") %>%
   group_by(year, draw, hs_section) %>%
   summarise( 
     w_FE        = weighted.mean(diff_ln_AVE_FE,           w = weight_hs_sect, na.rm = TRUE),

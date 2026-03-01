@@ -1,8 +1,4 @@
 
-
-
-
-
 library(readr)
 library(tidyr)
 library(dplyr)
@@ -13,12 +9,13 @@ library(countrycode)
 library(tidyverse)
 library(vroom)
 
+################################################################################
 
 
 
 rm(list=ls())
 # Set directory
-setwd("/data/sikeme/TRADE/NTM_trade_war/data")
+setwd("/data/sikeme/TRADE/US_CHN_TradeWar_git/data")
 getwd()
 
 ################################################################################
@@ -26,8 +23,6 @@ getwd()
 # get data 
 
 dta <- read_delim("Census_output/mining_output_NAICS6.dat", delim = "|")
-
-
 
 ################################################################################
 
@@ -72,12 +67,17 @@ dta_NAICS3 <- dta  %>% group_by(year, Geo, NAICS3_2012) %>% summarise(
   RCPTOT = sum(RCPTOT, na.rm = TRUE))
 dta_NAICS3 <- dta_NAICS3 %>% rename(Tot_output_1000dollars = RCPTOT) %>% mutate(sector = "mining")
 
+# rename for NAICS 6 digit 
+dta_NAICS6 <- dta %>% rename(Tot_output_1000dollars = RCPTOT) %>% mutate(sector = "mining")
+
+
 ############################################################################
 
 # export 
+write_csv(dta_NAICS6 , "/data/sikeme/TRADE/US_CHN_TradeWar_git/data/Census_output/mining_output_NAICS6.csv")
 
-write_csv(dta_NAICS4 , "/data/sikeme/TRADE/NTM_trade_war/data/Census_output/mining_output_NAICS4.csv")
+write_csv(dta_NAICS4 , "/data/sikeme/TRADE/US_CHN_TradeWar_git/data/Census_output/mining_output_NAICS4.csv")
 
-write_csv(dta_NAICS3 , "/data/sikeme/TRADE/NTM_trade_war/data/Census_output/mining_output_NAICS3.csv")
+write_csv(dta_NAICS3 , "/data/sikeme/TRADE/US_CHN_TradeWar_git/data/Census_output/mining_output_NAICS3.csv")
 
 

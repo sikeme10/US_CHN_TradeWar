@@ -15,11 +15,11 @@ library(lubridate)
 
 rm(list=ls())
 # Set directory
-setwd("/data/sikeme/TRADE/NTM_trade_war/data")
+setwd("/data/sikeme/TRADE/US_CHN_TradeWar_git/data")
 getwd()
 
 # export directory:
-exp <- c("/data/sikeme/TRADE/NTM_trade_war/output/summary/")
+exp <- c("/data/sikeme/TRADE/US_CHN_TradeWar_git/output/summary/")
 
 ################################################################################
 
@@ -30,7 +30,7 @@ exp <- c("/data/sikeme/TRADE/NTM_trade_war/output/summary/")
 
 # load data 
 
-US_export <- read_csv( "/data/sikeme/TRADE/NTM_trade_war/data/trade/schott/monthly_export/US_cleaned_export.csv")
+US_export <- read_csv( "/data/sikeme/TRADE/US_CHN_TradeWar_git/data/trade/schott/monthly_export/US_cleaned_export.csv")
 
 ################################################################################
 

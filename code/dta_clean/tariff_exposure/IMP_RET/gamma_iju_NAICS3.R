@@ -25,7 +25,7 @@ rm(list=ls())
 setwd("/data/sikeme/TRADE/US_CHN_TradeWar_git")
 getwd()
 
-exp <- "/data/sikeme/TRADE/US_CHN_TradeWar_git/data/created_exposure"
+exp <- "/data/sikeme/TRADE/US_CHN_TradeWar_git/data/created_exposure/NAICS3"
 
 
 ################################################################################

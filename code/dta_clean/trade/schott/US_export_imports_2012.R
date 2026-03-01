@@ -33,7 +33,7 @@ library(labelled)
 
 rm(list=ls())
 # Set directory
-setwd("/data/sikeme/TRADE/NTM_trade_war/data")
+setwd("/data/sikeme/TRADE/US_CHN_TradeWar_git/data")
 getwd()
 
 
@@ -47,10 +47,12 @@ US_import <- read_dta("trade/schott/imp_detl_2012_12n.dta")
 US_export <- read_dta("trade/schott/exp_detl_2012_12n.dta")
 
 countryCodes <- read_csv("trade/schott/country_codes.csv")
-
+product_concord <- read_table("trade/schott/hts_concordances_20190712_198906_201901.csv")
 
 
 ####################################################################################
+
+
 
 # Merge country codes 
 names(countryCodes)
@@ -107,6 +109,15 @@ unique(nchar(US_import1$naics))
 US_import1 <- US_import1 %>% rename(naics6 = naics) %>% 
   mutate(naics4 = substr(as.character(naics6), 1, 4),
          naics3 = substr(as.character(naics6), 1, 3))
+names(US_import1)
+
+# aggregate at HS6 level:
+# check dupliactaes
+any(duplicated(US_import1[, c("year", "cty_code", "Country", "ISO_Code", "ISO3_Code", "HS10")]))
+
+US_import1 <- US_import1 %>% group_by(year, cty_code,Country,ISO_Code,ISO3_Code,HS6 ) %>% 
+  summarise(import_val_USD = sum(import_val_USD, na.rm = TRUE))
+
 
 write_csv(US_import1, "trade/US_import_schott_2012.csv")
 ################################################################################
@@ -164,7 +175,12 @@ US_export1 <- US_export1 %>% rename(naics6 = naics) %>%
   mutate(naics4 = substr(as.character(naics6), 1, 4),
          naics3 = substr(as.character(naics6), 1, 3))
 
+# aggregate at HS6 level:
+# check dupliactaes
+any(duplicated(US_export1[, c("year", "cty_code", "Country", "ISO_Code", "ISO3_Code", "HS10")]))
 
+US_export1 <- US_export1 %>% group_by(year, cty_code,Country,ISO_Code,ISO3_Code,HS6 ) %>% 
+  summarise(export_val_USD = sum(export_val_USD, na.rm = TRUE))
 
 write_csv(US_export1, "trade/US_export_schott_2012.csv")
 ################################################################################

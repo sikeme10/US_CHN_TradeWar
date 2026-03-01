@@ -339,7 +339,7 @@ plot_FE_bench<- ag_w %>%
   labs(title = "Weighted average Δ ln(1+AVE) (FE model with benchmark) \n in the Agricultural sector",
        x = "Year",  y = "Weighted Δ ln(1+AVE)" )
 plot_FE_bench
-ggsave(filename = file.path(exp, "/plot/", "change_ln_AVE_US_others_Ag_FE_bench.png"),
+ggsave(filename = file.path(exp, "/plot/other_countries/", "change_ln_AVE_US_others_Ag_FE_bench.png"),
        plot = plot_FE_bench, width = 10, height = 7, dpi = 300)
 
 test <- ag_w %>% group_by(ExporterISO3) %>%
@@ -359,7 +359,7 @@ plot_tariff <- ag_w %>%
        x = "Year",  y = "Weighted Δ ln(1+tariff)" )
 
 plot_tariff
-ggsave(filename = file.path(exp, "/plot/", "change_ln_AVE_US_others_Ag_tariff.png"),
+ggsave(filename = file.path(exp, "/plot/other_countries/", "change_ln_AVE_US_others_Ag_tariff.png"),
        plot = plot_tariff, width = 10, height = 7, dpi = 300)
 
 

@@ -28,13 +28,13 @@ library(frontier)
 ################################################################################
 # directory: 
 setwd("/data/sikeme/TRADE/US_CHN_TradeWar_git")
-exp <- "/data/sikeme/TRADE/US_CHN_TradeWar_git/output/Compare_values/yearly/robust/"
+exp <- "/data/sikeme/TRADE/US_CHN_TradeWar_git/output/Compare_values/yearly/plot/2015/"
 
 ################################################################################
 # 1) Load data 
 ################################################################################
 
-US <- read_csv(paste0(exp, "US_ln_NTMs_base_2015.csv"))
+US <- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/output/Compare_values/yearly/robust/US_ln_NTMs_base_2015.csv")
 
 ################################################################################
 
@@ -194,7 +194,7 @@ plot <- ggplot(subset(US_manu_w)) +
   theme_trade
 plot
 
-ggsave(filename = file.path(exp, "plot/", "Compare_ln_AVE_Manu_weight.png"),plot = plot, width = 8, height = 5, dpi = 300)
+ggsave(filename = file.path(exp, "Compare_ln_AVE_Manu_weight.png"),plot = plot, width = 8, height = 5, dpi = 300)
 
 
 
@@ -223,7 +223,7 @@ plot <- ggplot(subset(US_manu_w)) +
     x = "Date",    y = "Simple average Δ ln(1+AVE)"  ) +
   theme_trade
 plot
-ggsave(filename = file.path(exp, "plot/", "Compare_ln_AVE_Manu_simple.png"),plot = plot, width = 8, height = 5, dpi = 300)
+ggsave(filename = file.path(exp, "Compare_ln_AVE_Manu_simple.png"),plot = plot, width = 8, height = 5, dpi = 300)
 
 
 
@@ -282,7 +282,7 @@ plot <- ggplot(subset(US_manu_w_sect)) +
          y = "Weighted Δ ln(1+AVE)"  )+
   theme_trade
 plot
-ggsave(filename = file.path(exp, "plot/", "Compare_ln_AVE_Manu_hs_sect_weight.png"),plot = plot, width = 9, height = 5, dpi = 300)
+ggsave(filename = file.path(exp, "Compare_ln_AVE_Manu_hs_sect_weight.png"),plot = plot, width = 9, height = 5, dpi = 300)
 
 # simple averages
 plot <- ggplot(subset(US_manu_w_sect)) +
@@ -309,7 +309,7 @@ plot <- ggplot(subset(US_manu_w_sect)) +
          y = "Simple average Δ ln(1+AVE)"  ) +
   theme_trade
 plot
-ggsave(filename = file.path(exp, "plot/", "Compare_ln_AVE_Manu_hs_sect_simple.png"),plot = plot, width = 8, height = 5, dpi = 300)
+ggsave(filename = file.path(exp, "Compare_ln_AVE_Manu_hs_sect_simple.png"),plot = plot, width = 8, height = 5, dpi = 300)
 
 ###################################################
 # at HS 2 level
@@ -369,7 +369,7 @@ plot <- ggplot(subset(US_ag_w_hs2, hs2 %in% HS)) +
     legend.title    = element_text(size = 9)  )
 
 plot
-ggsave(filename = file.path(exp, "plot/", "Compare_ln_AVE_Ag_hs2_weighted.png"),plot = plot, width = 8, height = 5, dpi = 300)
+ggsave(filename = file.path(exp,  "Compare_ln_AVE_Ag_hs2_weighted.png"),plot = plot, width = 8, height = 5, dpi = 300)
 
 names(US_ag_w_hs2)
 summary <- US_ag_w_hs2 %>% group_by(hs2) %>% summarise(

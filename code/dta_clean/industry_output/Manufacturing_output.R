@@ -16,7 +16,7 @@ library(vroom)
 
 rm(list=ls())
 # Set directory
-setwd("/data/sikeme/TRADE/NTM_trade_war/data")
+setwd("/data/sikeme/TRADE/US_CHN_TradeWar_git/data")
 getwd()
 
 # load data
@@ -64,12 +64,22 @@ dta_NAICS3 <- dta  %>% group_by(year, Geo, NAICS3_2012) %>% summarise(
   RCPTOT = sum(RCPTOT, na.rm = TRUE))
 dta_NAICS3 <- dta_NAICS3 %>% rename(Tot_output_1000dollars = RCPTOT) %>% mutate(sector = "manufacturing")
 
+
+# rename for NAICs 6 digit 
+names(dta)
+
+dta_NAICS6 <- dta %>% rename(Tot_output_1000dollars = RCPTOT)%>% mutate(sector = "manufacturing")
+
+
+
 ############################################################################
 
 # export 
+write_csv(dta_NAICS6 , "/data/sikeme/TRADE/US_CHN_TradeWar_git/data/Census_output/manufacturing_output_NAICS6.csv")
 
-write_csv(dta_NAICS4 , "/data/sikeme/TRADE/NTM_trade_war/data/Census_output/manufacturing_output_NAICS4.csv")
 
-write_csv(dta_NAICS3 , "/data/sikeme/TRADE/NTM_trade_war/data/Census_output/manufacturing_output_NAICS3.csv")
+write_csv(dta_NAICS4 , "/data/sikeme/TRADE/US_CHN_TradeWar_git/data/Census_output/manufacturing_output_NAICS4.csv")
+
+write_csv(dta_NAICS3 , "/data/sikeme/TRADE/US_CHN_TradeWar_git/data/Census_output/manufacturing_output_NAICS3.csv")
 
 

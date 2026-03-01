@@ -28,13 +28,13 @@ library(frontier)
 ################################################################################
 # directory: 
 setwd("/data/sikeme/TRADE/US_CHN_TradeWar_git")
-exp <- "/data/sikeme/TRADE/US_CHN_TradeWar_git/output/Compare_values/yearly/"
+exp <- "/data/sikeme/TRADE/US_CHN_TradeWar_git/output/Compare_values/yearly/plot/2017/"
 
 ################################################################################
 # 1) Load data 
 ################################################################################
 
-US <- read_csv(paste0(exp, "US_ln_NTMs.csv"))
+US <- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/output/Compare_values/yearly/US_ln_NTMs_base_2017.csv")
 
 ################################################################################
 
@@ -185,7 +185,7 @@ plot <- ggplot(subset(US_ag_w, year %in% c(2018, 2019, 2020))) +
   theme_trade
 
 plot
-ggsave(filename = file.path(exp, "plot/", "Compare_ln_AVE_Ag_weight.png"),plot = plot, width = 8, height = 5, dpi = 300)
+ggsave(filename = file.path(exp,  "Compare_ln_AVE_Ag_weight.png"),plot = plot, width = 8, height = 5, dpi = 300)
 
 
 
@@ -214,7 +214,7 @@ plot <- ggplot(subset(US_ag_w)) +
          x = "Date",    y = "Simple average Δ ln(1+AVE)"  ) +
   theme_trade
 plot
-ggsave(filename = file.path(exp, "plot/", "Compare_ln_AVE_Ag_simple.png"),plot = plot, width = 8, height = 5, dpi = 300)
+ggsave(filename = file.path(exp, "Compare_ln_AVE_Ag_simple.png"),plot = plot, width = 8, height = 5, dpi = 300)
 
 
 
@@ -269,7 +269,7 @@ plot <- ggplot(subset(US_ag_w_sect)) +
          y = "Weighted Δ ln(1+AVE)"  )+
   theme_trade
 plot
-ggsave(filename = file.path(exp, "plot/", "Compare_ln_AVE_Ag_hs_sect_weight.png"),plot = plot, width = 9, height = 5, dpi = 300)
+ggsave(filename = file.path(exp,  "Compare_ln_AVE_Ag_hs_sect_weight.png"),plot = plot, width = 9, height = 5, dpi = 300)
 
 
 
@@ -300,7 +300,7 @@ plot <- ggplot(subset(US_ag_w_sect)) +
          y = "Simple average Δ ln(1+AVE)"  ) +
   theme_trade
 plot
-ggsave(filename = file.path(exp, "plot/", "Compare_ln_AVE_Ag_hs_sect_simple.png"),plot = plot, width = 8, height = 5, dpi = 300)
+ggsave(filename = file.path(exp,  "Compare_ln_AVE_Ag_hs_sect_simple.png"),plot = plot, width = 8, height = 5, dpi = 300)
 
 
 ###################################################
@@ -361,7 +361,7 @@ plot <- ggplot(subset(US_ag_w_hs2, hs2 %in% HS)) +
     legend.title    = element_text(size = 9)  )
 
 plot
-ggsave(filename = file.path(exp, "plot/", "Compare_ln_AVE_Ag_hs2_weighted.png"),plot = plot, width = 8, height = 5, dpi = 300)
+ggsave(filename = file.path(exp, "Compare_ln_AVE_Ag_hs2_weighted.png"),plot = plot, width = 8, height = 5, dpi = 300)
 
 names(US_ag_w_hs2)
 summary <- US_ag_w_hs2 %>% group_by(hs2) %>% summarise(
@@ -440,7 +440,7 @@ plot <- ggplot(subset(US_ag_w, year %in% c(2018,2019))) +
     legend.text  = element_text(size = 10), # Legend text and title
     legend.title = element_text(size = 10)  )
 plot
-ggsave(filename = file.path(exp, "plot/", "Compare_ln_AVE_Ag_weight_chen.png"),plot = plot, width = 8, height = 5, dpi = 300)
+ggsave(filename = file.path(exp, "Compare_ln_AVE_Ag_weight_chen.png"),plot = plot, width = 8, height = 5, dpi = 300)
 
 
 # simple average 
@@ -472,7 +472,7 @@ plot <- ggplot(US_ag_w) +
     legend.text  = element_text(size = 9), # Legend text and title
     legend.title = element_text(size = 9)  )
 plot
-ggsave(filename = file.path(exp, "plot/", "Compare_ln_AVE_Ag_simple_chen.png"),plot = plot, width = 8, height = 5, dpi = 300)
+ggsave(filename = file.path(exp, "Compare_ln_AVE_Ag_simple_chen.png"),plot = plot, width = 8, height = 5, dpi = 300)
 
 
 
@@ -512,7 +512,7 @@ plot <- ggplot(US_ag_w_sect) +
     legend.text  = element_text(size = 9), # Legend text and title
     legend.title = element_text(size = 9)  )
 plot
-ggsave(filename = file.path(exp, "plot/", "Compare_ln_AVE_Ag_hs_sect_weight_chen.png"),plot = plot, width = 9, height = 5, dpi = 300)
+ggsave(filename = file.path(exp,  "Compare_ln_AVE_Ag_hs_sect_weight_chen.png"),plot = plot, width = 9, height = 5, dpi = 300)
 
 
 plot <- ggplot(US_ag_w_sect) +
@@ -545,127 +545,7 @@ plot <- ggplot(US_ag_w_sect) +
     legend.text  = element_text(size = 9), # Legend text and title
     legend.title = element_text(size = 9)  )
 plot
-ggsave(filename = file.path(exp, "plot/", "Compare_ln_AVE_Ag_hs_sect_simple_chen.png"),plot = plot, width = 8, height = 5, dpi = 300)
+ggsave(filename = file.path(exp,  "Compare_ln_AVE_Ag_hs_sect_simple_chen.png"),plot = plot, width = 8, height = 5, dpi = 300)
 
 
 
-
-################################################################################
-
-# correlations of change in ln(1+AVE)
-
-################################################################################
-names(US_ag)
-
-# If we look at correlation between FE and efficiency 
-names(US)
-US_changes_2017 <- US %>% filter(year %in% c(2018:2020))
-
-
-
-
-plot <- ggplot(US, aes(x = diff_ln_AVE_FE, y = diff_ln_AVE_u_tariff)) +
-  geom_point(alpha = 0.15, size = 1) +
-  geom_abline(intercept = 0, slope = 1, color = "red",
-              linewidth = 1, linetype = "dotted") +
-  theme_minimal() +
-  labs( title = "Correlation plot of Δ ln(1 + AVE) from FE vs Tariff-adjusted SF",
-    x = "Δ ln(1 + AVE) FE",    y = "Δ ln(1 + AVE) Tariff-adjusted SF"  ) +
-  theme(plot.title      = element_text(size = 11, hjust = 0.5),
-    panel.background = element_rect(fill = "white", color = NA),
-    plot.background  = element_rect(fill = "white", color = NA),
-    axis.text.x     = element_text(size = 9),
-    axis.text.y     = element_text(size = 9),
-    axis.title.x    = element_text(size = 10),
-    axis.title.y    = element_text(size = 10)  )
-plot
-ggsave(filename = file.path(exp, "plot/", "Corrlation_FE_SF.png"),plot = plot, width = 8, height = 5, dpi = 300)
-
-
-plot <- ggplot(US_ag, aes(x = diff_ln_AVE_u, y = diff_ln_AVE_u_tariff)) +
-  geom_point(alpha = 0.20, size = 1) +
-  geom_abline(intercept = 0, slope = 1, color = "red", linewidth = 1,linetype = "dotted", ) +
-  theme_minimal() +
-  labs(
-    title = "Plot of US Δ ln(1+AVE) obtained from SF and Tariff-adjusted SF",
-    x = "SF",
-    y = "Tariff-adjusted SF"  ) +
-  theme(
-    plot.title = element_text(size = 12, hjust = 0.5),
-    panel.background = element_rect(fill = "white", color = NA),
-    plot.background  = element_rect(fill = "white", color = NA) ,
-    axis.text.x = element_text(size = 10), # Axis text (tick labels)
-    axis.text.y = element_text(size = 10),
-    axis.title.x = element_text(size = 12), # Axis titles
-    axis.title.y = element_text(size = 12) )
-plot
-ggsave(filename = file.path(exp, "plot/", "Plot_stochastic_corr.png"),plot = plot, width = 8, height = 5, dpi = 300)
-
-################################################################################
-
-# Get correlation plot
-
-US_ag1 <- US_ag %>% filter(year %in% c(2018,2019))
-
-vars <- US_ag1[, c("diff_ln_AVE_chen", "diff_ln_AVE_FE", "diff_ln_AVE_u", "diff_ln_AVE_u_tariff")]
-
-vars <- vars %>%  rename(  Chen_et_al = diff_ln_AVE_chen,  FE = diff_ln_AVE_FE,
-    SF = diff_ln_AVE_u,  SF_tariff  = diff_ln_AVE_u_tariff )
-
-cor_mat <- cor(vars, use = "complete.obs")
-
-# open PNG device
-png(paste0(exp, "plot/corrplot.png"), width = 1200, height = 1000, res = 150)
-
-corrplot(cor_mat, method = "circle", addCoef.col = "black")
-
-dev.off()
-
-
-
-
-
-
-names(US)
-
-
-
-plot <- ggplot(US, aes(x = date, y = ln_AVE_FE)) +
-  geom_smooth() +
-  theme_minimal() +
-  labs( title = "Correlation plot of Δ ln(1 + AVE) from FE vs Tariff-adjusted SF",
-        x = "Δ ln(1 + AVE) FE",    y = "Δ ln(1 + AVE) Tariff-adjusted SF"  ) +
-  theme(plot.title      = element_text(size = 11, hjust = 0.5),
-        panel.background = element_rect(fill = "white", color = NA),
-        plot.background  = element_rect(fill = "white", color = NA),
-        axis.text.x     = element_text(size = 9),
-        axis.text.y     = element_text(size = 9),
-        axis.title.x    = element_text(size = 10),
-        axis.title.y    = element_text(size = 10)  )
-plot
-
-
-plot <- ggplot(US, aes(x = date, y = ln_AVE_u_tariff)) +
-  geom_smooth() +
-  theme_minimal() +
-  labs( title = "Correlation plot of Δ ln(1 + AVE) from FE vs Tariff-adjusted SF",
-        x = "Δ ln(1 + AVE) FE",    y = "Δ ln(1 + AVE) Tariff-adjusted SF"  ) +
-  theme(plot.title      = element_text(size = 11, hjust = 0.5),
-        panel.background = element_rect(fill = "white", color = NA),
-        plot.background  = element_rect(fill = "white", color = NA),
-        axis.text.x     = element_text(size = 9),
-        axis.text.y     = element_text(size = 9),
-        axis.title.x    = element_text(size = 10),
-        axis.title.y    = element_text(size = 10)  )
-plot
-
-
-
-
-
-
-
-
-
-
- 

@@ -34,9 +34,9 @@ exp <- "/data/sikeme/TRADE/US_CHN_TradeWar_git/output/Compare_values/yearly/robu
 # 1) Load data 
 ################################################################################
 
-US <- read_csv(paste0(exp, "US_ln_NTMs_base_2015_FE_boot.csv"))
+US <- read_csv(paste0(exp, "US_ln_NTMs_base_2017_FE_boot.csv"))
 colSums(is.na(US))
-test <- US  %>% filter(is.na(diff_log_tariff_2015))
+test <- US  %>% filter(is.na(diff_log_tariff_2017))
 table(test$year)
 
 ################################################################################
@@ -55,20 +55,20 @@ length(unique(US$hs6_H5))
 # Aggregation hs level: create weight in trade (hs6/total US export)
 # weights for hs6  to hs4 to aggregate to sector level
 hs6_to_hs4_wts <- US %>%
-  filter(year == 2015 & draw == 1) %>%
+  filter(year == 2017 & draw == 1) %>%
   group_by(hs4, hs6_H5) %>%
-  summarise(trade_2015 = sum(Trade_value_USD, na.rm = TRUE), .groups = "drop") %>%
+  summarise(trade_2017 = sum(Trade_value_USD, na.rm = TRUE), .groups = "drop") %>%
   group_by(hs4) %>%
-  mutate(hs4_trade_2015 = sum(trade_2015, na.rm = TRUE),
-    w_2015_hs6_hs4   = if_else(!is.na(trade_2015) | trade_2015 !=0 | (trade_2015 & hs4_trade_2015) !=0
-                                 , trade_2015 / hs4_trade_2015, 0) ) %>%
+  mutate(hs4_trade_2017 = sum(trade_2017, na.rm = TRUE),
+    w_2017_hs6_hs4   = if_else(!is.na(trade_2017) | trade_2017 !=0 | (trade_2017 & hs4_trade_2017) !=0
+                                 , trade_2017 / hs4_trade_2017, 0) ) %>%
   ungroup()
-hs6_to_hs4_wts <- hs6_to_hs4_wts %>% mutate(w_2015_hs6_hs4 = if_else(is.na(w_2015_hs6_hs4), 0, w_2015_hs6_hs4))
+hs6_to_hs4_wts <- hs6_to_hs4_wts %>% mutate(w_2017_hs6_hs4 = if_else(is.na(w_2017_hs6_hs4), 0, w_2017_hs6_hs4))
 
 colSums(is.na(hs6_to_hs4_wts))
 US <-left_join(US,hs6_to_hs4_wts)
 colSums(is.na(US))
-test <- US %>% filter(is.na(diff_log_tariff_2015))
+test <- US %>% filter(is.na(diff_log_tariff_2017))
 unique(test$year)
 
 
@@ -80,39 +80,39 @@ names(US)
 # from trade and tariff data (because of draw just take one observation )
 
 US_hs4_trade <- US %>% filter(draw == 1)  %>% group_by(year, sector, hs_section, hs2, hs4) %>% summarise(
-  # for tariffs: weighted mean using 2015 weights
-  weighted_diff_log_tariff_2015  = weighted.mean(diff_log_tariff_2015, w = w_2015_hs6_hs4, na.rm = TRUE),
-  mean_diff_log_tariff_2015  = mean(diff_log_tariff_2015, na.rm = TRUE),
+  # for tariffs: weighted mean using 2017 weights
+  weighted_diff_log_tariff_2017  = weighted.mean(diff_log_tariff_2017, w = w_2017_hs6_hs4, na.rm = TRUE),
+  mean_diff_log_tariff_2017  = mean(diff_log_tariff_2017, na.rm = TRUE),
   # for trade aggregate by summing
   Trade_value_USD = sum(Trade_value_USD, na.rm = TRUE))
 colSums(is.na(US_hs4_trade))
-test <- US_hs4_trade %>% filter(is.na(weighted_diff_log_tariff_2015))
+test <- US_hs4_trade %>% filter(is.na(weighted_diff_log_tariff_2017))
 unique(test$year)
 
-# get HS4 2015 trade values 
-trade_2015 <- US %>% filter(draw == 1 & year == 2015)  %>% group_by(sector, hs_section, hs2,  hs4) %>% 
-  summarise(Trade_value_USD_2015 = sum(Trade_value_USD, na.rm = TRUE))
+# get HS4 2017 trade values 
+trade_2017 <- US %>% filter(draw == 1 & year == 2017)  %>% group_by(sector, hs_section, hs2,  hs4) %>% 
+  summarise(Trade_value_USD_2017 = sum(Trade_value_USD, na.rm = TRUE))
 
 
-US_hs4_trade <- left_join(US_hs4_trade, trade_2015)
+US_hs4_trade <- left_join(US_hs4_trade, trade_2017)
 colSums(is.na(US_hs4_trade))
 
 # get change in trade values and percentage change in trade values 
-US_hs4_trade <- US_hs4_trade %>% filter(year != 2015) %>%  mutate(
-  change_trade_USD = Trade_value_USD - Trade_value_USD_2015,
-  perc_change_trade_USD = case_when( Trade_value_USD_2015 == 0 & change_trade_USD == 0 ~ 0,
-                                     change_trade_USD != 0 & Trade_value_USD_2015 != 0 ~ round(change_trade_USD * 100 / Trade_value_USD_2015),
-                                     change_trade_USD != 0 & Trade_value_USD_2015 == 0 ~ NA_real_ ),
+US_hs4_trade <- US_hs4_trade %>% filter(year != 2017) %>%  mutate(
+  change_trade_USD = Trade_value_USD - Trade_value_USD_2017,
+  perc_change_trade_USD = case_when( Trade_value_USD_2017 == 0 & change_trade_USD == 0 ~ 0,
+                                     change_trade_USD != 0 & Trade_value_USD_2017 != 0 ~ round(change_trade_USD * 100 / Trade_value_USD_2017),
+                                     change_trade_USD != 0 & Trade_value_USD_2017 == 0 ~ NA_real_ ),
   perc_change_trade_USD_bis = if_else(perc_change_trade_USD > 100 , NA,perc_change_trade_USD ),
   trade_destruction = if_else(perc_change_trade_USD == -100, 1,0),
-  trade_creation = if_else(Trade_value_USD != 0 & Trade_value_USD_2015 == 0, 1,0))
+  trade_creation = if_else(Trade_value_USD != 0 & Trade_value_USD_2017 == 0, 1,0))
 summary(US_hs4_trade)
 table(US_hs4_trade$trade_destruction)
 
 # get change in AVEs
 names(US)
-US_hs4_AVEs <- US %>% filter(year != 2015) %>%  group_by(year, hs4) %>% summarise(
-  # for tariffs: weighted mean using 2015 weights
+US_hs4_AVEs <- US %>% filter(year != 2017) %>%  group_by(year, hs4) %>% summarise(
+  # for tariffs: weighted mean using 2017 weights
   diff_ln_AVE_FE  = mean(diff_ln_AVE_FE, na.rm = TRUE),
   diff_ln_AVE_FE_bench  = mean(diff_ln_AVE_FE_bench, na.rm = TRUE),
   diff_ln_AVE_FE_wmean  = mean(diff_ln_AVE_FE_wmean, na.rm = TRUE),
@@ -123,7 +123,7 @@ summary(US_hs4_AVEs)
 
 
 US_hs4_AVEs <- US %>%
-  filter(year != 2015) %>%
+  filter(year != 2017) %>%
   group_by(year, hs4) %>%
   summarise(
     n = sum(!is.na(diff_ln_AVE_FE)),
@@ -184,7 +184,7 @@ common_theme <- theme_minimal() +
     panel.background = element_rect(fill = "white", color = NA),
     plot.background  = element_rect(fill = "white", color = NA)  )
 # 1) Tariff (LEFT)
-p_tariff <- ggplot(df, aes(x = mean_diff_log_tariff_2015, y = change_trade_USD)) +
+p_tariff <- ggplot(df, aes(x = mean_diff_log_tariff_2017, y = change_trade_USD)) +
   geom_point(size = 2, alpha = 0.6) +
   # geom_smooth(  method = "lm",  se = FALSE,  color = "black",   linewidth = 1  ) +
   coord_cartesian(ylim = yl) +
@@ -222,7 +222,7 @@ p_wmean <- ggplot(df, aes(x = mean_FE_wmean, y = change_trade_USD,   color = sig
 library(patchwork)
 final_plot <- ((p_tariff/p_fe) | (p_wmean / p_bench)) +   plot_layout(widths = c(1.1, 1))
 final_plot
-ggsave(filename = paste0(exp , "plot/tariff_AVE_trade_changes_2018_2019.png"),
+ggsave(filename = paste0(exp , "plot/tariff_AVE_trade_changes_2018_2019_base_2017.png"),
   plot = final_plot, width = 12,height = 6, units = "in", dpi = 300,bg = "white")
 
 
@@ -242,7 +242,7 @@ common_theme <- theme_classic() +
 
 # 1) Tariff (LEFT)
 p_tariff_perc <- ggplot(
-  df, aes(x = mean_diff_log_tariff_2015, y = perc_change_trade_USD_bis)) +
+  df, aes(x = mean_diff_log_tariff_2017, y = perc_change_trade_USD_bis)) +
   geom_point(size = 2, alpha = 0.6) +
   geom_smooth(method = "lm", se = FALSE, color = "black", linewidth = 1) +
   coord_cartesian(ylim = yl_perc) +
@@ -284,7 +284,8 @@ p_wmean_perc <- ggplot(df,  aes(x = mean_FE_wmean_w, y = perc_change_trade_USD_b
 # Combine layout
 final_plot_perc <- ((p_tariff_perc /p_fe_perc) | (p_wmean_perc / p_bench_perc)) + plot_layout(widths = c(1.1, 1))
 final_plot_perc
-ggsave(filename = paste0(exp , "plot/tariff_AVE_perc_trade_changes_2018_2019.png"),
+
+ggsave(filename = paste0(exp , "plot/tariff_AVE_perc_trade_changes_2018_2019_base_2017.png"),
        plot = final_plot_perc, width = 12,height = 6, units = "in", dpi = 300,bg = "white")
 
 
@@ -329,34 +330,34 @@ plot_w <- ggplot(subset(US_hs4, !is.na(above_50)), aes(x = mean_FE_wmean_w, colo
   geom_density(linewidth = 1) +
   coord_cartesian(xlim= c(-5,25))+
   common_theme +
-  labs(  x = "AVE change (FE demean)",y = "Density",color = "Trade change relative to 2015"  )
+  labs(  x = "AVE change (FE demean)",y = "Density",color = "Trade change relative to 2017"  )
 plot_w
 
 plot <- ggplot(subset(US_hs4, !is.na(above_50)), aes(x = mean_FE_w, color = change_cat)) +
   geom_density(linewidth = 1) +
   coord_cartesian(xlim= c(-5,25))+
   common_theme +
-  labs(  x = "AVE change (FE)",y = "Density",color = "Trade change relative to 2015"  )
+  labs(  x = "AVE change (FE)",y = "Density",color = "Trade change relative to 2017"  )
 plot
 
 plot_b <- ggplot(subset(US_hs4, !is.na(above_50)), aes(x = mean_FE_bench_w, color = change_cat)) +
   geom_density(linewidth = 1) +
   coord_cartesian(xlim= c(-5,25))+
   common_theme +
-  labs(  x = "AVE change (FE benchmark)",y = "Density",color = "Trade change relative to 2015"  )
+  labs(  x = "AVE change (FE benchmark)",y = "Density",color = "Trade change relative to 2017"  )
 plot_b
 
-plot_tar <- ggplot(subset(US_hs4, !is.na(above_50)), aes(x = mean_diff_log_tariff_2015, color = change_cat)) +
+plot_tar <- ggplot(subset(US_hs4, !is.na(above_50)), aes(x = mean_diff_log_tariff_2017, color = change_cat)) +
   geom_density(linewidth = 1) +
   coord_cartesian(xlim= c(-0.2,0.75))+
   common_theme +
-  labs(  x = "Change tariff",y = "Density",color = "Trade change relative to 2015"  )
+  labs(  x = "Change tariff",y = "Density",color = "Trade change relative to 2017"  )
 plot_tar
 
 final_plot <- (plot /plot_w /plot_b /plot_tar) + plot_layout(widths = c(1.1, 1))
 final_plot
-ggsave(filename = paste0(exp , "plot/distribution_AVEs_perc_change_trade.png"),
-       plot = final_plot_perc, width = 12,height = 6, units = "in", dpi = 300,bg = "white")
+ggsave(filename = paste0(exp , "plot/distribution/distribution_AVEs_perc_change_trade_2017.png"),
+       plot = final_plot, width = 12,height = 6, units = "in", dpi = 300,bg = "white")
 
 
 
@@ -369,19 +370,19 @@ plot
 
 ###################################################################################
 
-reg <- lm(  change_trade_USD ~ mean_FE_w + mean_diff_log_tariff_2015 ,
+reg <- lm(  change_trade_USD ~ mean_FE_w + mean_diff_log_tariff_2017 ,
   data = subset(US_hs4, year %in% c(2018, 2019)))
 summary(reg)
 
-reg <- lm(change_trade_USD ~ mean_FE_bench_w + mean_diff_log_tariff_2015 ,
+reg <- lm(change_trade_USD ~ mean_FE_bench_w + mean_diff_log_tariff_2017 ,
             data = subset(US_hs4, year %in% c(2018, 2019)))
 summary(reg)
 
-reg <- lm(perc_change_trade_USD_bis ~ mean_FE_w + mean_diff_log_tariff_2015 ,
+reg <- lm(perc_change_trade_USD_bis ~ mean_FE_w + mean_diff_log_tariff_2017 ,
           data = subset(US_hs4, year %in% c(2018, 2019)))
 summary(reg)
 
-reg <- lm(perc_change_trade_USD_bis ~ mean_FE_bench_w + mean_diff_log_tariff_2015 ,
+reg <- lm(perc_change_trade_USD_bis ~ mean_FE_bench_w + mean_diff_log_tariff_2017 ,
           data = subset(US_hs4, year %in% c(2018, 2019)))
 summary(reg)
 
@@ -400,7 +401,7 @@ vars <- US_hs4 %>% filter(year %in% c(2018:2019)) %>%
     mean_FE_w,
     mean_FE_bench_w,
     mean_FE_wmean_w,
-    mean_diff_log_tariff_2015 )
+    mean_diff_log_tariff_2017 )
 corr_mat <- cor(vars, use = "complete.obs")
 library(corrplot)
 corrplot(corr_mat, method = "color", type = "upper", addCoef.col = "black",  tl.col = "black",  tl.srt = 45)
