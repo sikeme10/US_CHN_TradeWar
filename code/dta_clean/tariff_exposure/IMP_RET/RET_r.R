@@ -30,7 +30,7 @@ exp <- "/data/sikeme/TRADE/US_CHN_TradeWar_git/data/created_exposure"
 # 1) load data:
 ################################################################################
 
-labor <- read_csv("/data/sikeme/TRADE/NTM_trade_war/data/QCEW/clean_labor_share_2012.csv")
+labor <- read_csv( "/data/sikeme/TRADE/US_CHN_TradeWar_git/data/QCEW/QCEW_2012_naics6_CZ.csv")
 
 write_csv(merged_data2,  "/data/sikeme/TRADE/NTM_trade_war/data/QCEW/clean_labor_share_2012.csv")
 

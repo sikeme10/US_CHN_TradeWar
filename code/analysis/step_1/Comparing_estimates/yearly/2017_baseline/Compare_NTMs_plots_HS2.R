@@ -48,7 +48,7 @@ US <- read_csv(file.path(ROOT,paste0("output/Compare_values/yearly/robust/US_ln_
 ################################################################################
 # 2) Drop extreme values (1st/99th percentile)
 ################################################################################
-quant <- 0.01
+quant <- 0.05
 
 FE_q   <- quantile(US$diff_ln_AVE_FE,        quant,      na.rm = TRUE)
 FE_qH  <- quantile(US$diff_ln_AVE_FE,        1 - quant,  na.rm = TRUE)
@@ -69,7 +69,8 @@ US1 <- US %>%
 ################################################################################
 # 3) Filter to chosen sector
 ################################################################################
-US_dta <- US1 %>% filter(sector == SECTOR)
+US_dta <- US1 
+# US_dta <- US1 %>% filter(sector == SECTOR)
 
 ################################################################################
 # 4) Construct weights based on BASE_YEAR (draw == 1)

@@ -30,37 +30,183 @@ getwd()
 library(haven)
 dta_schott <- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/data/crosswalk/schott/naics_HS_schott_2012.csv")
 dta_D <- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/data/crosswalk/HS6_NAICS_Diane/NAICS_HS_2012.csv")
+output_NAICS6 <- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/data/Census_output/output_NAICS_6.csv")
+HS_product <- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/data/HS_codes/HS_2012_2017_merged.csv")
 
 
 
+names(dta_schott)
+names(dta_D)
+names(HS_product)
+
+######################################################################################
+# drop naics where have "X"
+dta_schott$naics <- as.numeric(dta_schott$naics)
+dta_schott <- dta_schott %>% filter(!is.na(naics))
+
+######################################################################################
+# checks 
+length(unique(dta_schott$naics))
+length(unique(dta_schott$HS6))
+
+length(unique(dta_D$naics6_D))
+length(unique(dta_D$HS6))
+
+length(unique(output_NAICS6$NAICS6_2012))
+
+length(unique(HS_product$HS_2012_Product_Code))
+
+
+
+# 1) check product codes first:
+
+sum(unique(dta_schott$HS6) %in% unique(HS_product$HS_2012_Product_Code))
+sum(unique(dta_D$HS6) %in% unique(HS_product$HS_2012_Product_Code))
+
+# filter product codes that are in HS_product$HS_2012_Product_Code
+dta_schott <- dta_schott %>% filter(HS6 %in% unique(HS_product$HS_2012_Product_Code))
+length(unique(dta_schott$HS6))
+colSums(is.na(dta_schott))
+dta_schott
+
+# filter product codes that are in HS_product$HS_2012_Product_Code
+dta_D <- dta_D %>% filter(HS6 %in% unique(HS_product$HS_2012_Product_Code))
+length(unique(dta_D$HS6))
+length(unique(dta_D$naics6_D))
+colSums(is.na(dta_D))
+dta_D <- dta_D %>% filter(!is.na(HS6))
+dta_D <- dta_D %>% filter(!is.na(naics6_D))
+
+
+
+# 2) check NAICS codes:
+
+sum(unique(dta_schott$naics) %in% unique(output_NAICS6$NAICS6_2012))
+sum(unique(dta_D$naics6_D) %in% unique(output_NAICS6$NAICS6_2012))
+
+# filter product codes that are in output_NAICS6$NAICS6_2012
+dta_schott <- dta_schott %>% filter(naics %in% unique(output_NAICS6$NAICS6_2012))
+length(unique(dta_schott$naics))
+length(unique(dta_schott$HS6))
+colSums(is.na(dta_schott))
+
+
+# filter product codes that are in output_NAICS6$NAICS6_2012
+dta_D <- dta_D %>% filter(naics6_D %in% unique(output_NAICS6$NAICS6_2012))
+length(unique(dta_D$HS6))
+length(unique(dta_D$naics6_D))
+colSums(is.na(dta_D))
+
+
+
+
+
+################################################################################
+# multiple products codes map to multiple NAICS code and vice versa
+
+
+# How many unique NAICS each HS6 maps to
+HS6_to_NAICS <- dta_schott %>%  group_by(HS6) %>%
+  summarise(n_naics = n_distinct(naics)) %>%  arrange(desc(n_naics))
+HS6_to_NAICS
+
+# How many unique HS6 each NAICS maps to
+NAICS_to_HS6 <- dta_schott %>%  group_by(naics) %>%
+  summarise(n_hs6 = n_distinct(HS6)) %>%  arrange(desc(n_hs6))
+NAICS_to_HS6
+
+
+# How many unique NAICS6_D each HS6 maps to
+HS6_to_NAICS <- dta_D %>%  group_by(HS6) %>% summarise(n_naics = n_distinct(naics6_D)) %>%
+  arrange(desc(n_naics))
+HS6_to_NAICS
+
+# How many unique HS6 each NAICS6_D maps to
+NAICS_to_HS6 <- dta_D %>% group_by(naics6_D) %>%  summarise(n_hs6 = n_distinct(HS6)) %>%
+  arrange(desc(n_hs6))
+NAICS_to_HS6
+######################################################################################
+
+# check product codes that are in Charlton and not in Schott and vice versa
+names(dta_D)
+names(dta_schott)
+
+dta_D <-dta_D %>% select(HS6 , naics6_D)
+dta_schott <-dta_schott %>% select(HS6 , naics)
+
+# drop duplicates
+sum(duplicated(dta_D[, c("HS6", "naics6_D")]))
+sum(duplicated(dta_schott[, c("HS6", "naics")]))
+dta_D <- dta_D %>% distinct()
+dta_schott <- dta_schott %>% distinct()
+
+######################################################################################
+# Merge the two datasets
+
+# we first select only product codes that are in Chalrton and not in Schott
+# whatever is not in Charlton, we use Schott 
+
+dta_schott2 <- dta_schott %>% filter(!HS6 %in% unique(dta_D$HS6))
+length(unique(dta_schott2$naics))
+length(unique(dta_schott2$HS6))
+
+dta_D <- dta_D %>% rename(naics = naics6_D)
+length(unique(dta_D$HS6))
+length(unique(dta_D$naics))
+
+merge <- bind_rows(dta_D, dta_schott)
+length(unique(merge$HS6))
+length(unique(merge$naics))
 
 
 ######################################################################################
-# join both Diane and Schott dta
-dta <- full_join(dta_D,dta_schott)
+# whatever product was not matched we can use package to get back 
+
+length(unique(merge$HS6))
+class(merge$HS6)
+length(unique(merge$naics))
+length(unique(HS_product$HS_2012_Product_Code))
+colSums(is.na(merge))
 
 
-
-# drop observation where HS6 is NA
-dta <- dta %>%   filter(!is.na(HS6))
-
-# Get it at HS6 level;
-dta <- dta %>%  select(-HS10)
-
-length(unique(dta$HS6))
-
-# drop duplicates 
-dta1 <- distinct(dta)
-length(unique(dta1$HS6))
+Product_codes1 <- HS_product %>% select(HS_2012_Product_Code, HS_2012_Product_Description) %>%
+  rename(HS6 = HS_2012_Product_Code)
+length(unique(Product_codes1$HS6))
 
 
-######################################################################################
+merge1 <- full_join(merge, Product_codes1, by = "HS6")
+length(unique(merge1$HS6))
 
-test <- dta1 %>%  group_by(HS6) %>%    filter(n() > 1) %>%  ungroup()
+colSums(is.na(merge1))
+merge1 <- merge1 %>% filter(!is.na(HS6))
+
+
+library(concordance)
+merge1 <- merge1 %>%
+  mutate(naics1 = ifelse(is.na(naics),
+                         sapply(HS6, function(x) {
+                           result <- concord_hs_naics(x, origin = "HS4", destination = "NAICS", dest.digit = 6, all = FALSE)
+                           result[[1]]
+                         }),
+                         naics))
+colSums(is.na(merge1))
+length(unique(merge1$naics1))
+
+merge2 <- merge1 %>% select(HS6, naics1) %>% rename(naics = naics1)
+length(unique(merge1$naics1))
+length(unique(merge1$HS6))
+
+
+merge3 <- distinct(merge2)
+length(unique(merge3$naics))
+length(unique(merge3$HS6))
+colSums(is.na(merge3))
+
+
 
 # get at HS6-naics 6 level
 
-write_csv(dta1, "/data/sikeme/TRADE/NTM_trade_war/data/crosswalk/clean_HS6_naics6_2012.csv")
+write_csv(merge3, "/data/sikeme/TRADE/US_CHN_TradeWar_git/data/crosswalk/clean_HS6_naics6_2012.csv")
 
 
 ######################################################################################

@@ -67,28 +67,32 @@ write_csv(output_NAICS4, "/data/sikeme/TRADE/US_CHN_TradeWar_git/data/Census_out
 Ag_6 <- read_csv("Census_output/ag_output_NAICS_6.csv")
 Min_6<- read_csv("Census_output/mining_output_NAICS6.csv")
 Man_6 <- read_csv("Census_output/manufacturing_output_NAICS6.csv")
-
-
+Cons_6 <- read_csv("Census_output/construction_output_NAICS6.csv")
+output_6 <- read_csv("Census_output/census_output_NAICS6.csv")
 
 library(dplyr)
 
-output_NAICS6 <- bind_rows(Ag_6, Min_6, Man_6)
-output_NAICS6 <- output_NAICS6 %>% mutate(Geo = "US")
+output_NAICS6 <- bind_rows(Ag_6, output_6)
+# output_NAICS6 <- bind_rows(Ag_6, Min_6, Man_6,Cons_6)
 
 names(output_NAICS6)
-output_NAICS6 <- output_NAICS6 %>% 
-  mutate(NAICS_description =  if_else(is.na(NAICS_description),NAICS6_2012_descrpt , NAICS_description)) %>% 
-  select( -NAICS6_2012_descrpt) %>% relocate(year, Geo, sector, NAICS3_2012, NAICS4_2012, NAICS6_2012, NAICS_description)
+output_NAICS6 <- output_NAICS6 %>% select(-us)
+
+# names(output_NAICS6)
+# output_NAICS6 <- output_NAICS6 %>% 
+#   mutate(NAICS_description =  if_else(is.na(NAICS_description),NAICS6_2012_descrpt , NAICS_description)) %>% 
+#   select( -NAICS6_2012_descrpt) %>% relocate(year, Geo, sector, NAICS3_2012, NAICS4_2012, NAICS6_2012, NAICS_description)
 
 output_NAICS6 <- output_NAICS6 %>%  mutate(NAICS4_2012 = substr(NAICS6_2012, 1, 4),
                       NAICS3_2012 = substr(NAICS6_2012, 1, 3))
+length(unique(output_NAICS6$NAICS6_2012))
 
 write_csv(output_NAICS6, "/data/sikeme/TRADE/US_CHN_TradeWar_git/data/Census_output/output_NAICS_6.csv")
 
 
 
 
-
+# test <- read_csv( "/data/sikeme/TRADE/US_CHN_TradeWar_git/data/Census_output/output_NAICS_6.csv")
 
 
 

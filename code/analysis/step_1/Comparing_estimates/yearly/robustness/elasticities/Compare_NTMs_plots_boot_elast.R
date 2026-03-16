@@ -24,7 +24,7 @@ library(frontier)
 ################################################################################
 BASE_YEAR <- 2015
 # SECTOR    <- "Ag"   # e.g. "Ag", "Manuf", etc.
- SECTOR    <- "Manu" 
+SECTOR    <- "Manu" 
 
 
 # nice label used in titles/filenames
@@ -36,19 +36,19 @@ if (is.na(SECTOR_LABEL)) SECTOR_LABEL <- SECTOR  # fallback
 ROOT <- "/data/sikeme/TRADE/US_CHN_TradeWar_git"
 setwd(ROOT)
 
-OUT_PLOT_DIR <- file.path(ROOT, "output/Compare_values/yearly/plot", as.character(BASE_YEAR))
+OUT_PLOT_DIR <- file.path(ROOT, "output/Compare_values/yearly/robust/elast/plot/", as.character(BASE_YEAR))
 dir.create(OUT_PLOT_DIR, recursive = TRUE, showWarnings = FALSE)
 
 ################################################################################
 # 1) Load data
 ################################################################################
-US <- read_csv(file.path(ROOT,paste0("output/Compare_values/yearly/robust/US_ln_NTMs_base_", BASE_YEAR, "_FE_boot_hs4.csv") ))
-
-
+US <- read_csv(file.path(ROOT,paste0("output/Compare_values/yearly/robust/US_ln_NTMs_base_", BASE_YEAR, "_FE_boot_hs4_elast.csv") ))
+table(US$year)
+test <- US %>% filter(year >2017)
 ################################################################################
 # 2) Drop extreme values (1st/99th percentile)
 ################################################################################
-quant <- 0.05
+quant <- 0.01
 
 FE_q   <- quantile(US$diff_ln_AVE_FE,        quant,      na.rm = TRUE)
 FE_qH  <- quantile(US$diff_ln_AVE_FE,        1 - quant,  na.rm = TRUE)
@@ -168,7 +168,6 @@ theme_trade <- theme_minimal(base_size = 14, base_family = "Times New Roman") +
     legend.title = element_text(size = 10)
   )
 
-### PLOT THEME
 
 
 # ---- consistent legend keys across ALL plots ----

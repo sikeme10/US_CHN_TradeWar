@@ -22,9 +22,9 @@ library(frontier)
 ################################################################################
 # USER CHOICES (change these only)
 ################################################################################
-BASE_YEAR <- 2015
+BASE_YEAR <- 2017
 # SECTOR    <- "Ag"   # e.g. "Ag", "Manuf", etc.
- SECTOR    <- "Manu" 
+SECTOR    <- "Manu" 
 
 
 # nice label used in titles/filenames
@@ -169,7 +169,54 @@ theme_trade <- theme_minimal(base_size = 14, base_family = "Times New Roman") +
   )
 
 ### PLOT THEME
-
+{
+  blue <- "#1f4e79"  # darker, prints well
+  
+  theme_paper <- function(base_size = 12, base_family = "Latin Modern Roman") {
+    theme_bw(base_size = base_size, base_family = base_family) +
+      theme(
+        panel.grid.minor = element_blank(),
+        panel.grid.major.x = element_line(color = "grey85", linewidth = 0.3),
+        panel.grid.major.y = element_line(color = "grey85", linewidth = 0.3),
+        axis.title = element_text(),
+        plot.margin = margin(5.5, 8, 5.5, 5.5),
+        axis.title.x = element_text(margin = margin(t = 8)),
+        panel.border = element_rect(
+          linewidth = 0.6,
+          color = "black"
+        ),
+        axis.ticks = element_line(
+          linewidth = 0.6,
+          color = "black"
+        ),
+        axis.ticks.length = unit(3.5, "pt")
+      )
+  }
+  }### PLOT THEME
+{
+  blue <- "#1f4e79"  # darker, prints well
+  
+  theme_paper <- function(base_size = 12, base_family = "Latin Modern Roman") {
+    theme_bw(base_size = base_size, base_family = base_family) +
+      theme(
+        panel.grid.minor = element_blank(),
+        panel.grid.major.x = element_line(color = "grey85", linewidth = 0.3),
+        panel.grid.major.y = element_line(color = "grey85", linewidth = 0.3),
+        axis.title = element_text(),
+        plot.margin = margin(5.5, 8, 5.5, 5.5),
+        axis.title.x = element_text(margin = margin(t = 8)),
+        panel.border = element_rect(
+          linewidth = 0.6,
+          color = "black"
+        ),
+        axis.ticks = element_line(
+          linewidth = 0.6,
+          color = "black"
+        ),
+        axis.ticks.length = unit(3.5, "pt")
+      )
+  }
+}
 
 # ---- consistent legend keys across ALL plots ----
 legend_breaks <- c("FE", "FE_demeaned", "FE_bench", "tariff", "Chen_et_al")
@@ -244,7 +291,7 @@ p_sector <- ggplot(US_dta_q, aes(x = year)) +
                      name   = "Variables" ) +
   labs( title = paste0("Weighted average Δ ln(1+AVE) in ", SECTOR_LABEL, " (relative to ", BASE_YEAR, ")"),
         x = "Year", y = "Weighted Δ ln(1+AVE)") +
-  theme_trade
+  theme_paper()
 p_sector
 
 ggsave( filename = file.path(OUT_PLOT_DIR, paste0("Compare_ln_AVE_", SECTOR, "_sector_weight_boot", ".png")),

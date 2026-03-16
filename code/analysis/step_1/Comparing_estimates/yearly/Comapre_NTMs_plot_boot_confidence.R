@@ -42,7 +42,7 @@ dir.create(OUT_PLOT_DIR, recursive = TRUE, showWarnings = FALSE)
 # 1) Load data
 ################################################################################
 US <- read_csv(file.path(ROOT,paste0("output/Compare_values/yearly/robust/US_ln_NTMs_base_", BASE_YEAR, "_FE_boot_hs4.csv") ))
-
+length(unique(US$draw))
 
 
 
@@ -343,6 +343,7 @@ ggsave(  filename = file.path(OUT_PLOT_DIR, paste0("Compare_ln_AVE_", SECTOR, "_
 # bis for presentation;
 p_hs_sect <- ggplot(US_dta_q_sect, aes(x = year)) +
   geom_line(aes(y = FEm_mean,    color = "FE_demeaned"), linewidth = 1) +
+  geom_ribbon(aes(ymin = FEm_lo, ymax = FEm_hi,  fill = "FE_demeaned"), alpha = 0.2) +
   geom_line(aes(y = tariff_mean, color = "tariff"),      linewidth = 1) +
   geom_line(aes(y = chen_mean,  color = "Chen_et_al"),  linetype = "dashed", linewidth = 1) +
   scale_color_manual(values = legend_colors,

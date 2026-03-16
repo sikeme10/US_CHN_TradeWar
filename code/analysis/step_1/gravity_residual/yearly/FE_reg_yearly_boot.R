@@ -170,7 +170,7 @@ library(readr)
 
 set.seed(123)
 # B <- 50
-B <- 100
+B <- 500
 
 unique_HS2 <- unique(dta$hs2)
 
@@ -285,112 +285,112 @@ write_csv(boot_coef_df, file.path(exp, "gravity_pois_FE_coeff_boot.csv"))
 # 
 # 
 
-
-
-# ##############################################################################
-# # 5) In a loop for each HS 2 level: bootstrap drop 0s
-# ##############################################################################
-
-library(dplyr)
-library(fixest)
-library(readr)
-
-set.seed(123)
-#B <- 50
-B <- 100
-
-unique_HS2 <- unique(dta$hs2)
-
-boot_fe_list   <- vector("list", length(unique_HS2))
-boot_coef_list <- vector("list", length(unique_HS2))
-
-names(boot_fe_list)   <- unique_HS2
-names(boot_coef_list) <- unique_HS2
-
-for(i in seq_along(unique_HS2)){
-  # test 
-  # i <- 1
-  HS_val <- unique_HS2[i]
-  message("Running HS2 = ", HS_val)
-  
-  # 1) subset
-  sub_dta <- dta %>% filter(hs2 == HS_val)
-  
-  # 2) drop zero trade AND exporters with all-zero trade
-  sub_dta1 <- sub_dta %>%
-    filter(Trade_value_USD > 0) %>%                 # <<< NEW
-    group_by(ExporterISO3) %>%
-    filter(any(Trade_value_USD > 0)) %>%
-    ungroup() %>%
-    mutate(ln_trade = log(Trade_value_USD))    
-  
-  n <- nrow(sub_dta1)
-  
-  fe_draws   <- vector("list", B)
-  coef_draws <- vector("list", B)
-  
-  for(b in seq_len(B)){
-    
-    # 3) ROW bootstrap
-    boot_dta <- sub_dta1[sample.int(n, size = n, replace = TRUE), ] %>%
-      mutate(fe_id = interaction(year, ExporterISO3, hs4, drop = TRUE))
-    
-    reg <- tryCatch(
-      feols(
-        ln_trade ~
-          contig + dist + comlang_off + Colonial_ties + rta + fta_and_eia +
-          Importer_GDP + Exporter_wto + Exporter_eu + Exporter_GDP_current_USD +
-          Exporter_Gross_Cap_formation_current_USD + Exporter_Ag_land_K2 +
-          Exporter_Exchange_rate_LCU_per_USD + log_tariff |
-          fe_id,
-        data = boot_dta,
-        vcov = ~ ExporterISO3
-      ),
-      error = function(e) NULL
-    )
-    
-    if(is.null(reg)){
-      fe_draws[[b]] <- data.frame(
-        hs2 = HS_val, draw = b, fe_id = NA_character_, FE = NA_real_
-      )
-      coef_draws[[b]] <- data.frame(
-        hs2 = HS_val, draw = b, term = NA_character_, estimate = NA_real_
-      )
-      next
-    }
-    
-    # ---------------- FIXED EFFECTS ----------------
-    fe_vec <- fixef(reg)$fe_id
-    
-    fe_draws[[b]] <- data.frame(
-      hs2   = HS_val,
-      draw  = b,
-      fe_id = names(fe_vec),
-      FE    = as.numeric(fe_vec),
-      row.names = NULL
-    )
-    
-    # ---------------- NON-FE COEFFICIENTS ----------------
-    ct <- summary(reg)$coeftable
-    
-    coef_draws[[b]] <- data.frame(
-      hs2      = HS_val,
-      draw     = b,
-      term     = rownames(ct),
-      estimate = ct[, "Estimate"],
-      row.names = NULL
-    )
-  }
-  
-  boot_fe_list[[i]]   <- bind_rows(fe_draws)
-  boot_coef_list[[i]] <- bind_rows(coef_draws)
-}
-
-boot_fe_df   <- bind_rows(boot_fe_list)
-boot_coef_df <- bind_rows(boot_coef_list)
-
-# ---------------- SAVE RAW BOOTSTRAP DRAWS ----------------
-write_csv(boot_fe_df, file.path(exp, "gravity_logOLS_FE_boot_fixef_drop0.csv"))
-write_csv(boot_coef_df, file.path(exp, "gravity_pois_FE_coeff_boot_drop0.csv"))
+# 
+# 
+# # ##############################################################################
+# # # 5) In a loop for each HS 2 level: bootstrap drop 0s
+# # ##############################################################################
+# 
+# library(dplyr)
+# library(fixest)
+# library(readr)
+# 
+# set.seed(123)
+# #B <- 50
+# B <- 500
+# 
+# unique_HS2 <- unique(dta$hs2)
+# 
+# boot_fe_list   <- vector("list", length(unique_HS2))
+# boot_coef_list <- vector("list", length(unique_HS2))
+# 
+# names(boot_fe_list)   <- unique_HS2
+# names(boot_coef_list) <- unique_HS2
+# 
+# for(i in seq_along(unique_HS2)){
+#   # test 
+#   # i <- 1
+#   HS_val <- unique_HS2[i]
+#   message("Running HS2 = ", HS_val)
+#   
+#   # 1) subset
+#   sub_dta <- dta %>% filter(hs2 == HS_val)
+#   
+#   # 2) drop zero trade AND exporters with all-zero trade
+#   sub_dta1 <- sub_dta %>%
+#     filter(Trade_value_USD > 0) %>%                 # <<< NEW
+#     group_by(ExporterISO3) %>%
+#     filter(any(Trade_value_USD > 0)) %>%
+#     ungroup() %>%
+#     mutate(ln_trade = log(Trade_value_USD))    
+#   
+#   n <- nrow(sub_dta1)
+#   
+#   fe_draws   <- vector("list", B)
+#   coef_draws <- vector("list", B)
+#   
+#   for(b in seq_len(B)){
+#     
+#     # 3) ROW bootstrap
+#     boot_dta <- sub_dta1[sample.int(n, size = n, replace = TRUE), ] %>%
+#       mutate(fe_id = interaction(year, ExporterISO3, hs4, drop = TRUE))
+#     
+#     reg <- tryCatch(
+#       feols(
+#         ln_trade ~
+#           contig + dist + comlang_off + Colonial_ties + rta + fta_and_eia +
+#           Importer_GDP + Exporter_wto + Exporter_eu + Exporter_GDP_current_USD +
+#           Exporter_Gross_Cap_formation_current_USD + Exporter_Ag_land_K2 +
+#           Exporter_Exchange_rate_LCU_per_USD + log_tariff |
+#           fe_id,
+#         data = boot_dta,
+#         vcov = ~ ExporterISO3
+#       ),
+#       error = function(e) NULL
+#     )
+#     
+#     if(is.null(reg)){
+#       fe_draws[[b]] <- data.frame(
+#         hs2 = HS_val, draw = b, fe_id = NA_character_, FE = NA_real_
+#       )
+#       coef_draws[[b]] <- data.frame(
+#         hs2 = HS_val, draw = b, term = NA_character_, estimate = NA_real_
+#       )
+#       next
+#     }
+#     
+#     # ---------------- FIXED EFFECTS ----------------
+#     fe_vec <- fixef(reg)$fe_id
+#     
+#     fe_draws[[b]] <- data.frame(
+#       hs2   = HS_val,
+#       draw  = b,
+#       fe_id = names(fe_vec),
+#       FE    = as.numeric(fe_vec),
+#       row.names = NULL
+#     )
+#     
+#     # ---------------- NON-FE COEFFICIENTS ----------------
+#     ct <- summary(reg)$coeftable
+#     
+#     coef_draws[[b]] <- data.frame(
+#       hs2      = HS_val,
+#       draw     = b,
+#       term     = rownames(ct),
+#       estimate = ct[, "Estimate"],
+#       row.names = NULL
+#     )
+#   }
+#   
+#   boot_fe_list[[i]]   <- bind_rows(fe_draws)
+#   boot_coef_list[[i]] <- bind_rows(coef_draws)
+# }
+# 
+# boot_fe_df   <- bind_rows(boot_fe_list)
+# boot_coef_df <- bind_rows(boot_coef_list)
+# 
+# # ---------------- SAVE RAW BOOTSTRAP DRAWS ----------------
+# write_csv(boot_fe_df, file.path(exp, "gravity_logOLS_FE_boot_fixef_drop0.csv"))
+# write_csv(boot_coef_df, file.path(exp, "gravity_pois_FE_coeff_boot_drop0.csv"))
 
 

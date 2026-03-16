@@ -171,6 +171,6 @@ write_csv(trade , paste0(exp, "estimates_log_tariff_FE_boot.csv"))
 
 
 
-
-
-
+test <- read_csv(paste0(exp, "estimates_log_tariff_FE_boot.csv"))
+unique(test$year)
+test2<- test %>% filter(year == 2020 & ExporterISO3 == "USA")

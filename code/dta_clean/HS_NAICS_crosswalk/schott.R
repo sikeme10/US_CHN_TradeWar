@@ -5,10 +5,10 @@
 
 rm(list=ls())
 # Set directory
-setwd("/data/sikeme/TRADE/NTM_trade_war/data")
+setwd("/data/sikeme/TRADE/US_CHN_TradeWar_git/data")
 getwd()
 
-
+# HS 2012 revision (HS2012)
 
 
 library(haven)

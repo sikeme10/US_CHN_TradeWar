@@ -57,18 +57,13 @@ names(merged_data)
 summary(merged_data$annual_avg_emplvl)
 
 # select data of interest:
-merged_data1 <- merged_data %>% select(area_fips, own_code, industry_code,industry_title, year, area_title, 
+merged_data1 <- merged_data %>% select(area_fips, own_code, industry_code, industry_title, year, area_title, disclosure_code,
                                        annual_avg_estabs_count, annual_avg_emplvl, total_annual_wages)
+colSums(is.na(merged_data1))
 
 ###############################################################################
 
 write_csv(merged_data1,  "/data/sikeme/TRADE/US_CHN_TradeWar_git/data/QCEW/QCEW_naics6digit_2012.csv")
-
-
-
-
-
-
 
 
 

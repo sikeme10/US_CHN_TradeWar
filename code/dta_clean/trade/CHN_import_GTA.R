@@ -101,6 +101,10 @@ dta <- dta %>% mutate(
 dta <- dta %>% filter(!is.na(PartnerISO3))
 colSums(is.na(dta))
 
+# drop China as a dta 
+test <- dta %>% filter(PartnerISO3 == "CHN")
+dta <- dta %>% filter(PartnerISO3 != "CHN")
+
 ################################################################################
 # select year of interest:
 years <- c(2015:2020)
@@ -160,8 +164,7 @@ unique(dta$`Trade Partner`)
 # order partner based on traded volume 
 partner_order <- dta %>%  group_by(`Trade Partner`) %>%
   summarise(total_usd = sum(Trade_value_USD, na.rm = TRUE)) %>%
-  arrange(desc(total_usd)) %>%
-  pull(`Trade Partner`)
+  arrange(desc(total_usd)) %>%  pull(`Trade Partner`)
 
 ################################################################################
 # duplicates present 
@@ -169,9 +172,9 @@ partner_order <- dta %>%  group_by(`Trade Partner`) %>%
 names(dta)
 unique(dta$`Trade Direction`)
 # check duplicates 
-dups <- dta %>%  group_by(year, month, Reporter,`Trade Direction`, `Trade Partner`,`Trade Partner ISO Code`,
-                          `HS2 Code`,`HS4 Code`,`HS6 Code`,`HS6 Description`, ExporterISO3, hs6_H4, hs6_H5,
-                          ImporterISO3) %>%  filter(n() > 1)
+# dups <- dta %>%  group_by(year, month, Reporter,`Trade Direction`, `Trade Partner`,`Trade Partner ISO Code`,
+#                           `HS2 Code`,`HS4 Code`,`HS6 Code`,`HS6 Description`, ExporterISO3, hs6_H4, hs6_H5,
+#                           ImporterISO3) %>%  filter(n() > 1)
 
 summary(dta$`Unit Price`)
 
@@ -186,9 +189,9 @@ dta1 <- dta %>% group_by(year, month, Reporter,`Trade Direction`, `Trade Partner
     .groups = "drop")
 summary(dta1$Unit_Price)
 test <- dta1 %>% filter(Unit_Price>1000)
-dups <- dta1 %>%  group_by(year, month, Reporter,`Trade Direction`, `Trade Partner`,`Trade Partner ISO Code`,
-                          `HS2 Code`,`HS4 Code`,`HS6 Code`,`HS6 Description`, ExporterISO3, hs6_H4, hs6_H5,
-                          ImporterISO3) %>%  filter(n() > 1)
+# dups <- dta1 %>%  group_by(year, month, Reporter,`Trade Direction`, `Trade Partner`,`Trade Partner ISO Code`,
+#                           `HS2 Code`,`HS4 Code`,`HS6 Code`,`HS6 Description`, ExporterISO3, hs6_H4, hs6_H5,
+#                           ImporterISO3) %>%  filter(n() > 1)
 
 ################################################################################
 # if we want qunatity as a variable 
@@ -205,9 +208,9 @@ dta2 <- dta %>%
   select(-dup) %>% ungroup()
 names(dta2)
 
-dups <- dta2 %>%  group_by(year, month, Reporter,`Trade Direction`, `Trade Partner`,`Trade Partner ISO Code`,
-                          `HS2 Code`,`HS4 Code`,`HS6 Code`,`HS6 Description`, ExporterISO3, hs6_H4, hs6_H5,
-                          ImporterISO3) %>%  filter(n() > 1)
+# dups <- dta2 %>%  group_by(year, month, Reporter,`Trade Direction`, `Trade Partner`,`Trade Partner ISO Code`,
+#                           `HS2 Code`,`HS4 Code`,`HS6 Code`,`HS6 Description`, ExporterISO3, hs6_H4, hs6_H5,
+#                           ImporterISO3) %>%  filter(n() > 1)
 dta2 <- dta2 %>% rename(Quantity = `Primary Quantity`, Unit_Price = `Unit Price`)
 
 
@@ -215,8 +218,9 @@ dta2 <- dta2 %>% rename(Quantity = `Primary Quantity`, Unit_Price = `Unit Price`
 ################################################################################
 # export data 
 
-# write_csv(dta1,  "data/trade/GTA_CHN_import/CHN_import_2015_2020.csv")
+write_csv(dta1,  "data/trade/GTA_CHN_import/CHN_import_2015_2020.csv")
 
 
 write_csv(dta2,  "data/trade/GTA_CHN_import/CHN_import_quant_2015_2020.csv")
+
 

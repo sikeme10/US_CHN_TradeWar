@@ -1,123 +1,79 @@
 
 ################################################################################
-#                      Merging data for gravity model
-
-
-# merge trade dta with tariffs and gravity model 
-# at HS6 product level 
-# Chinese imports from exporting source countries 
+# Merge data for gravity model of Chinese imports
+# 
+# This script merges trade data with tariffs and gravity model characteristics
+# at the HS6 product level for Chinese imports from exporting source countries
+# for the years 2015-2020.
 ################################################################################
 
-rm(list=ls())
-
-library(readr)
-library(tidyr)
+# Load required packages
+library(readr) 
 library(dplyr)
-library(data.table)
+library(tidyr)
 library(stringi)
-library(fixest)
-library(countrycode)
-library(tidyverse)
-library(vroom)
-library(countrycode)
-library(Hmisc)
-library(haven)
 
 ################################################################################
-# directory: 
+# 1. Load and inspect input data 
+################################################################################
+
+# Set working directory
 setwd("/data/sikeme/TRADE/US_CHN_TradeWar_git")
 
+# Define output directory for created files  
 exp <- "/data/sikeme/TRADE/US_CHN_TradeWar_git/data/created_gravity/"
 
-################################################################################
-# 1) Load data 
-################################################################################
-
-# trade data 
+# Load trade data
 trade <- read_csv("data/trade/GTA_CHN_import/CHN_import_2015_2020.csv")
 names(trade)
-
-# gravity data
+# Load gravity data
 gravity <- read_csv("data/gravity/clean_Gravity.csv")
-names(gravity)
 
-# worldbank data
+# Load worldbank data  
 worldbank <- read_csv("data/gravity/Worldbank_dta.csv")
-names(worldbank)
 
-# rta data 
-rta <- read_csv("data/gravity/clean_rta.csv")
+# Load RTA (regional trade agreement) data
+rta <- read_csv("data/gravity/clean_rta.csv") 
 
-# tariff data 
+# Load tariff data
 tariff <- read_csv("data/tariff_dta/trade_war_tariffs.csv")
-names(tariff)
 MFN <- read_csv("data/tariff_dta/WITS_MFN/CHN_import_tariffs/CHN_WITS_tariff_clean.csv")
-names(MFN)
+
+
 
 ################################################################################
-# 2) Check each data to merge them: get combination of product and partner to balance data
+# 2. Clean and prepare each dataset before merging
 ################################################################################
 
-# a) check product codes 
+# A) Check product codes and select subset to use
 
-length(unique(trade$`HS6 Code`))
-length(unique(trade$hs6_H4))
-length(unique(trade$hs6_H5))
-length(unique(tariff$hs6_H4))
-length(unique(tariff$hs6))
-length(unique(MFN$hs6_H5))
-length(unique(MFN$hs6_H4))
-
-# get unique variation in productCode using HS 2017 revision: We are stcking with those productCode 
+# Get unique HS6 product codes from trade data using HS 2017 revision 
 ProductCode_H5 <- unique(c(trade$hs6_H5))
 ProductCode_H5 <- ProductCode_H5[!is.na(ProductCode_H5)]
-any(is.na(ProductCode_H5))
 
-# b) trade partners 
-length(unique(trade$ExporterISO3))
-unique(trade$`Trade Partner`)
-length(unique(MFN$`Partner Name`))
-unique(MFN$`Partner Name`)
-
-# order partner based on traded volume 
-partner_order <- trade %>%  group_by(ExporterISO3) %>%
+# B) Select top trade partners
+# Order partners by total traded volume 
+partner_order <- trade %>%
+  group_by(ExporterISO3) %>% 
   summarise(total_usd = sum(Trade_value_USD, na.rm = TRUE)) %>%
   arrange(desc(total_usd)) %>%
   pull(ExporterISO3)
-partner_order
 
-Partners <- partner_order[1:100]
-# Check if present in MFN data 
-in_mfn <- Partners %in% MFN$ExporterISO3
-# Missing partners
-missing <- Partners[!in_mfn]
-missing
-# get name of those countries 
-test <- trade %>% filter(ExporterISO3 %in% missing)
-unique(test$`Trade Partner`)
-# Remove missing partners from Partners vector
+# Take top 100 partners
+Partners <- partner_order[1:100]  
+
+# Remove partners missing from MFN tariff data
 Partners <- Partners[Partners %in% MFN$ExporterISO3]
 
-
-# c) time 
-table(trade$year)
-table(trade$month)
-trade$month <- as.numeric(trade$month)
-
-################################################################################
-# 3) Get Balanced data 
-################################################################################
-
-# change some of the variables names to harmonize
-# get data of unique combination of Product-code, Partners, Year and month 
-#  have to re balance the data so that unique observation for hs6", "year", "month", and exporter 
-
+# C) Create balanced panel of product-partner-time observations  
 panel_balanced <- expand_grid(
-  hs6_H5       = ProductCode_H5,
-  year         = 2015:2020,
-  month        = 1:12,
+  hs6_H5 = ProductCode_H5,
+  year = 2015:2020, 
+  month = 1:12,
   ExporterISO3 = Partners,
-  ImporterISO3 = "CHN")
+  ImporterISO3 = "CHN"
+)
+
 table(panel_balanced$year)
 table(panel_balanced$month)
 
@@ -132,70 +88,54 @@ trade <- trade %>%  filter(!`Trade Partner` %in% c(  "Melilla",  "Canary Islands
 # drop NA as product code 
 trade <- trade %>%filter(!is.na(hs6_H5))
 colSums(is.na(trade))
+
+################################################################################
+# 3. Merge cleaned datasets together
+################################################################################
+
+# Join balanced panel with trade data
+trade$month <- as.numeric(trade$month)
 dta <- left_join(panel_balanced, trade)
 
-names(dta)
-head(dta)
-colSums(is.na(dta))
+# Fill in missing trade values as zero 
+dta <- dta %>% mutate(Trade_value_USD = if_else(is.na(Trade_value_USD), 0, Trade_value_USD))
 
-# refill trade values based on NAs 
-dta <- dta %>% mutate(
-  Trade_value_USD = if_else(is.na(Trade_value_USD), 0, Trade_value_USD))
+# Forward fill partner, product info within groups
+dta <- dta %>%   group_by(hs6_H5, year, month, ExporterISO3) %>%
+  fill(ImporterISO3, `HS2 Code`, `HS4 Code`,`HS6 Code`, `HS6 Description`,    
+       hs6_H4, .direction = "updown") %>%  ungroup()
 
-dta <- dta %>%  group_by(hs6_H5, year, month, ExporterISO3) %>% 
-  fill(ImporterISO3,    `HS2 Code`,  `HS4 Code`,`HS6 Code`, `HS6 Description`,
-    hs6_H4,    .direction = "updown"  )
+dta <- dta %>%  group_by(hs6_H5) %>%
+  fill(ImporterISO3, `HS2 Code`, `HS4 Code`,`HS6 Code`, `HS6 Description`,
+       hs6_H4, .direction = "updown") %>%    ungroup()
 
+# Select variables of interest  
+dta <- dta %>% select(hs6_H5, year, month, ExporterISO3, ImporterISO3,   
+                      `HS6 Description`, hs6_H4, Trade_value_USD, Unit_Price)
 
-dta <- dta %>% group_by(hs6_H5) %>%   
-  fill(ImporterISO3,  `HS2 Code`,  `HS4 Code`, `HS6 Code`,     `HS6 Description`,
-           hs6_H4,   .direction = "updown"  )
-table(dta$year)
-table(dta$month)
-colSums(is.na(dta))
+# Join MFN tariff data
+MFN <- MFN %>% select(year, ExporterISO3, hs6_H5, 
+         Weighted_MFN = `Weighted Average_MFN`,
+         Weighted_AHS = `Weighted Average_AHS`,
+         `Weighted Average_PRF`) %>%  filter(!is.na(hs6_H5))
 
-# select variable of interest 
-dta <- dta %>%  select(hs6_H5,year, month,ExporterISO3,  ImporterISO3,
-  `HS6 Description`,  hs6_H4,  Trade_value_USD, Unit_Price)
-
-
-################################################################################
-# 4) merge with MFN tariff data 
-################################################################################
-
-names(MFN)
-colSums(is.na(MFN))
-
-# select MFN data of interest
-MFN <- MFN %>% select (year,ExporterISO3, hs6_H5, `Weighted Average_MFN`,
-                           `Weighted Average_AHS`, `Weighted Average_PRF`) %>% 
-  rename(Weighted_MFN = `Weighted Average_MFN`,  Weighted_AHS = `Weighted Average_AHS`)
-MFN <- MFN %>% filter(!is.na(hs6_H5))
-
-
-# checks
-# dups2 <- MFN %>%  group_by(hs6_H5, year, ExporterISO3)%>%  filter(n() > 1)
-colSums(is.na(MFN))
-colSums(is.na(dta))
-unique(MFN$year)
-
-# Join MFN tariff data and trade data 
 dta1 <- left_join(dta, MFN)
 
-#checks
-# dups <- dta1 %>%  group_by(hs6_H5, year, month, ExporterISO3, ImporterISO3) %>%  filter(n() > 1)
-colSums(is.na(dta1))
+# Fill missing MFN tariffs
+dta1 <- dta1 %>% 
+  group_by(hs6_H5, year) %>%
+  fill(Weighted_MFN, .direction = "updown") %>%
+  group_by(hs6_H5) %>%
+  arrange(year) %>%
+  fill(Weighted_MFN, .direction = "updown") %>% 
+  group_by(hs6_H5, ImporterISO3) %>%
+  arrange(year) %>%
+  fill(Weighted_AHS, .direction = "down") %>%
+  ungroup()
 
-
-# fill up missing values 
-# MFN tariffs are homogeneous across partners 
-dta1 <- dta1 %>%  group_by(hs6_H5, year) %>%  fill( Weighted_MFN, .direction = "updown"  )
-dta1 <- dta1 %>%  group_by(hs6_H5) %>% arrange(year) %>%  fill( Weighted_MFN, .direction = "updown"  )
-dta1 <- dta1 %>%  group_by(hs6_H5,ImporterISO3) %>% arrange(year) %>%  fill( Weighted_AHS, .direction = "down"  )
-
-
-# save data
+# Write intermediate file  
 write_csv(dta1, paste0(exp, "dta_CHN_gravity1.csv"))
+
 
 ################################################################################
 # 5) Merge with gravity characteristics
@@ -231,7 +171,7 @@ names(dta2)
 colSums(is.na(dta2))
 
 ################################################################################
-# 5) Merge with worldbank characteristics
+# 5) Merge with world bank characteristics
 ################################################################################
 
 names(dta2)
