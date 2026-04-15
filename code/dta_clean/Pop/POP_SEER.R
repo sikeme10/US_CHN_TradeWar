@@ -147,6 +147,18 @@ dta <- read_csv("Pop/county_population_2015_2020.csv")
 names(dta)
 length(unique(dta$fips))
 
+class(dta$fips)
+unique(nchar(dta$fips))
+# have to recode some counties to 2012 counties 
+names(dta)
+dta <- dta |>
+  mutate(fips = case_when(
+    fips == "02158" & year >= 2015 ~ "02270",  # Kusilvak -> Wade Hampton
+    fips == "46102" & year >= 2015 ~ "46113",  # Oglala Lakota -> Shannon
+    TRUE ~ fips
+  ))
+length(unique(dta$fips))
+
 
 czone <- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/data/crosswalk_CZ_county/cw_cty_czone_2012.csv")
 names(czone)
@@ -154,12 +166,13 @@ length(unique(czone$cty_fips_2012))
 czone <- czone %>% select(cty_fips_2012, czone_2012)
 
 
-class(dta$fips)
 class(czone$cty_fips_2012)
 
-dta$fips <- as.numeric(dta$fips)
-summary(dta$fips)
-summary(czone$cty_fips_2012)
+dta$fips <- str_pad(as.character(dta$fips), width = 5, pad = "0")
+czone$cty_fips_2012 <- str_pad(as.character(czone$cty_fips_2012), width = 5, pad = "0")
+
+length(unique(dta$fips))
+length(unique(czone$cty_fips_2012))
 
 # merge CZ and county level data 
 

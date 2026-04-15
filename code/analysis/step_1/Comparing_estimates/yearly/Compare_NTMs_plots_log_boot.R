@@ -22,8 +22,8 @@ library(frontier)
 # USER CHOICES (change these only)
 ################################################################################
 BASE_YEAR <- 2017
-# SECTOR    <- "Ag"   # e.g. "Ag", "Manuf", etc.
-SECTOR    <- "Manu" 
+ SECTOR    <- "Ag"   # e.g. "Ag", "Manuf", etc.
+# SECTOR    <- "Manu" 
 
 
 # nice label used in titles/filenames
@@ -152,17 +152,20 @@ TARIFF_VAR <- paste0("diff_log_tariff_", BASE_YEAR)
 ################################################################################
 # Theme
 ################################################################################
-theme_trade <- theme_minimal(base_size = 14) +
-  theme(    panel.spacing.x = unit(1.2, "lines"),
-            plot.title = element_text(size = 11, hjust = 0.5),
-            panel.background = element_rect(fill = "white", color = NA),
-            plot.background  = element_rect(fill = "white", color = NA),
-            axis.text.x = element_text(size = 9),
-            axis.text.y = element_text(size = 9),
-            axis.title.x = element_text(size = 11),
-            axis.title.y = element_text(size = 11),
-            legend.text  = element_text(size = 10),
-            legend.title = element_text(size = 10)  )
+theme_trade <- theme_minimal(base_size = 14, base_family = "Times New Roman") +
+  theme(
+    panel.spacing.x = unit(1.2, "lines"),
+    plot.title = element_text(size = 11, hjust = 0.5),
+    panel.background = element_rect(fill = "white", color = NA),
+    plot.background  = element_rect(fill = "white", color = NA),
+    axis.text.x = element_text(size = 9),
+    axis.text.y = element_text(size = 9),
+    axis.title.x = element_text(size = 11),
+    axis.title.y = element_text(size = 11),
+    legend.text  = element_text(size = 10),
+    legend.title = element_text(size = 10)
+  )
+
 
 # ---- consistent legend keys across ALL plots ----
 legend_breaks <- c("FE", "FE_demeaned", "FE_bench", "FEm_log_mean",  "tariff", "Chen_et_al")
@@ -244,7 +247,7 @@ p_sector <- ggplot(US_dta_q, aes(x = year)) +
 p_sector
 
 ggsave( filename = file.path(OUT_PLOT_DIR, paste0("Compare_ln_AVE_", SECTOR, "_sector_weight_log_boot", ".png")),
-  plot = p_sector, width = 8, height = 6, dpi = 300)
+  plot = p_sector, width = 10, height = 6, dpi = 300)
 
 p_sector <- ggplot(US_dta_q, aes(x = year)) +
   # geom_line(aes(y = FE_mean,    color = "FE"),          linewidth = 1) +
@@ -263,7 +266,7 @@ p_sector <- ggplot(US_dta_q, aes(x = year)) +
 p_sector
 
 ggsave( filename = file.path(OUT_PLOT_DIR, paste0("Compare_ln_AVE_", SECTOR, "_sector_weight_log_boot_prez", ".png")),
-        plot = p_sector, width = 8, height = 6, dpi = 300)
+        plot = p_sector, width = 10, height = 6, dpi = 300)
 
 
 ################################################################################
@@ -335,7 +338,7 @@ p_hs_sect <- ggplot(US_dta_q_sect, aes(x = year)) +
 p_hs_sect
 
 ggsave(  filename = file.path(OUT_PLOT_DIR, paste0("Compare_ln_AVE_", SECTOR, "_hs_section_weight_log_boot" ,".png")),
-  plot = p_hs_sect, width = 9, height = 6, dpi = 300)
+  plot = p_hs_sect, width = 10, height = 6, dpi = 300)
 
 
 
@@ -361,5 +364,5 @@ p_hs_sect <- ggplot(US_dta_q_sect, aes(x = year)) +
 p_hs_sect
 
 ggsave(  filename = file.path(OUT_PLOT_DIR, paste0("Compare_ln_AVE_", SECTOR, "_hs_section_weight_log_boot" ,".png")),
-         plot = p_hs_sect, width = 9, height = 6, dpi = 300)
+         plot = p_hs_sect, width = 10, height = 6, dpi = 300)
 

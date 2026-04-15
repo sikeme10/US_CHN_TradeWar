@@ -40,6 +40,11 @@ names(dta_D)
 names(HS_product)
 
 ######################################################################################
+# check if values are not NAICS;
+X_vals <- dta_schott %>%  filter(!grepl("^[0-9]+$", naics))
+X_vals <- dta_D %>%  filter(!grepl("^[0-9]+$", naics6_D))
+
+######################################################################################
 # drop naics where have "X"
 dta_schott$naics <- as.numeric(dta_schott$naics)
 dta_schott <- dta_schott %>% filter(!is.na(naics))
@@ -80,11 +85,16 @@ dta_D <- dta_D %>% filter(!is.na(naics6_D))
 
 
 # 2) check NAICS codes:
-
+sapply(dta_schott, class)
+sapply(output_NAICS6, class)
+length(unique(output_NAICS6$NAICS6_2012))
+length(unique(dta_schott$naics))
 sum(unique(dta_schott$naics) %in% unique(output_NAICS6$NAICS6_2012))
+missing <- setdiff(unique(dta_schott$naics), unique(output_NAICS6$NAICS6_2012))
+missing
 sum(unique(dta_D$naics6_D) %in% unique(output_NAICS6$NAICS6_2012))
 
-# filter product codes that are in output_NAICS6$NAICS6_2012
+# filter naics that are in output_NAICS6$NAICS6_2012
 dta_schott <- dta_schott %>% filter(naics %in% unique(output_NAICS6$NAICS6_2012))
 length(unique(dta_schott$naics))
 length(unique(dta_schott$HS6))
@@ -103,7 +113,7 @@ colSums(is.na(dta_D))
 
 ################################################################################
 # multiple products codes map to multiple NAICS code and vice versa
-
+################################################################################
 
 # How many unique NAICS each HS6 maps to
 HS6_to_NAICS <- dta_schott %>%  group_by(HS6) %>%
@@ -158,6 +168,8 @@ merge <- bind_rows(dta_D, dta_schott)
 length(unique(merge$HS6))
 length(unique(merge$naics))
 
+# check for "X"
+x_vals <- merge %>%  filter(!grepl("^[0-9]+$", naics))
 
 ######################################################################################
 # whatever product was not matched we can use package to get back 
@@ -196,19 +208,28 @@ merge2 <- merge1 %>% select(HS6, naics1) %>% rename(naics = naics1)
 length(unique(merge1$naics1))
 length(unique(merge1$HS6))
 
+test <- concord_hs_naics(c("112120"), origin = "HS4", destination = "NAICS", dest.digit = 6, all = FALSE)
+test <- concord_hs_naics(c("112120"), origin = "NAICS", destination = "HS4", dest.digit = 6, all = FALSE)
 
+######################################################################################
+
+X_vals <- merge2 %>%  filter(!grepl("^[0-9]+$", naics))
+
+
+
+######################################################################################
 merge3 <- distinct(merge2)
 length(unique(merge3$naics))
 length(unique(merge3$HS6))
 colSums(is.na(merge3))
 
-
+merge3 <- merge3 %>% filter(!is.na(naics))
 
 # get at HS6-naics 6 level
 
 write_csv(merge3, "/data/sikeme/TRADE/US_CHN_TradeWar_git/data/crosswalk/clean_HS6_naics6_2012.csv")
 
-
+test2 <- read_csv( "/data/sikeme/TRADE/US_CHN_TradeWar_git/data/crosswalk/clean_HS6_naics6_2012.csv")
 ######################################################################################
 
 # at naics 4  

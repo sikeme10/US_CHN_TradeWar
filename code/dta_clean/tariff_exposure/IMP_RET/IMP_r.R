@@ -99,7 +99,7 @@ IMP_r <- merge_data %>% group_by(year, czone_2012) %>%
 summary(IMP_r)  
 table(IMP_r$year)
 
-write_csv(IMP_r, paste0("/data/sikeme/TRADE/US_CHN_TradeWar_git/data/created_exposure/NAICS6/IMP_r_CHN_naics6.csv") )
+write_csv(IMP_r, paste0("/data/sikeme/TRADE/US_CHN_TradeWar_git/data/created_exposure/NAICS6/IMP_r_naics6.csv") )
 
 
 

@@ -127,6 +127,7 @@ length(missing_in_output)
 Merge_trade <- left_join(US_import, HS_NAICS)
 colSums(is.na(Merge_trade))
 names(Merge_trade)
+test <- Merge_trade %>% filter(is.na(naics))
 
 # b) Merge with change in tariff data 
 
@@ -154,7 +155,7 @@ length(unique(Merge_trade1$naics))
 
 # for change in tariffs that are NA put 0
 Merge_trade1 <- Merge_trade1 %>%
-  mutate(across(c(US_change_log_tariff_2017, US_change_log_tariff_2015),
+  mutate(across(c(US_change_log_tariff_2017, US_change_log_tariff_2015,import_val_USD),
                 ~ coalesce(., 0)  ))
 
 # c) Merge output to export data 
@@ -217,7 +218,7 @@ Merge <- Merge %>% mutate(
   rho_tau_2017 = if_else(tot_US_import_USD != 0 ,US_import_USD_tau_tariff_US_2017/ tot_US_import_USD, 0))
 summary(Merge)
 
-# Sum over exporter 
+# Sum over all exporters
 Merge1 <- Merge %>% group_by(year, naics, sector, NAICS_description) %>%
   summarise(rho_tau_2015  = sum(rho_tau_2015, na.rm = TRUE),
             rho_tau_2017  = sum(rho_tau_2017, na.rm = TRUE))
@@ -252,7 +253,8 @@ Merge1 <-left_join(Merge1, output_NAICS6)
 # create variables for x_iuu and x_iu
 names(Merge1)
 Merge1 <- Merge1 %>% mutate(
-  x_iuu = Tot_output_1000dollars*1000 - tot_export_val_USD,
+  x_iuu = if_else(Tot_output_1000dollars*1000 - tot_export_val_USD < 0, 0 ,Tot_output_1000dollars*1000 - tot_export_val_USD), # so that output always greater than exports
+  
   gamma_iuu = if_else(Tot_output_1000dollars !=0, x_iuu/ (Tot_output_1000dollars*1000),0))
 summary(Merge1)
 Merge1 <- Merge1 %>% mutate(gamma_iuu = if_else(gamma_iuu<0, 0, gamma_iuu))

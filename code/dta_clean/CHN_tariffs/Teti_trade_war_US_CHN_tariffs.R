@@ -31,7 +31,7 @@ library(dplyr)
 library(tidyr)
 library(stringr)
 library(lubridate)
-
+library(concordance)
 
 ################################################################################
 # directory: 
@@ -98,7 +98,7 @@ write_csv(USA_import2, "data/tariff_dta/teti/USA_tariff_HS6_Teti.csv")
 ################################################################################
 
 # load MFN data 
-MFN <- read_csv("data/tariff_dta/US_CHN_MFN_tariff.csv")
+MFN <- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/data/tariff_dta/WITS_MFN/US_CHN_MFN_tariff.csv")
 names(MFN)
 table(MFN$`Tariff Year`)
 names(MFN) <- gsub(" ", "_", names(MFN))
@@ -171,7 +171,7 @@ MFN1_bal_month <- MFN1_bal_month %>% arrange(hs6_H5, year, month) %>%
 colSums(is.na(MFN1_bal_month))
 test <- MFN1_bal_month %>% filter(is.na(Weighted_Average_AHS))
 
-class(c$hs6_H5)
+class(MFN1_bal_month$hs6_H5)
 
 ################################################################################
 
@@ -229,14 +229,39 @@ US_tariff <- US_tariff %>% arrange(hs6, year, month) %>% group_by(hs6) %>%
   fill(tariff, .direction = "down" ) %>%  ungroup()
 names(US_tariff)
 
+
+# we create a variable tariff2 that takes values of teti tariffs and 
+
 US_tariff <- US_tariff %>% 
-  mutate(tariff2 = case_when(is.na(Weighted_Average_AHS) & !is.na(tariff) ~ tariff,
-                             !is.na(Weighted_Average_AHS) & is.na(tariff) ~ Weighted_Average_AHS,
-                             !is.na(Weighted_Average_AHS) & !is.na(tariff) ~ pmax(Weighted_Average_AHS, tariff),
-                             TRUE ~ NA_real_))
-colSums(is.na(US_tariff))
-US_tariff <- US_tariff %>% arrange(hs6, year, month) %>% group_by(hs6) %>% 
-  fill(tariff2, .direction = "up" ) %>%  ungroup()
+  group_by(hs6) %>%
+  mutate(
+    # Reference values at 2018 month 1
+    ref_AHS    = Weighted_Average_AHS[year == 2018 & month == 1],
+    ref_tariff = tariff[year == 2018 & month == 1],
+    # Start tariff2 as tariff
+    tariff2 = tariff,
+    # For observations before 2018m1, apply the rule
+    tariff2 = case_when(
+      year < 2018 & ref_AHS < ref_tariff ~ Weighted_Average_AHS,  # AHS was lower -> use AHS pre-2018
+      year < 2018 & ref_AHS >= ref_tariff ~ tariff,               # AHS was higher -> keep tariff pre-2018
+      year == 2018 & month == 1 ~ tariff,                         # 2018m1 itself always tariff
+      TRUE ~ tariff2                                               # 2018m1 onward stays as tariff
+    )  ) %>%  ungroup() %>%  select(-ref_AHS, -ref_tariff) 
+
+
+# fill up tariff pre2018
+US_tariff <- US_tariff %>%
+  arrange(hs6, year, month) %>%
+  group_by(hs6) %>%
+  mutate(
+    tariff2 = if_else(
+      year < 2018 | (year == 2018 & month == 1),
+      # within pre-2018m2 window: fill upward using the first non-NA value in the group
+      zoo::na.locf(tariff2, fromLast = TRUE, na.rm = FALSE),
+      tariff2  # post-2018m1: leave untouched
+    )  ) %>%  ungroup()
+
+
 
 US_tariff <- US_tariff %>% select(hs6,year,month,tariff2 ) %>% rename(US_tariff_onCHN = tariff2)
 

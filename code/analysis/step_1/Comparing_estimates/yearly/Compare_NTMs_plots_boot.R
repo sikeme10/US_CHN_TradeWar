@@ -22,9 +22,9 @@ library(frontier)
 ################################################################################
 # USER CHOICES (change these only)
 ################################################################################
-BASE_YEAR <- 2015
+BASE_YEAR <- 2017
 # SECTOR    <- "Ag"   # e.g. "Ag", "Manuf", etc.
- SECTOR    <- "Manu" 
+SECTOR    <- "Manu" 
 
 
 # nice label used in titles/filenames
@@ -157,15 +157,15 @@ TARIFF_VAR <- paste0("diff_log_tariff_", BASE_YEAR)
 theme_trade <- theme_minimal(base_size = 14, base_family = "Times New Roman") +
   theme(
     panel.spacing.x = unit(1.2, "lines"),
-    plot.title = element_text(size = 11, hjust = 0.5),
+    plot.title = element_text(size = 12, hjust = 0.5),
     panel.background = element_rect(fill = "white", color = NA),
     plot.background  = element_rect(fill = "white", color = NA),
-    axis.text.x = element_text(size = 9),
-    axis.text.y = element_text(size = 9),
-    axis.title.x = element_text(size = 11),
-    axis.title.y = element_text(size = 11),
-    legend.text  = element_text(size = 10),
-    legend.title = element_text(size = 10)
+    axis.text.x = element_text(size = 11),
+    axis.text.y = element_text(size = 11),
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    legend.text  = element_text(size = 12),
+    legend.title = element_text(size = 12)
   )
 
 ### PLOT THEME

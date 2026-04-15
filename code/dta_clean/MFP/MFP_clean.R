@@ -141,4 +141,4 @@ summary(MFP_balanced)
 
 write_csv(MFP_balanced,"/data/sikeme/TRADE/US_CHN_TradeWar_git/data/MFP/SUB.csv" )
 
-
+test21 <-read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/data/MFP/SUB.csv" )

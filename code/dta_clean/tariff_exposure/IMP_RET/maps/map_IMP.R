@@ -35,7 +35,8 @@ exp <- "/data/sikeme/TRADE/US_CHN_TradeWar_git/output/summary/exposure_maps"
 
 ################################################################################ 
 
-dta <- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/data/created_exposure/NAICS6/IMP_r_CHN_naics6.csv")
+# dta <- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/data/created_exposure/NAICS6/IMP_r_CHN_naics6.csv")
+dta <- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/data/created_exposure/NAICS6/IMP_r_naics6.csv")
 
 names(dta)
 unique(dta$czone_2012)
@@ -140,33 +141,16 @@ theme_map <- theme_minimal(base_size = 10, base_family = "Times New Roman") +
 
 ##################################################################################
 
-ggplot(cz_map) +
-  aes(fill = IMP_tariff_2017_r) +
-  geom_sf(color = "white", linewidth = 0.05) +
-  geom_sf(fill = NA, color = "black", linewidth = 0.2) + # CZ outlines in black
-  scale_fill_distiller(
-    palette   = "YlOrRd",
-    direction = 1,          # 1 = yellow (low) → red (high)
-    name      = "IMP Tariff",
-    na.value  = "grey80"
-  ) +
-  labs(
-    title   = "U.S. import tariff exposure"  ) +
-  theme_void() +
-  theme(
-    plot.title        = element_text(hjust = 0.5, size = 11),
-    legend.position   = "right",
-    legend.key.height = unit(0.8, "cm"),
-    legend.key.width  = unit(0.3, "cm"),
-    legend.text       = element_text(size = 7),
-    legend.title      = element_text(size = 8)
-  )
-
 
 library(ggplot2)
 library(dplyr)
 library(viridis)
 summary(cz_map)
+
+# ── Define the exact bins and colors from the image ──────────────────────────
+breaks <- c(0.00, 0.02, 0.04, 0.06, 0.08, 0.13,Inf)
+labels <- c("0.00-0.02", "0.02-0.04", "0.04-0.06",
+            "0.06-0.08", "0.08-0.12", "> 0.12")
 
 # ── Define the exact bins and colors from the image ──────────────────────────
 breaks <- c(0.00, 0.02, 0.04, 0.06, 0.08, 0.12, Inf)

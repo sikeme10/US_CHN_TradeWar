@@ -272,7 +272,7 @@ US_all_q_hs2 <- US_all_w_hs2 %>%  filter (year %in% c(2018:2019)) %>% group_by(h
     chen_mean = mean(w_chen, na.rm = TRUE))
 
 library(writexl)
-write_xlsx( list("hs2_summary" = US_all_q_hs2),  path = file.path(OUT_PLOT_DIR, "hs2_summary_all.xlsx"))
+write_xlsx( list("hs2_summary" = US_all_q_hs2),  path = file.path(OUT_PLOT_DIR, paste0("hs2_summary_all_", quant , ".xlsx")))
 
 
 
@@ -303,7 +303,7 @@ save_corrplot <- function(filename, cor_mat) {
            tl.srt = 45)
 }
 
-save_corrplot(paste0(exp, "correlation_plot_US_all_hs2.png"), cor_mat)
+save_corrplot(paste0(OUT_PLOT_DIR, "/correlation_plot_US_all_hs2.png"), cor_mat)
 
 
 

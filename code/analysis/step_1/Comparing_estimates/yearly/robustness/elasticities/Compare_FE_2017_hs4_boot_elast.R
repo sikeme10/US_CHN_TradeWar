@@ -32,49 +32,27 @@ exp <- "/data/sikeme/TRADE/US_CHN_TradeWar_git/output/Compare_values/yearly/robu
 
 
 ################################################################################
-# 1) Load data
+# 1) Load data 
 ################################################################################
 
 # load trade data
 trade <- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/data/created_gravity/dta_CHN_gravity_yearly.csv")
-# names(trade)
-# table(trade$year)
-# table(trade$ExporterISO3)
+names(trade)
+table(trade$year)
+table(trade$ExporterISO3)
 
-# Load FE estimates
+# Load FE estimates 
 # fe <- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/output/FE/yearly/gravity_pois_FE.csv")
 
 #LOAD POISSON WITH BOOSTRAP
 fe_boot <- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/output/FE/yearly/boot/gravity_pois_FE_boot_fixef.csv")
+unique(fe_boot$draw)
 #LOAD POISSON WITH LOG LINEAR
 fe_log_boot <- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/output/FE/yearly/boot/gravity_logOLS_FE_boot_fixef_drop0.csv")
-# names(fe_boot)
-# unique(fe_boot$draw)
-class(fe_boot$hs4)
+names(fe_boot)
+unique(fe_boot$draw)
 
 
-elast <- read_csv("data/elast/clean_Elasticities_Soderbery2018.csv")
-names(elast)
-class(elast$hs4)
-
-
-################################################################################
-# 1) merge the data from different estimation methods
-################################################################################
-
-# balance trade and aggregate at hs4 level
-
-# create fe_id value for FE
-names(trade)
-trade <- trade %>%  mutate(hs2 = substr( hs6_H5 ,1,2), hs4 = substr( hs6_H5 ,1,4))
-trade <- trade %>% mutate(fe_id = interaction(year, ExporterISO3, hs4, drop = TRUE))
-
-
-# aggregate trade data at hs4: (by doing weighted average of )
-trade_hs4 <- trade %>%  group_by(year, hs2, hs4, ExporterISO3, ImporterISO3, fe_id) %>%
-  summarise(Trade_value_USD = sum(Trade_value_USD, na.rm = TRUE),  .groups = "drop" )
-
-# balance trade data to get 50 draws on each (repeat each of the values  50 times for draw to appear to get balanced data )
 D <- length(unique(fe_boot$draw))
 D
 
@@ -242,184 +220,174 @@ dta <- dta %>%  group_by(ExporterISO3, draw, hs4) %>%
           FE_log_pre_2017_wmean = mean(FE_log_wmean[year == 2017], na.rm = TRUE)) %>%  ungroup()
 
 
-
-
 write_csv(dta , "/data/sikeme/TRADE/US_CHN_TradeWar_git/output/Compare_values/yearly/robust/elast/estimates_reduced_form_base_2017_FE_boot_100_elast.csv")
 
 
-dta <- fread("/data/sikeme/TRADE/US_CHN_TradeWar_git/output/Compare_values/yearly/robust/elast/estimates_reduced_form_base_2015_FE_boot_100_elast.csv")
-names(dta)
-summary(dta$elasticities)
-test <- dta%>% filter(elasticities>10)
-summary(test$elasticities)
-
-
-elast <- read_csv("data/elast/clean_Elasticities_Soderbery2018.csv")
-names(elast)
-class(elast$hs4)
-
-################################################################################
-# Add elasticities
-################################################################################
-
-# add elasticities from chen et al.
-
-dta <- dta %>% mutate(CHEN_elasticities = case_when(sector == "Ag" ~  3 ,
-                                               sector == "Manu" ~ 1.97,
-                                               sector == "Other" ~ 5 ))
-
-dta$hs4 <- as.numeric(dta$hs4)
-elast$hs4 <- as.numeric(elast$hs4)
-dta <- left_join(dta,elast)
-dta <- dta %>% arrange(year, hs4)
-#
+# dta <- fread("/data/sikeme/TRADE/US_CHN_TradeWar_git/output/Compare_values/yearly/robust/elast/estimates_reduced_form_base_2015_FE_boot_100_elast.csv")
+# 
+# 
+# 
+# elast <- read_csv("data/elast/clean_Elasticities_Soderbery2018.csv")
+# names(elast)
+# class(elast$hs4)
+# 
 # ################################################################################
-# # create differences in AVEs
-################################################################################
-
-
-# create adjusted values of efficiency and FE estimates
-# do the difference with 2017 baseline
-dta <- dta %>%
-  mutate(
-    # Difference in FE relative to 2017 baseline
-    diff_FE_2017 = if_else( year > 2017 & !is.na(FE) & !is.na(FE_pre_2017),
-                            FE - FE_pre_2017,      NA_real_    ),
-
-    # Difference in FE with benchmarks relative to 2017 baseline
-    diff_FE_2017_bench = if_else( year > 2017 & !is.na(FE) & !is.na(FE_pre_2017),
-                                  (FE - FE_bench) - (FE_pre_2017 - FE_pre_2017_bench), NA_real_    ),
-
-    # Difference in FE with de meaned relative to 2017 baseline
-    diff_FE_2017_wmean = if_else( year > 2017 & !is.na(FE) & !is.na(FE_pre_2017),
-                                  (FE - FE_wmean) - (FE_pre_2017 - FE_pre_2017_wmean), NA_real_    ),
-
-    # Difference in FE_log relative to 2017 baseline
-    diff_FE_log_2017 = if_else(year > 2017 & !is.na(FE_log) & !is.na(FE_log_pre_2017),
-                               FE_log - FE_log_pre_2017, NA_real_    ),
-
-    # Difference in FE_log with benchmarks relative to 2017 baseline
-    diff_FE_log_2017_bench = if_else( year > 2017 & !is.na(FE_log) & !is.na(FE_log_pre_2017),
-                                      (FE_log - FE_log_bench) - (FE_log_pre_2017 - FE_log_pre_2017_bench), NA_real_ ),
-
-    # Difference in FE_log with de meaned relative to 2017 baseline
-    diff_FE_log_2017_wmean = if_else( year > 2017 & !is.na(FE_log) & !is.na(FE_log_pre_2017),
-                                      (FE_log - FE_log_wmean) - (FE_log_pre_2017 - FE_log_pre_2017_wmean), NA_real_ ) )
-
-test  <- dta %>% filter(year >2017)
-# unique(test$year)
-# colSums(is.na(test))
-# summary(dta$diff_FE_2017)
-# summary(dta$diff_FE_2017_bench)
-
-write_csv(dta , "/data/sikeme/TRADE/US_CHN_TradeWar_git/output/Compare_values/yearly/robust/elast/estimates_reduced_form_base_2017_FE_boot_100_elast.csv")
-
-dta <- fread("/data/sikeme/TRADE/US_CHN_TradeWar_git/output/Compare_values/yearly/robust/elast/estimates_reduced_form_base_2017_FE_boot_100_elast.csv")
-
-
-
-
-################################################################################
-
-dta <- dta %>%
-  mutate(
-    ln_AVE_FE = (1/(1-elasticities))*FE,
-    diff_ln_AVE_FE =if_else(year %in% c(2018:2020), (1/(1-elasticities))*diff_FE_2017, NA) ,
-    diff_ln_AVE_FE_log = if_else(year %in% 2018:2020, (1 / (1 - elasticities)) * diff_FE_log_2017, NA_real_),
-    # with benchmarks:
-    diff_ln_AVE_FE_bench =if_else(year %in% c(2018:2020), (1/(1-elasticities))*diff_FE_2017_bench, NA),
-    diff_ln_AVE_FE_log_bench = if_else(year %in% 2018:2020, (1 / (1 - elasticities)) * diff_FE_log_2017_bench, NA_real_) ,
-    # with demeaned:
-    diff_ln_AVE_FE_wmean =if_else(year %in% c(2018:2020), (1/(1-elasticities))*diff_FE_2017_wmean, NA),
-    diff_ln_AVE_FE_log_wmean= if_else(year %in% 2018:2020, (1 / (1 - elasticities)) * diff_FE_log_2017_wmean, NA_real_)     )
-# summary(dta$ln_AVE_FE)
+# # Add elasticities
+# ################################################################################
+# 
+# # add elasticities from chen et al.
+# 
+# dta <- dta %>% mutate(CHEN_elasticities = case_when(sector == "Ag" ~  3 ,
+#                                                sector == "Manu" ~ 1.97,
+#                                                sector == "Other" ~ 5 ))
+# 
+# dta$hs4 <- as.numeric(dta$hs4)
+# elast$hs4 <- as.numeric(elast$hs4)
+# dta <- left_join(dta,elast)
+# dta <- dta %>% arrange(year, hs4)
+# #
+# # ################################################################################
+# # # create differences in AVEs
+# ################################################################################
+# 
+# 
+# # create adjusted values of efficiency and FE estimates
+# # do the difference with 2017 baseline
+# dta <- dta %>%
+#   mutate(
+#     # Difference in FE relative to 2017 baseline
+#     diff_FE_2017 = if_else( year > 2017 & !is.na(FE) & !is.na(FE_pre_2017),
+#                             FE - FE_pre_2017,      NA_real_    ),
+# 
+#     # Difference in FE with benchmarks relative to 2017 baseline
+#     diff_FE_2017_bench = if_else( year > 2017 & !is.na(FE) & !is.na(FE_pre_2017),
+#                                   (FE - FE_bench) - (FE_pre_2017 - FE_pre_2017_bench), NA_real_    ),
+# 
+#     # Difference in FE with de meaned relative to 2017 baseline
+#     diff_FE_2017_wmean = if_else( year > 2017 & !is.na(FE) & !is.na(FE_pre_2017),
+#                                   (FE - FE_wmean) - (FE_pre_2017 - FE_pre_2017_wmean), NA_real_    ),
+# 
+#     # Difference in FE_log relative to 2017 baseline
+#     diff_FE_log_2017 = if_else(year > 2017 & !is.na(FE_log) & !is.na(FE_log_pre_2017),
+#                                FE_log - FE_log_pre_2017, NA_real_    ),
+# 
+#     # Difference in FE_log with benchmarks relative to 2017 baseline
+#     diff_FE_log_2017_bench = if_else( year > 2017 & !is.na(FE_log) & !is.na(FE_log_pre_2017),
+#                                       (FE_log - FE_log_bench) - (FE_log_pre_2017 - FE_log_pre_2017_bench), NA_real_ ),
+# 
+#     # Difference in FE_log with de meaned relative to 2017 baseline
+#     diff_FE_log_2017_wmean = if_else( year > 2017 & !is.na(FE_log) & !is.na(FE_log_pre_2017),
+#                                       (FE_log - FE_log_wmean) - (FE_log_pre_2017 - FE_log_pre_2017_wmean), NA_real_ ) )
+# 
+# test  <- dta %>% filter(year >2017)
+# # unique(test$year)
+# # colSums(is.na(test))
+# # summary(dta$diff_FE_2017)
+# # summary(dta$diff_FE_2017_bench)
+# 
+# 
+# 
+# ################################################################################
+# 
+# dta <- dta %>%
+#   mutate(
+#     ln_AVE_FE = (1/(1-elasticities))*FE,
+#     diff_ln_AVE_FE =if_else(year %in% c(2018:2020), (1/(1-elasticities))*diff_FE_2017, NA) ,
+#     diff_ln_AVE_FE_log = if_else(year %in% 2018:2020, (1 / (1 - elasticities)) * diff_FE_log_2017, NA_real_),
+#     # with benchmarks:
+#     diff_ln_AVE_FE_bench =if_else(year %in% c(2018:2020), (1/(1-elasticities))*diff_FE_2017_bench, NA),
+#     diff_ln_AVE_FE_log_bench = if_else(year %in% 2018:2020, (1 / (1 - elasticities)) * diff_FE_log_2017_bench, NA_real_) ,
+#     # with demeaned:
+#     diff_ln_AVE_FE_wmean =if_else(year %in% c(2018:2020), (1/(1-elasticities))*diff_FE_2017_wmean, NA),
+#     diff_ln_AVE_FE_log_wmean= if_else(year %in% 2018:2020, (1 / (1 - elasticities)) * diff_FE_log_2017_wmean, NA_real_)     )
+# # summary(dta$ln_AVE_FE)
+# # names(dta)
+# # colSums(is.na(dta))
+# 
+# ################################################################################
+# # export results
+# write_csv(dta , paste0(exp, "estimates_reduced_form_base_2017_FE_boot_100_elast.csv"))
+# 
+# 
+# ################################################################################
+# 
+# 
+# dta <- read_csv( paste0(exp, "estimates_reduced_form_base_2017_FE_boot_100_elast.csv"))
 # names(dta)
+# 
+# 
+# # merge back with trade data (have to aggregate tariff data at HS 4 )
+# tariffs <- read_csv(paste0(exp, "estimates_log_tariff_FE_boot.csv"))
+# names(tariffs)
+# 
+# tariffs <- tariffs %>% select(year, hs4, hs6_H5, ExporterISO3, ImporterISO3, Trade_value_USD,
+#                               Applied_tariff, log_tariff,
+#                               log_tariff_pre_2015, diff_log_tariff_2015,
+#                               log_tariff_pre_2017, diff_log_tariff_2017)
+# 
+# 
+# 
+# 
+# # HS4 weights
+# w_hs4_2015 <- tariffs %>% filter(year == 2015) %>%  group_by(hs4, hs6_H5) %>%
+#   summarise(Trade_value_USD = sum(Trade_value_USD), .groups = "drop_last") %>%
+#   mutate(tot = sum(Trade_value_USD),
+#          weight_hs4_2015 = if_else(tot > 0, Trade_value_USD / tot, 0)) %>%
+#   ungroup() %>%  select(hs4, hs6_H5, weight_hs4_2015)
+# w_hs4_2017 <- tariffs %>% filter(year == 2017) %>%  group_by(hs4, hs6_H5) %>%
+#   summarise(Trade_value_USD = sum(Trade_value_USD), .groups = "drop_last") %>%
+#   mutate(tot = sum(Trade_value_USD),
+#          weight_hs4_2017 = if_else(tot > 0, Trade_value_USD / tot, 0)) %>%
+#   ungroup() %>%  select(hs4, hs6_H5, weight_hs4_2017)
+# 
+# tariffs <- tariffs %>% left_join(w_hs4_2015,     by = c("hs4", "hs6_H5")) %>%
+#   left_join(w_hs4_2017,     by = c("hs4", "hs6_H5"))
+# 
+# tariffs_hs4 <- tariffs %>%
+#   group_by(year, hs4, ExporterISO3, ImporterISO3) %>%
+#   summarise(
+#     Trade_value_USD = sum(Trade_value_USD, na.rm = TRUE),
+# 
+#     diff_log_tariff_2015 = if (first(year) > 2015)
+#       weighted.mean(diff_log_tariff_2015, w = weight_hs4_2015, na.rm = TRUE)
+#     else NA_real_,
+# 
+#     diff_log_tariff_2017 = if (first(year) > 2017)
+#       weighted.mean(diff_log_tariff_2017, w = weight_hs4_2017, na.rm = TRUE)
+#     else NA_real_, .groups = "drop"  )
+# colSums(is.na(tariffs_hs4))
+# any(duplicated(tariffs_hs4[, c("year", "hs4",  "ExporterISO3", "ImporterISO3")]))
+# 
+# tariffs_hs4$hs4 <- as.numeric(tariffs_hs4$hs4)
+# dta$hs4 <- as.numeric(dta$hs4)
+# dta1 <- full_join(dta, tariffs_hs4)
 # colSums(is.na(dta))
-
-################################################################################
-# export results
-write_csv(dta , paste0(exp, "estimates_reduced_form_base_2017_FE_boot_100_elast.csv"))
-
-
-################################################################################
-
-
-dta <- read_csv( paste0(exp, "estimates_reduced_form_base_2017_FE_boot_100_elast.csv"))
-names(dta)
-
-
-# merge back with trade data (have to aggregate tariff data at HS 4 )
-tariffs <- read_csv(paste0(exp, "estimates_log_tariff_FE_boot.csv"))
-names(tariffs)
-
-tariffs <- tariffs %>% select(year, hs4, hs6_H5, ExporterISO3, ImporterISO3, Trade_value_USD,
-                              Applied_tariff, log_tariff,
-                              log_tariff_pre_2015, diff_log_tariff_2015,
-                              log_tariff_pre_2017, diff_log_tariff_2017)
-
-
-
-
-# HS4 weights
-w_hs4_2015 <- tariffs %>% filter(year == 2015) %>%  group_by(hs4, hs6_H5) %>%
-  summarise(Trade_value_USD = sum(Trade_value_USD), .groups = "drop_last") %>%
-  mutate(tot = sum(Trade_value_USD),
-         weight_hs4_2015 = if_else(tot > 0, Trade_value_USD / tot, 0)) %>%
-  ungroup() %>%  select(hs4, hs6_H5, weight_hs4_2015)
-w_hs4_2017 <- tariffs %>% filter(year == 2017) %>%  group_by(hs4, hs6_H5) %>%
-  summarise(Trade_value_USD = sum(Trade_value_USD), .groups = "drop_last") %>%
-  mutate(tot = sum(Trade_value_USD),
-         weight_hs4_2017 = if_else(tot > 0, Trade_value_USD / tot, 0)) %>%
-  ungroup() %>%  select(hs4, hs6_H5, weight_hs4_2017)
-
-tariffs <- tariffs %>% left_join(w_hs4_2015,     by = c("hs4", "hs6_H5")) %>%
-  left_join(w_hs4_2017,     by = c("hs4", "hs6_H5"))
-
-tariffs_hs4 <- tariffs %>%
-  group_by(year, hs4, ExporterISO3, ImporterISO3) %>%
-  summarise(
-    Trade_value_USD = sum(Trade_value_USD, na.rm = TRUE),
-
-    diff_log_tariff_2015 = if (first(year) > 2015)
-      weighted.mean(diff_log_tariff_2015, w = weight_hs4_2015, na.rm = TRUE)
-    else NA_real_,
-
-    diff_log_tariff_2017 = if (first(year) > 2017)
-      weighted.mean(diff_log_tariff_2017, w = weight_hs4_2017, na.rm = TRUE)
-    else NA_real_, .groups = "drop"  )
-colSums(is.na(tariffs_hs4))
-any(duplicated(tariffs_hs4[, c("year", "hs4",  "ExporterISO3", "ImporterISO3")]))
-
-tariffs_hs4$hs4 <- as.numeric(tariffs_hs4$hs4)
-dta$hs4 <- as.numeric(dta$hs4)
-dta1 <- full_join(dta, tariffs_hs4)
-colSums(is.na(dta))
-colSums(is.na(dta1))
-
-
-################################################################################
-# get US data
-################################################################################
-
-
-US <- dta1  %>% filter(ExporterISO3 == "USA")
-
-# summary(US)
-# names(US)
-# unique(US$hs2)
-# unique(US$hs_section)
-# names(US)
-# US1 <- US %>% filter(year %in% c(2018,2019))
-write_csv(US, paste0(exp, "US_ln_NTMs_base_2017_FE_boot_hs4_elast.csv"))
-
-
-# US <- read_csv(paste0(exp, "US_ln_NTMs_base_2015_FE_boot_hs4_elast.csv"))
-
-
-
-
-
-
-
-
-
+# colSums(is.na(dta1))
+# 
+# 
+# ################################################################################
+# # get US data
+# ################################################################################
+# 
+# 
+# US <- dta1  %>% filter(ExporterISO3 == "USA")
+# 
+# # summary(US)
+# # names(US)
+# # unique(US$hs2)
+# # unique(US$hs_section)
+# # names(US)
+# # US1 <- US %>% filter(year %in% c(2018,2019))
+# write_csv(US, paste0(exp, "US_ln_NTMs_base_2017_FE_boot_hs4_elast.csv"))
+# 
+# 
+# # US <- read_csv(paste0(exp, "US_ln_NTMs_base_2015_FE_boot_hs4_elast.csv"))
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+# 

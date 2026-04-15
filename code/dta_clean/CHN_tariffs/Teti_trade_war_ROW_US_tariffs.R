@@ -298,7 +298,7 @@ write_csv(MFN_monthly, "data/tariff_dta/teti/ROW_tariff_on_US_monthly.csv")
 # Merge back with Teti
 
 ROW_monthly <- read_csv("data/tariff_dta/teti/ROW_US_tariff_HS6_Teti_monthly.csv")
-
+MFN_monthly <- read_csv("data/tariff_dta/teti/ROW_tariff_on_US_monthly.csv")
 
 MFN_monthly$hs6_H5 <- as.numeric(MFN_monthly$hs6_H5)
 
@@ -316,19 +316,37 @@ US_tariff2 <- US_tariff2 %>% arrange(ImporterISO3, ExporterISO3, hs6_H5, year, m
 names(US_tariff2)
 
 
-
 US_tariff2 <- US_tariff2 %>% 
-  mutate(tariff2 = case_when(is.na(Weighted_Average_AHS) & !is.na(tariff) ~ tariff,
-                             !is.na(Weighted_Average_AHS) & is.na(tariff) ~ Weighted_Average_AHS,
-                             !is.na(Weighted_Average_AHS) & !is.na(tariff) ~ pmax(Weighted_Average_AHS, tariff),
-                             TRUE ~ NA_real_))
-colSums(is.na(US_tariff2))
+  group_by(hs6_H5, ImporterISO3,ExporterISO3) %>%
+  mutate(
+    # Reference values at 2018 month 1
+    ref_AHS    = Weighted_Average_AHS[year == 2018 & month == 1],
+    ref_tariff = tariff[year == 2018 & month == 1],
+    # Start tariff2 as tariff
+    tariff2 = tariff,
+    # For observations before 2018m1, apply the rule
+    tariff2 = case_when(
+      year < 2018 & ref_AHS < ref_tariff ~ Weighted_Average_AHS,  # AHS was lower -> use AHS pre-2018
+      year < 2018 & ref_AHS >= ref_tariff ~ tariff,               # AHS was higher -> keep tariff pre-2018
+      year == 2018 & month == 1 ~ tariff,                         # 2018m1 itself always tariff
+      TRUE ~ tariff2                                               # 2018m1 onward stays as tariff
+    )  ) %>%  ungroup() %>%  select(-ref_AHS, -ref_tariff) 
 
 
+# fill up tariff pre2018
+US_tariff2 <- US_tariff2 %>%
+  arrange(hs6_H5, year, month) %>%
+  group_by(hs6_H5,ImporterISO3,ExporterISO3) %>%
+  mutate(
+    tariff2 = if_else(
+      year < 2018 | (year == 2018 & month == 1),
+      # within pre-2018m2 window: fill upward using the first non-NA value in the group
+      zoo::na.locf(tariff2, fromLast = TRUE, na.rm = FALSE),
+      tariff2  # post-2018m1: leave untouched
+    )  ) %>%  ungroup()
 
-US_tariff2 <- US_tariff2 %>% arrange(ImporterISO3,ExporterISO3, hs6_H5, year, month) %>% 
-  group_by(ImporterISO3,ExporterISO3,hs6_H5) %>% 
-  fill(tariff2, .direction = "up" ) %>%  ungroup()
+
+US_tariff2 <- US_tariff2 %>% arrange(ImporterISO3,ExporterISO3,hs6_H5, year, month )
 
 US_tariff2 <- US_tariff2 %>% select(ImporterISO3, ExporterISO3, hs6_H5,year,month,tariff2 ) %>% 
   rename(ROW_tariff_onUS = tariff2)
@@ -342,27 +360,27 @@ US_baseline <- US_tariff2  %>%  filter(year %in% c(2015, 2017)) %>%
   pivot_wider(names_from = year, values_from = ROW_tariff_onUS, 
               names_prefix = "ROW_tariff_onUS_" )
 
-US_tariff <- US_tariff %>% filter(year %in% c(2018:2020))
+US_tariff2 <- US_tariff2 %>% filter(year %in% c(2018:2020))
 
-US_tariff <- left_join(US_tariff, US_baseline)
-
-
-test <- US_tariff %>% filter(ExporterISO3 == "CAN")
-test <- US_tariff %>% filter(US_tariff_onROW %in% c(10, 25))
+US_tariff2 <- left_join(US_tariff2, US_baseline)
 
 
-write_csv(US_tariff, "data/tariff_dta/teti/US_tariff_on_ROW_monthly.csv")
+test <- US_tariff2 %>% filter(ImporterISO3 == "CAN")
+test <- US_tariff2 %>% filter(ROW_tariff_onUS %in% c(10, 25))
 
-US_tariff <- read_csv( "data/tariff_dta/teti/US_tariff_on_ROW_monthly.csv")
-names(US_tariff)
+
+write_csv(US_tariff2, "data/tariff_dta/teti/ROW_tariff_on_US_monthly.csv")
+
+US_tariff2 <- read_csv( "data/tariff_dta/teti/ROW_tariff_on_US_monthly.csv")
+names(US_tariff2)
 
 
 
 # at the yearly level 
-US_tariff_yearly <- US_tariff %>% group_by(ExporterISO3, hs6,year) %>% 
-  summarise(US_tariff_onROW = mean(US_tariff_onROW, na.rm = TRUE),
-            US_tariff_onROW_2015 = mean(US_tariff_onROW_2015, na.rm = TRUE),
-            US_tariff_onROW_2017 = mean(US_tariff_onROW_2017, na.rm = TRUE))
+US_tariff_yearly <- US_tariff2 %>% group_by(ExporterISO3,ImporterISO3, hs6_H5,year) %>% 
+  summarise(ROW_tariff_onUS = mean(ROW_tariff_onUS, na.rm = TRUE),
+            ROW_tariff_onUS_2015 = mean(ROW_tariff_onUS_2015, na.rm = TRUE),
+            ROW_tariff_onUS_2017 = mean(ROW_tariff_onUS_2017, na.rm = TRUE))
 
 write_csv(US_tariff_yearly, "data/tariff_dta/teti/US_tariff_on_ROW_yearly.csv")
 

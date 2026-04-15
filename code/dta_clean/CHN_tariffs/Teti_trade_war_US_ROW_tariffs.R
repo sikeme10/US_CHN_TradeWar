@@ -31,7 +31,7 @@ library(dplyr)
 library(tidyr)
 library(stringr)
 library(lubridate)
-
+library(concordance)
 
 ################################################################################
 # directory: 
@@ -272,14 +272,39 @@ US_tariff <- US_tariff %>% arrange(ExporterISO3, hs6, year, month) %>% group_by(
   fill(tariff, .direction = "down" ) %>%  ungroup()
 names(US_tariff)
 
+
+# we create a variable tariff2 that takes values of teti tariffs and 
+
 US_tariff <- US_tariff %>% 
-  mutate(tariff2 = case_when(is.na(Weighted_Average_AHS) & !is.na(tariff) ~ tariff,
-                             !is.na(Weighted_Average_AHS) & is.na(tariff) ~ Weighted_Average_AHS,
-                             !is.na(Weighted_Average_AHS) & !is.na(tariff) ~ pmax(Weighted_Average_AHS, tariff),
-                             TRUE ~ NA_real_))
-colSums(is.na(US_tariff))
-US_tariff <- US_tariff %>% arrange(ExporterISO3, hs6, year, month) %>% group_by(ExporterISO3,hs6) %>% 
-  fill(tariff2, .direction = "up" ) %>%  ungroup()
+  group_by(hs6, ExporterISO3) %>%
+  mutate(
+    # Reference values at 2018 month 1
+    ref_AHS    = Weighted_Average_AHS[year == 2018 & month == 1],
+    ref_tariff = tariff[year == 2018 & month == 1],
+    # Start tariff2 as tariff
+    tariff2 = tariff,
+    # For observations before 2018m1, apply the rule
+    tariff2 = case_when(
+      year < 2018 & ref_AHS < ref_tariff ~ Weighted_Average_AHS,  # AHS was lower -> use AHS pre-2018
+      year < 2018 & ref_AHS >= ref_tariff ~ tariff,               # AHS was higher -> keep tariff pre-2018
+      year == 2018 & month == 1 ~ tariff,                         # 2018m1 itself always tariff
+      TRUE ~ tariff2                                               # 2018m1 onward stays as tariff
+    )  ) %>%  ungroup() %>%  select(-ref_AHS, -ref_tariff) 
+
+
+# fill up tariff pre2018
+US_tariff <- US_tariff %>%
+  arrange(hs6, year, month) %>%
+  group_by(hs6, ExporterISO3) %>%
+  mutate(
+    tariff2 = if_else(
+      year < 2018 | (year == 2018 & month == 1),
+      # within pre-2018m2 window: fill upward using the first non-NA value in the group
+      zoo::na.locf(tariff2, fromLast = TRUE, na.rm = FALSE),
+      tariff2  # post-2018m1: leave untouched
+    )  ) %>%  ungroup()
+
+
 
 US_tariff <- US_tariff %>% select(ExporterISO3, hs6,year,month,tariff2 ) %>% rename(US_tariff_onROW = tariff2)
 

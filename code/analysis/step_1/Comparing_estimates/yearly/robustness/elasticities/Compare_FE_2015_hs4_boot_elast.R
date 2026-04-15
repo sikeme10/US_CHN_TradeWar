@@ -226,6 +226,7 @@ write_csv(dta , "/data/sikeme/TRADE/US_CHN_TradeWar_git/output/Compare_values/ye
 
 dta <- fread("/data/sikeme/TRADE/US_CHN_TradeWar_git/output/Compare_values/yearly/robust/elast/estimates_reduced_form_base_2015_FE_boot_100_elast.csv")
 names(dta)
+table(dta$year)
 summary(dta$elasticities)
 test <- dta%>% filter(elasticities>10)
 summary(test$elasticities)

@@ -1,17 +1,22 @@
 
 
 
+rm(list=ls())
+# Set directory
+setwd("/data/sikeme/TRADE/US_CHN_TradeWar_git/data")
+getwd()
+
 library(stringr)
 library(haven)
 library(concordance)
-dta <- read_dta("crosswalk/HS6_NAICS_Diane/mappinghsnaics6.dta")
-names(dta)
+dta_origin <- read_dta("crosswalk/HS6_NAICS_Diane/mappinghsnaics6.dta")
+names(dta_origin)
 
 #################################################################################
 
 # Product level codes are at HS0 revisions 
 
-dta <- dta %>% rename(  ProductCode_H0 = hs,  naics6 = naics)
+dta <- dta_origin %>% rename(  ProductCode_H0 = hs,  naics6 = naics)
 class(dta$ProductCode_H0)
 
 # product code as character:
@@ -23,35 +28,100 @@ unique(nchar(dta$ProductCode_H0))
 
 
 # concordance:
-dta$ProductCode_H4 <-  concord_hs(sourcevar = dta$ProductCode_H0,  origin = "HS4",  destination = "HS0", dest.digit  = 6 )
+dta$ProductCode_H4 <-  concord_hs(sourcevar = dta$ProductCode_H0,  origin = "HS0",  destination = "HS4", dest.digit  = 6 )
+dta$ProductCode_H5 <-  concord_hs(sourcevar = dta$ProductCode_H0,  origin = "HS0",  destination = "HS5", dest.digit  = 6 )
+# dta$ProductCode_H4 <-  concord_hs(sourcevar = dta$ProductCode_H0,  origin = "HS4",  destination = "HS0", dest.digit  = 6 )
 dta %>%  filter(ProductCode_H0 != ProductCode_H4) %>% summarise(n_distinct_observations = n())
 length(unique(dta$ProductCode_H4))
+length(unique(dta$ProductCode_H5))
 length(unique(dta$ProductCode_H0))
 colSums(is.na(dta))
 
 
 class(dta$ProductCode_H4)
 
-dta <-dta %>% rename(HS6 = ProductCode_H4)
-dta$HS2 <- as.character(substr(dta$HS6, 1, 2))
+dta1 <-dta %>% rename(HS6 = ProductCode_H4)
+dta1$HS2 <- as.character(substr(dta1$HS6, 1, 2))
 
 
 #####################
 names(dta)
 
-dta <- dta %>% select(HS2 , HS6 , naics2,naics3,naics4, naics6, j, crop) %>% rename(
+dta1 <- dta1 %>% select(HS2 , HS6 , naics2,naics3,naics4, naics6, j, crop) %>% rename(
   naics6_D = naics6 , naics2_D = naics2, naics3_D = naics3 , naics4_D = naics4)
 
-write_csv(dta, "crosswalk/HS6_NAICS_Diane/NAICS_HS_2012.csv")
+write_csv(dta1, "crosswalk/HS6_NAICS_Diane/NAICS_HS_2012.csv")
 
 
 
 
 
+################################################################################
+# just get different NAICS codes and their crop
+################################################################################
+
+dta <- read_csv( "crosswalk/HS6_NAICS_Diane/NAICS_HS_2012.csv")
+
+
+names(dta)
+dta <- dta %>%  select(naics2, naics3, naics4, naics6, j, crop) %>%
+  rename( naics = naics6, subsector    = j,    ag_subsector = crop  )
+unique(dta$subsector)
+
+
+dta <- dta %>% distinct()
+
+
+names(dta)
+dta <- dta %>% select(naics, subsector, ag_subsector)
+dta <- dta %>% distinct() %>% filter(!is.na(naics))
+dta <- dta %>%  group_by(naics, subsector) %>%
+  summarise(ag_subsector = paste(ag_subsector, collapse = ", "), .groups = "drop")
+length(unique(dta$naics))
+
+
+test <- dta %>% filter(duplicated(naics) | duplicated(naics, fromLast = TRUE))
+dta <- dta %>%  group_by(naics) %>%
+  filter(if (n_distinct(subsector) > 1) subsector == "crop" else TRUE) %>%  ungroup()
 
 
 
 
+merge_data1 <- merge_data1 %>%
+  mutate(subsector = case_when(
+    !is.na(subsector)                                                        ~ subsector,
+    sector == "Manu"                                                         ~ "nonag",
+    NAICS_description == "Software publishers"                               ~ "nonag",
+    NAICS_description %in% c(   "Sugarcane farming (11193)",    "Nursery and tree production (111421)",
+                                "Floriculture production (111422)"    )                                                                        ~ "crop",
+    NAICS_description %in% c( "Beef cattle ranching and farming (112111)",
+                              "Cattle feedlots (112112)", "Chicken egg production (11231)",
+                              "Broilers and other meat-type chicken production (11232)",
+                              "Turkey production (11233)",  "Poultry hatcheries (11234)",
+                              "Other poultry production (11239)"    )    ~ "livestock",    
+    TRUE  ~ subsector  ))
 
 
 
+write_csv(dta,"crosswalk/HS6_NAICS_Diane/NAICS_industry_2012.csv" )
+
+
+
+
+################################################################################
+# at HS5 revision level
+################################################################################
+
+
+class(dta$ProductCode_H5)
+
+dta2 <-dta %>% rename(HS6 = ProductCode_H5)
+names(dta2)
+length(unique(dta2$HS6))
+
+dta2 <- dta2 %>% select(HS6 , j, crop)
+
+dta2 <- dta2 %>% filter(!is.na(HS6))
+
+write_csv(dta2,"crosswalk/HS6_NAICS_Diane/HS6_HS5_revision_industry_2012.csv" )
+colSums(is.na(dta2))

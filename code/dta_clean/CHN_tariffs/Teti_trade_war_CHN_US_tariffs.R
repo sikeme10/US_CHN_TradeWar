@@ -94,3 +94,9 @@ CHN_import2 <- CHN_import2 %>% mutate(nomenclature = "HS2017")
 summary(CHN_import2$tariff)
 
 write_csv(CHN_import2, "data/tariff_dta/teti/CHN_tariff_HS6_Teti.csv")
+
+################################################################################
+
+
+
+

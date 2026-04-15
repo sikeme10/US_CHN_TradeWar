@@ -1,8 +1,7 @@
-
 ################################################################################
 #          Compare distribution of obtained AVEs based on baseline year
 
-# check change in trade Vs chnage in AVEs?
+# check change in trade Vs change in AVEs?
 
 ################################################################################
 
@@ -32,57 +31,59 @@ exp <- "/data/sikeme/TRADE/US_CHN_TradeWar_git/output/Compare_values/yearly/robu
 # 1) Load data 
 ################################################################################
 
-US_2015 <- read_csv(paste0(exp, "US_ln_NTMs_base_2015_FE_boot.csv"))
-colSums(is.na(US_2015))
+US_2015 <- read_csv(paste0(exp, "US_ln_NTMs_base_2015_FE_boot_hs4.csv"))
+US_2017 <- read_csv(paste0(exp, "US_ln_NTMs_base_2017_FE_boot_hs4.csv"))
 
-US_2017 <- read_csv(paste0(exp, "US_ln_NTMs_base_2017_FE_boot.csv"))
-names(US_2017)
+################################################################################
+# 2) Parameters
+################################################################################
 
+quant <- 0.05
 
+winsor <- function(x, p = c(quant, 1-quant)) {
+  qs <- quantile(x, probs = p, na.rm = TRUE)
+  x[x < qs[1] | x > qs[2]] <- NA
+  x
+}
+
+vars <- c("diff_ln_AVE_FE", "diff_ln_AVE_FE_bench", "diff_ln_AVE_FE_wmean",
+          "diff_ln_AVE_FE_log", "diff_ln_AVE_FE_log_bench", "diff_ln_AVE_FE_log_wmean")
+vars_w <- paste0(vars, "_w")
+
+################################################################################
+# 3) 2015 baseline
 ################################################################################
 
 
+# Winsorize at draw level
+US_2015_hs4 <- US_2015 %>%  mutate(across(all_of(vars), ~ winsor(.x), .names = "{.col}_w"))
 
-# For 2015 get observation at hs4
-names(US_2015)
-US_2015_hs4 <- US_2015 %>%
-  # filter(year %in% 2018:2020) %>%
-  filter(year %in% 2016:2020) %>%
-  group_by(year, sector, hs_section, hs2, hs4, draw) %>%
-  summarise(
-    diff_ln_AVE_FE = first(diff_ln_AVE_FE, na.rm = TRUE),
-    diff_ln_AVE_FE_bench = first(diff_ln_AVE_FE_bench, na.rm = TRUE),
-    diff_ln_AVE_FE_wmean = first(diff_ln_AVE_FE_wmean, na.rm = TRUE),
-    diff_ln_AVE_FE_log = first(diff_ln_AVE_FE_log, na.rm = TRUE),
-    diff_ln_AVE_FE_log_bench = first(diff_ln_AVE_FE_log_bench, na.rm = TRUE),
-    diff_ln_AVE_FE_log_wmean = first(diff_ln_AVE_FE_log_wmean, na.rm = TRUE),
-    .groups = "drop"  )
-    
-unique(US_2015_hs4$draw)
-vars <- c("diff_ln_AVE_FE",  "diff_ln_AVE_FE_bench",  "diff_ln_AVE_FE_wmean",
-          "diff_ln_AVE_FE_log", "diff_ln_AVE_FE_log_bench","diff_ln_AVE_FE_log_wmean")
-US_2015_hs4 <- US_2015_hs4 %>%
-  group_by(year, sector, hs_section, hs2, hs4) %>%
-  summarise(across(all_of(vars),
-      list(n    = ~ sum(!is.na(.x)),
-           mean = ~ mean(.x, na.rm = TRUE),
-           sd   = ~ sd(.x, na.rm = TRUE) ),.names = "{.col}_{.fn}"),.groups = "drop"  )
+US_2015_hs4 <- US_2015_hs4 %>% filter(year %in% 2016:2020)
 
-# Compute SE and CI (variable-specific n)
-for (v in vars) {
+
+# Aggregate
+US_2015_hs4 <- US_2015_hs4 %>%  group_by(year, sector, hs_section, hs2, hs4) %>%
+  summarise(across(all_of(c(vars, vars_w)),
+                   list(n    = ~ sum(!is.na(.x)),
+                        mean = ~ mean(.x, na.rm = TRUE),
+                        sd   = ~ sd(.x, na.rm = TRUE)), .names = "{.col}_{.fn}"), .groups = "drop")
+
+# SE and CI
+for (v in vars_w) {
   n_col    <- paste0(v, "_n")
   mean_col <- paste0(v, "_mean")
   sd_col   <- paste0(v, "_sd")
   se_col      <- paste0(v, "_se")
   ci_low_col  <- paste0(v, "_ci_low")
   ci_high_col <- paste0(v, "_ci_high")
-  US_2015_hs4[[se_col]] <- US_2015_hs4[[sd_col]] / sqrt(US_2015_hs4[[n_col]])
-  US_2015_hs4[[ci_low_col]] <-  US_2015_hs4[[mean_col]] - 1.96 * US_2015_hs4[[se_col]]
-  US_2015_hs4[[ci_high_col]] <-  US_2015_hs4[[mean_col]] + 1.96 * US_2015_hs4[[se_col]]
+  US_2015_hs4[[se_col]]      <- US_2015_hs4[[sd_col]] / sqrt(US_2015_hs4[[n_col]])
+  US_2015_hs4[[ci_low_col]]  <- US_2015_hs4[[mean_col]] - 1.96 * US_2015_hs4[[se_col]]
+  US_2015_hs4[[ci_high_col]] <- US_2015_hs4[[mean_col]] + 1.96 * US_2015_hs4[[se_col]]
 }
 
-for (v in vars) {
-  sig_col <- paste0(v, "_sig")
+# Significance flags
+for (v in vars_w) {
+  sig_col     <- paste0(v, "_sig")
   ci_low_col  <- paste0(v, "_ci_low")
   ci_high_col <- paste0(v, "_ci_high")
   US_2015_hs4[[sig_col]] <- (US_2015_hs4[[ci_low_col]] > 0 | US_2015_hs4[[ci_high_col]] < 0)
@@ -90,73 +91,46 @@ for (v in vars) {
 
 US_2015_hs4 <- US_2015_hs4 %>% mutate(baseline_year = 2015)
 
+################################################################################
+# 4) 2017 baseline
+################################################################################
 
-### For 2017
 
-names(US_2017)
-US_2017_hs4 <- US_2017 %>%
-  filter(year %in% 2017:2020) %>%
-  # filter(year %in% 2018:2020) %>%
-  group_by(year, sector, hs_section, hs2, hs4, draw) %>%
-  summarise(
-    diff_ln_AVE_FE = first(diff_ln_AVE_FE, na.rm = TRUE),
-    diff_ln_AVE_FE_bench = first(diff_ln_AVE_FE_bench, na.rm = TRUE),
-    diff_ln_AVE_FE_wmean = first(diff_ln_AVE_FE_wmean, na.rm = TRUE),
-    diff_ln_AVE_FE_log = first(diff_ln_AVE_FE_log, na.rm = TRUE),
-    diff_ln_AVE_FE_log_bench = first(diff_ln_AVE_FE_log_bench, na.rm = TRUE),
-    diff_ln_AVE_FE_log_wmean = first(diff_ln_AVE_FE_log_wmean, na.rm = TRUE),
-    .groups = "drop"  )
+# Winsorize at draw level
+US_2017_hs4 <- US_2017 %>%  mutate(across(all_of(vars), ~ winsor(.x), .names = "{.col}_w"))
 
-unique(US_2017_hs4$draw)
-vars <- c("diff_ln_AVE_FE",  "diff_ln_AVE_FE_bench",  "diff_ln_AVE_FE_wmean",
-          "diff_ln_AVE_FE_log", "diff_ln_AVE_FE_log_bench","diff_ln_AVE_FE_log_wmean")
-US_2017_hs4 <- US_2017_hs4 %>%
-  group_by(year, sector, hs_section, hs2, hs4) %>%
-  summarise(across(all_of(vars),
+US_2017_hs4 <- US_2017_hs4 %>% filter(year %in% 2017:2020)
+
+
+# Aggregate
+US_2017_hs4 <- US_2017_hs4 %>%  group_by(year, sector, hs_section, hs2, hs4) %>%
+  summarise(across(all_of(c(vars, vars_w)),
                    list(n    = ~ sum(!is.na(.x)),
                         mean = ~ mean(.x, na.rm = TRUE),
-                        sd   = ~ sd(.x, na.rm = TRUE) ),.names = "{.col}_{.fn}"),.groups = "drop"  )
+                        sd   = ~ sd(.x, na.rm = TRUE)), .names = "{.col}_{.fn}"), .groups = "drop")
 
-# Compute SE and CI (variable-specific n)
-for (v in vars) {
+# SE and CI
+for (v in vars_w) {
   n_col    <- paste0(v, "_n")
   mean_col <- paste0(v, "_mean")
   sd_col   <- paste0(v, "_sd")
   se_col      <- paste0(v, "_se")
   ci_low_col  <- paste0(v, "_ci_low")
   ci_high_col <- paste0(v, "_ci_high")
-  US_2017_hs4[[se_col]] <- US_2017_hs4[[sd_col]] / sqrt(US_2017_hs4[[n_col]])
-  US_2017_hs4[[ci_low_col]] <-  US_2017_hs4[[mean_col]] - 1.96 * US_2017_hs4[[se_col]]
-  US_2017_hs4[[ci_high_col]] <-  US_2017_hs4[[mean_col]] + 1.96 * US_2017_hs4[[se_col]]
+  US_2017_hs4[[se_col]]      <- US_2017_hs4[[sd_col]] / sqrt(US_2017_hs4[[n_col]])
+  US_2017_hs4[[ci_low_col]]  <- US_2017_hs4[[mean_col]] - 1.96 * US_2017_hs4[[se_col]]
+  US_2017_hs4[[ci_high_col]] <- US_2017_hs4[[mean_col]] + 1.96 * US_2017_hs4[[se_col]]
 }
 
-for (v in vars) {
-  sig_col <- paste0(v, "_sig")
+# Significance flags
+for (v in vars_w) {
+  sig_col     <- paste0(v, "_sig")
   ci_low_col  <- paste0(v, "_ci_low")
   ci_high_col <- paste0(v, "_ci_high")
   US_2017_hs4[[sig_col]] <- (US_2017_hs4[[ci_low_col]] > 0 | US_2017_hs4[[ci_high_col]] < 0)
 }
 
 US_2017_hs4 <- US_2017_hs4 %>% mutate(baseline_year = 2017)
-
-
-################################################################################
-
-
-# windsorise cut first and 99th percentile mean values
-winsor <- function(x, p = c(0.01, 0.99)) {
-  qs <- quantile(x, probs = p, na.rm = TRUE)
-  pmin(pmax(x, qs[1]), qs[2])
-}
-
-names(US_2015_hs4)
-US_2015_hs4 <- US_2015_hs4 %>% mutate(across(ends_with("_mean"),   ~ winsor(.x),   .names = "{.col}_w" )  )
-summary(US_2015_hs4)
-
-
-names(US_2017_hs4)
-US_2017_hs4 <- US_2017_hs4 %>% mutate(across(ends_with("_mean"),   ~ winsor(.x),   .names = "{.col}_w" )  )
-summary(US_2017_hs4)
 
 
 ################################################################################
@@ -167,8 +141,9 @@ merge_US_hs4 <- rbind(US_2017_hs4, US_2015_hs4)
 unique(merge_US_hs4$baseline_year)
 unique(merge_US_hs4$year)
 colSums(is.na(merge_US_hs4))
+summary(merge_US_hs4)
 
-write_csv(merge_US_hs4, paste0(exp, "US_ln_NTMs_base__2015_2017_hs4_FE_boot.csv"))
+write_csv(merge_US_hs4, paste0(exp, "US_ln_NTMs_base_2015_2017_hs4_FE_boot.csv"))
 
 merge_US_hs4 <- merge_US_hs4 %>% filter(year %in% c(2018:2019))
 

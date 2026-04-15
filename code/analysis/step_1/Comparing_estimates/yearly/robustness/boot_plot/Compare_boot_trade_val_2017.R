@@ -211,18 +211,22 @@ names(US_hs4)
 
 
 ###############################################################################
-common_theme <- theme_minimal() +
-  theme(    panel.spacing.x = unit(1.2, "lines"),
-            plot.title = element_text(size = 11, hjust = 0.5),
-            panel.background = element_rect(fill = "white", color = NA),
-            plot.background  = element_rect(fill = "white", color = NA),
-            axis.text.x = element_text(size = 9),
-            axis.text.y = element_text(size = 9),
-            axis.title.x = element_text(size = 11),
-            axis.title.y = element_text(size = 11),
-            legend.text  = element_text(size = 10),
-            legend.title = element_text(size = 10)  )
-###############################################################################
+common_theme  <- theme_minimal(base_size = 14, base_family = "Times New Roman") +
+  theme(
+    panel.spacing.x = unit(1.2, "lines"),
+    plot.title = element_text(size = 11, hjust = 0.5),
+    panel.background = element_rect(fill = "white", color = NA),
+    plot.background  = element_rect(fill = "white", color = NA),
+    axis.text.x = element_text(size = 9),
+    axis.text.y = element_text(size = 9),
+    axis.title.x = element_text(size = 11),
+    axis.title.y = element_text(size = 11),
+    legend.text  = element_text(size = 10),
+    legend.title = element_text(size = 10)
+  )
+################################################################################
+
+################################################################################
 
 # plot to look at where big AVEs are 
 
@@ -317,7 +321,7 @@ ggplot(hs2_destroyed, ) +
 
 ###################################################################################
 names(US_hs4)
-
+summary(US_hs4$perc_change_trade_USD_bis)
 US_hs4 <- US_hs4 %>%  
   mutate( above_50 = if_else(perc_change_trade_USD_bis < -50, 1, 0),
     above_50 = factor(above_50, levels = c(0, 1),   labels = c(">= -50%", "< -50%"))  ,
@@ -334,10 +338,21 @@ US_hs4 <- US_hs4 %>%
         "-50 to -75","-75 to -99", "-100"),ordered = TRUE  ))
 table(US_hs4$above_50)
 table(US_hs4$change_cat)
+summary(US_hs4)
 
 length(unique(US_hs4$hs4))
 
-#################################################################################
+# Extract last 5 colors from YlOrRd (6 categories, so last 5 of a palette pulled with 6 colors)
+custom_colors <- c(
+  ">0"        = "blue",   # blue
+  "0 to -25"  = "blueviolet",   # light blue
+  "-25 to -50"= "cyan3",   # light gray
+  "-50 to -75"= "darkgreen",   # light orange
+  "-75 to -99"= "#d6604d",   # orange-red
+  "-100"      = "#b2182b"    # dark red
+)
+
+###############################################################################
 
 # multiple categories
 plot_w <- ggplot(subset(US_hs4, !is.na(above_50)), aes(x = mean_FE_wmean, color = change_cat)) +
@@ -352,31 +367,60 @@ ggsave(filename = paste0(exp , "plot/distribution/distribution_AVEs_perc_change_
        plot = plot_w, width = 12,height = 6, units = "in", dpi = 300,bg = "white")
 
 
+
+# Rebuild each plot WITHOUT its own legend, using the shared color scale
 plot <- ggplot(subset(US_hs4, !is.na(above_50)), aes(x = mean_FE, color = change_cat)) +
   geom_density(linewidth = 1) +
-  coord_cartesian(xlim= c(-5,25))+
+  scale_color_manual(values = custom_colors, name = "% Change U.S. Exports to\nCHN (relative to 2017)") +
+  coord_cartesian(xlim = c(-5, 10)) +
   common_theme +
-  labs(  x = "AVE change (FE)",y = "Density",color = "Trade change relative to 2017"  )
-plot
+  labs(x = "Δ ln(1+AVE) (FE)", y = "Density") +
+  theme(legend.position = "none")
+
+plot_w <- ggplot(subset(US_hs4, !is.na(above_50)), aes(x = mean_FE_wmean, color = change_cat)) +
+  geom_density(linewidth = 1) +
+  scale_color_manual(values = custom_colors, name = "% Change U.S. Exports to\nCHN (relative to 2017)") +
+  coord_cartesian(xlim = c(-5, 10)) +
+  common_theme +
+  labs(x = "Δ ln(1+AVE) (FE demean)", y = "Density") +
+  theme(legend.position = "none")
 
 plot_b <- ggplot(subset(US_hs4, !is.na(above_50)), aes(x = mean_FE_bench, color = change_cat)) +
   geom_density(linewidth = 1) +
-  coord_cartesian(xlim= c(-5,25))+
+  scale_color_manual(values = custom_colors, name = "% Change U.S. Exports to\nCHN (relative to 2017)") +
+  coord_cartesian(xlim = c(-5, 10)) +
   common_theme +
-  labs(  x = "AVE change (FE benchmark)",y = "Density",color = "Trade change relative to 2017"  )
-plot_b
+  labs(x = "Δ ln(1+AVE)(FE benchmark)", y = "Density") +
+  theme(legend.position = "none")
 
 plot_tar <- ggplot(subset(US_hs4, !is.na(above_50)), aes(x = mean_diff_log_tariff_2017, color = change_cat)) +
   geom_density(linewidth = 1) +
-  coord_cartesian(xlim= c(-0.2,0.75))+
+  scale_color_manual(values = custom_colors, name = "% Change U.S. Exports to\nCHN (relative to 2017)") +
+  coord_cartesian(xlim = c(-0.2, 0.75)) +
   common_theme +
-  labs(  x = "Change tariff",y = "Density",color = "Trade change relative to 2017"  )
-plot_tar
+  labs(x = "Δ ln(1+ tariff)", y = "Density") +
+  theme(legend.position = "none")
 
-final_plot <- (plot /plot_w /plot_b /plot_tar) + plot_layout(widths = c(1.1, 1))
+# Extract legend from one plot (re-enable legend temporarily just for extraction)
+legend_plot <- ggplot(subset(US_hs4, !is.na(above_50)), aes(x = mean_FE, color = change_cat)) +
+  geom_density(linewidth = 1) +
+  scale_color_manual(values = custom_colors, name = "% Change U.S. Exports to\nCHN (relative to 2017)") +
+  common_theme +
+  theme(legend.position = "right")
+
+shared_legend <- cowplot::get_legend(legend_plot)
+
+# Combine with patchwork + shared legend via cowplot
+plots_combined <- plot / plot_w / plot_b / plot_tar
+final_plot <- cowplot::plot_grid(
+  plots_combined, shared_legend,ncol = 2,  rel_widths = c(1, 0.2))
+
 final_plot
 ggsave(filename = paste0(exp , "plot/distribution/distribution_AVEs_perc_change_trade_2017.png"),
        plot = final_plot, width = 12,height = 6, units = "in", dpi = 300,bg = "white")
+
+
+
 
 
 

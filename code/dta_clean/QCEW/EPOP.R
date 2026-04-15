@@ -1,7 +1,7 @@
 
 
 ################################################################################
-# MFP
+# 
 ################################################################################
 
 rm(list=ls())
@@ -25,7 +25,7 @@ library(viridis)
 
 ################################################################################
 # LOad data 
-
+setwd("/data/sikeme/TRADE/US_CHN_TradeWar_git/data/")
 
 library(readxl)
 labor <- list.files("QCEW/CZ_emp_2015-2019", pattern = "\\.xlsx$", full.names = TRUE) %>%
@@ -52,6 +52,7 @@ table(labor$NAICS, labor$Year)
 labor <- labor %>% filter(NAICS == 10)
 table(labor$Year)
 unique(labor$Industry)
+names(labor)
 
 
 # rename some variables
@@ -61,7 +62,8 @@ labor <- labor %>% select(fips, year,Area , Ownership, Own,Industry, wage , esta
 unique(labor$year)
 
 table(labor$Ownership,labor$Own)
-labor <- labor %>% filter(Own == 5)
+# labor <- labor %>% filter(Own == 5)
+labor <- labor %>% filter(Own == 0)
 ################################################################################
 # aggregate at CZ
 ################################################################################
@@ -127,14 +129,15 @@ labor3 <- left_join(labor2, Pop)
 
 summary(labor3)
 names(labor3)
-labor3 <-labor3 %>% mutate(EPOP = employment / total_pop)
+labor3 <-labor3 %>% mutate(EPOP = employment / total_pop,
+                           EPOP_work = employment / working_age_pop)
 summary(labor3)
 
 test <- labor3 %>% filter(EPOP >1)
 
 labor3 <-labor3 %>% mutate(EPOP =if_else(EPOP>1, NA, EPOP))
 
-write_csv(labor3, "/data/sikeme/TRADE/US_CHN_TradeWar_git/data/QCEW/EPOP_2015_2019")
+write_csv(labor3, "/data/sikeme/TRADE/US_CHN_TradeWar_git/data/QCEW/EPOP_2015_2019.csv")
 
 
 

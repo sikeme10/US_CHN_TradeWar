@@ -32,7 +32,8 @@ exp <- "/data/sikeme/TRADE/US_CHN_TradeWar_git/output/summary/exposure_maps"
 
 
 # load data:
-gamma <- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/data/created_exposure/NAICS6/RET_i_CHN_naics6.csv")
+gamma <- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/data/created_exposure/NAICS6/RET_i_CHN_naics6_schott_IV.csv")
+# gamma <- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/data/created_exposure/NAICS6/RET_i_CHN_naics6.csv")
 # gamma <- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/data/created_exposure/RET_i_Chen_CHN.csv")
 
 labor<- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/data/QCEW/QCEW_2012_naics6_CZ.csv")
@@ -45,7 +46,7 @@ names(labor)
 unique(gamma$year)
 # can choose to have
 gamma1 <- gamma %>% select(year, naics, NAICS_description,gamma_iju_tau_CHN_tariffs, gamma_iju_tau_NTB,
-                           RET_i_tariff_CHN , RET_i_NTB_CHN)
+                           RET_i_tariff_CHN , RET_i_NTB_CHN,RET_i_NTB_CHN_IV)
 length(unique(gamma1$naics))
 length(unique(labor$naics))
 
@@ -79,10 +80,11 @@ merge_data <- left_join(gamma1, labor, join_by(naics == naics))
 # Step 4: create exposure — share is now year-invariant, gamma varies by year
 merge_data <- merge_data %>% mutate(
   RET_tariff_ir = RET_i_tariff_CHN * share_labor_ir,
-  RET_NTB_ir    = RET_i_NTB_CHN    * share_labor_ir)
+  RET_NTB_ir    = RET_i_NTB_CHN    * share_labor_ir,
+  RET_NTB_ir_IV    = RET_i_NTB_CHN_IV    * share_labor_ir,)
 
 length(unique(merge_data$naics))
-
+summary(merge_data)
 
 ################################################################################
 # get RET_ir at naics and CZ level
@@ -93,7 +95,8 @@ names(merge_data)
 # create exposure indicator
 merge_data <- merge_data %>% mutate(
   RET_tariff_ir = RET_i_tariff_CHN*share_labor_ir,
-  RET_NTB_ir = RET_i_NTB_CHN*share_labor_ir)
+  RET_NTB_ir = RET_i_NTB_CHN*share_labor_ir,
+  RET_NTB_ir_IV = RET_NTB_ir_IV*share_labor_ir)
 summary(merge_data)
 
 
@@ -116,22 +119,26 @@ table(merge_data$sector, merge_data$naics3)
 names(merge_data)
 RET_r <- merge_data %>% group_by(year, czone_2012) %>% 
   summarise(RET_tariff_r = sum(RET_tariff_ir, na.rm = TRUE),
-            RET_NTB_r = sum(RET_NTB_ir, na.rm = TRUE))
+            RET_NTB_r = sum(RET_NTB_ir, na.rm = TRUE),
+            RET_NTB_IV_r = sum(RET_NTB_ir_IV, na.rm = TRUE))
 summary(RET_r)  
 unique(RET_r$year)
 test <- RET_r %>% filter(RET_NTB_r > 1.5)  
 
-write_csv(RET_r, paste0("/data/sikeme/TRADE/US_CHN_TradeWar_git/data/created_exposure/NAICS6/RET_r_CHN_naics6.csv") )
+write_csv(RET_r, paste0("/data/sikeme/TRADE/US_CHN_TradeWar_git/data/created_exposure/NAICS6/RET_r_CHN_naics6_schott_IV.csv") )
 
-# b) aggregate at CZ level and sector : get REP_sector
-names(merge_data)
-RET_sect_r <- merge_data %>% group_by(year, czone_2012, sector) %>% 
-  summarise(RET_tariff_sect_r = sum(RET_tariff_ir, na.rm = TRUE),
-            RET_NTB_sect_r = sum(RET_NTB_ir, na.rm = TRUE))
-summary(RET_sect_r)  
-test <- RET_sect_r %>% filter(RET_NTB_sect_r > 1.5)  
 
-write_csv(RET_sect_r, paste0("/data/sikeme/TRADE/US_CHN_TradeWar_git/data/created_exposure/NAICS6/RET_r_sector_CHN_naics6.csv") )
+
+# 
+# # b) aggregate at CZ level and sector : get REP_sector
+# names(merge_data)
+# RET_sect_r <- merge_data %>% group_by(year, czone_2012, sector) %>% 
+#   summarise(RET_tariff_sect_r = sum(RET_tariff_ir, na.rm = TRUE),
+#             RET_NTB_sect_r = sum(RET_NTB_ir, na.rm = TRUE))
+# summary(RET_sect_r)  
+# test <- RET_sect_r %>% filter(RET_NTB_sect_r > 1.5)  
+# 
+# write_csv(RET_sect_r, paste0("/data/sikeme/TRADE/US_CHN_TradeWar_git/data/created_exposure/NAICS6/RET_r_sector_CHN_naics6.csv") )
 
 
 ###############################################################################

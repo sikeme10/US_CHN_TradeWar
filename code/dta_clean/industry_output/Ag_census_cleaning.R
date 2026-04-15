@@ -67,6 +67,11 @@ unique(dta$NAICS)
 # 111992 - Peanut Farming → 11199
 # 111998 - All Other Miscellaneous Crop Farming → 11199
 # 112210 - Hog and Pig Farming → 1122
+# 112310 - Chicken Egg Production → 11231 
+# 112320 - Broilers and Other Meat Type Chicken Production
+# 112330 - Turkey Production
+# 112340 - Poultry Hatcheries
+# 112390 - Other Poultry Production
 # 112410 - Sheep Farming → 11241
 # 112420 - Goat Farming → 11242
 # 112511 - Finfish Farming and Fish Hatcheries → 1125
@@ -85,14 +90,23 @@ naics_mapping <- c(
   "11115" = "111150",
   "11116" = "111160",
   "11119" = "111199",
+  "11131" = "111310",
+  "11132" = "111320",
   "11191" = "111910",
   "11192" = "111920",
   "11193" = "111930",
   "11194" = "111940",
   "1122" = "112210",
+  "11212" = "112120", 
+  "11231" = "112310",
+  "11232" = "112320",
+  "11233" = "112330",
+  "11234" = "112340",
+  "11239" = "112390",
   "11241" = "112410",
   "11242" = "112420",
   "11291" = "112910",
+  "11292" = "112920",
   "11293" = "112930",
   "11299" = "112990"
 )

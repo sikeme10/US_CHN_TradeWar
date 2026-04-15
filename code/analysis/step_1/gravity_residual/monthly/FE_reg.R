@@ -244,7 +244,7 @@ names(coef_list) <- unique_HS2
 names(r2_vec)    <- unique_HS2
 
 for (i in seq_along(unique_HS2)) {
-  # i <- 1
+  i <- 1
   HS_val <- unique_HS2[i]
   message("Running HS2 = ", HS_val)
   
@@ -252,8 +252,7 @@ for (i in seq_along(unique_HS2)) {
   sub_dta <- dta %>% filter(hs2 == HS_val)
   
   # 2. drop exporters with all-zero trade
-  sub_dta1 <- sub_dta %>%
-    group_by(ExporterISO3) %>%
+  sub_dta1 <- sub_dta %>%  group_by(ExporterISO3) %>%
     filter(any(Trade_value_USD != 0, na.rm = TRUE)) %>%
     ungroup()
   sub_dta1 <- sub_dta1 %>%

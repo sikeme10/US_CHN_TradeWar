@@ -84,4 +84,49 @@ dta <- dta %>%  select(cty_fips_1990, cty_fips_2012, czone_1990, czone_2012) %>%
 write_csv(dta, "/data/sikeme/TRADE/US_CHN_TradeWar_git/data/crosswalk_CZ_county/cw_cty_czone_2012.csv")
 
 
+###############################################################################
+
+dta <- read_csv( "/data/sikeme/TRADE/US_CHN_TradeWar_git/data/crosswalk_CZ_county/cw_cty_czone_2012.csv")
+names(dta)
+class(dta$cty_fips_2012)
+
+# Extract state FIPS from county FIPS
+dta <- dta %>%  mutate(state_fips = as.integer(cty_fips_2012 %/% 1000))
+
+# State to census division crosswalk (source: U.S. Census Bureau)
+state_division <- data.frame(
+  state_fips = c(
+    9,23,25,33,44,50,          # Div 1: New England
+    34,36,42,                   # Div 2: Middle Atlantic
+    17,18,26,39,55,             # Div 3: East North Central
+    19,20,27,29,31,38,46,       # Div 4: West North Central
+    10,11,12,13,24,37,45,51,54, # Div 5: South Atlantic
+    1,21,28,47,                 # Div 6: East South Central
+    5,22,40,48,                 # Div 7: West South Central
+    4,8,16,30,32,35,49,56,      # Div 8: Mountain
+    2,6,15,41,53                # Div 9: Pacific
+  ),
+  division = c(
+    rep(1,6), rep(2,3), rep(3,5), rep(4,7),
+    rep(5,9), rep(6,4), rep(7,4), rep(8,8), rep(9,5)
+  )
+)
+
+# Merge division onto county data
+dta <- dta %>%  left_join(state_division, by = "state_fips")
+
+# Check no missing
+sum(is.na(dta$division))
+
+# Assign each CZ to the division where most of its counties are
+cz_division <- dta %>%  count(czone_2012, division) %>%
+  group_by(czone_2012) %>%
+  slice_max(n, n = 1, with_ties = FALSE) %>%
+  ungroup() %>%
+  select(czone_2012, division)
+
+
+write_csv(cz_division, "/data/sikeme/TRADE/US_CHN_TradeWar_git/data/crosswalk_CZ_county/census_div_czone_2012.csv")
+
+
 
