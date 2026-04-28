@@ -98,7 +98,7 @@ summary(cz_map)
 
 
 ################################################################################
-theme_map_autor <-  theme_minimal(base_size = 14, base_family = "Times New Roman") +
+theme_map_autor <-  theme_minimal(base_size = 10, base_family = "Times New Roman") +
   theme(
     panel.spacing.x  = unit(1.2, "lines"),
     panel.grid       = element_blank(),
@@ -106,35 +106,38 @@ theme_map_autor <-  theme_minimal(base_size = 14, base_family = "Times New Roman
     axis.ticks       = element_blank(),
     panel.background = element_rect(fill = "white", color = NA),
     plot.background  = element_rect(fill = "white", color = NA),
-    plot.title       = element_text(size = 11, hjust = 0.5),
-    strip.text       = element_text(size = 10, face = "bold", family = "Times New Roman"),
+    plot.title       = element_text(size = 12, hjust = 0.5),
+    strip.text       = element_text(size = 12, face = "bold", family = "Times New Roman"),
     legend.position  = "right",
-    legend.title     = element_text(size = 10),
-    legend.text      = element_text(size = 10),
+    legend.title     = element_text(size = 11),
+    legend.text      = element_text(size = 11),
     legend.key.height = unit(0.45, "cm"),
     legend.key.width  = unit(0.35, "cm")
   )
 
+
 theme_map <- theme_minimal(base_size = 10, base_family = "Times New Roman") +
   theme(
-    panel.spacing.x   = unit(0.3, "lines"),
-    panel.grid        = element_blank(),
-    axis.text         = element_blank(),
-    axis.ticks        = element_blank(),
-    panel.background  = element_rect(fill = "white", color = NA),
-    plot.background   = element_rect(fill = "white", color = NA),
-    plot.title        = element_text(size = 9, hjust = 0.5),
-    strip.text        = element_text(size = 8, face = "bold", family = "Times New Roman"),
-    legend.position   = "right",
-    legend.title      = element_text(size = 7),
-    legend.text       = element_text(size = 7),
-    legend.key.height = unit(0.3, "cm"),
-    legend.key.width  = unit(0.25, "cm"),
-    legend.margin     = margin(0, 0, 0, 0),
-    legend.box.spacing = unit(0.1, "cm"),
-    plot.margin       = margin(2, 2, 2, 2)
+    panel.spacing.x    = unit(-0.5, "lines"),  # negative pulls maps together
+    panel.spacing.y    = unit(-0.5, "lines"),
+    panel.grid         = element_blank(),
+    axis.text          = element_blank(),
+    axis.ticks         = element_blank(),
+    panel.background   = element_rect(fill = "white", color = NA),
+    plot.background    = element_rect(fill = "white", color = NA),
+    plot.title         = element_text(size = 7, hjust = 0.5),
+    strip.text         = element_text(size = 7, face = "bold", family = "Times New Roman"),
+    strip.background   = element_blank(),
+    legend.position    = "right",
+    legend.title       = element_text(size = 5),
+    legend.text        = element_text(size = 5),
+    legend.key.height  = unit(0.08, "cm"),
+    legend.key.width   = unit(0.08, "cm"),
+    legend.spacing.y   = unit(0.02, "cm"),
+    legend.margin      = margin(0, 0, 0, 0),
+    legend.box.spacing = unit(0.02, "cm"),
+    plot.margin        = margin(0, 0, 0, 0)
   )
-
 
 
 
@@ -166,21 +169,26 @@ cz_map <- cz_map %>%
 plot <- ggplot(subset(cz_map, year == 2019)) +
   aes(fill = RET_tariff_bin) +
   geom_sf(color = "white", linewidth = 0.05) +           # 1st: CZ fill + thin white internal borders
-  geom_sf(fill = NA, color = "black", linewidth = 0.2) + # 2nd: CZ outlines in black (on top)
+  geom_sf(fill = NA, color = "black", linewidth = 0.1) + # 2nd: CZ outlines in black (on top)
   scale_fill_manual(values   = colors,name     = "RET Tariff",  na.value = "grey80",  drop     = FALSE  ) +
   labs(title   = "Retaliatory tariff exposure in 2019") +
   theme_void() +
   theme_map_autor
 plot
-ggsave(filename = file.path(exp,  "RET_tariff_2019_autor.png"),plot = plot, width = 8, height = 5, dpi = 300)
+ggsave(filename = file.path(exp,  "RET_tariff_2019_autor.png"),plot = plot, width = 7, height = 4, dpi = 300)
 
 
 
 # ── Define the exact bins and colors from the image ──────────────────────────
-breaks <- c(0, 0.03, 0.06, 0.08, 0.12, 0.15, Inf)
-labels <- c("0.00-0.03", "0.03-0.06", "0.06-0.08",
-            "0.08-0.12", "0.12-0.15", "> 0.15")
+breaks <- c(0, 0.01, 0.02, 0.03, 0.04, 0.06, 0.75)
+labels <- c("0.00 - 0.01", "0.01 - 0.02", "0.02 - 0.03",
+            "0.03 - 0.04", "0.04 - 0.06", "> 0.06")
 colors <- c("#FEFEBE", "#FDD58B", "#F4A657", "#D95F2B", "#B22421", "#6B0000")
+
+# breaks <- c(0, 0.03, 0.06, 0.08, 0.12, 0.15, Inf)
+# labels <- c("0.00-0.03", "0.03-0.06", "0.06-0.08",
+#             "0.08-0.12", "0.12-0.15", "> 0.15")
+# colors <- c("#FEFEBE", "#FDD58B", "#F4A657", "#D95F2B", "#B22421", "#6B0000")
 # colors <- c("#FFFFFF", "#FEE08B", "#FDAE61", "#F46D43", "#D73027", "#A50026")
 
 # ── Bin your RET variable ─────────────────────────────────────────────────────
@@ -194,7 +202,7 @@ cz_map <- cz_map %>%
 plot <- ggplot(cz_map) +
   aes(fill = RET_tariff_bin) +
   geom_sf(color = "white", linewidth = 0.05) +           # 1st: CZ fill + thin white internal borders
-  geom_sf(fill = NA, color = "black", linewidth = 0.2) + # 2nd: CZ outlines in black (on top)
+  geom_sf(fill = NA, color = "black", linewidth = 0.1) + # 2nd: CZ outlines in black (on top)
   scale_fill_manual(values   = colors,name     = "RET Tariff",  na.value = "grey80",  drop     = FALSE  ) +
   labs(    title   = "Retaliatory tariff exposure") +
   theme_void() +
@@ -205,16 +213,15 @@ ggsave(filename = file.path(exp,  "RET_tariff.png"),plot = plot,  width = 5, hei
 
 
 
-
+summary(cz_map)
 
 # ################################################################################
 # NTM 
 
 # ── Define the exact bins and colors from the image ──────────────────────────
-breaks <- c(0.000, 0.1, 0.2, 0.5, 1, 1.5, 13)
-labels <- c("0.0-0.1", "0.1-0.2", "0.2-0.5",
-            "0.5-1.0", "1.0-1.5", ">1.5")
-colors <- c("#FEFEBE", "#FDD58B", "#F4A657", "#D95F2B", "#B22421", "#6B0000")
+breaks <- c(0, 0.01, 0.02, 0.03, 0.04, 0.06, Inf)
+labels <- c("0.00 - 0.01", "0.01 - 0.02", "0.02 - 0.03",
+            "0.03 - 0.04", "0.04 - 0.06", "> 0.06")
 
 cz_map <- cz_map %>%  mutate(RET_NTM_bin = cut(RET_NTB_r,  breaks = breaks,
                                                labels = labels,  include.lowest = TRUE))
@@ -223,7 +230,7 @@ cz_map <- cz_map %>%  mutate(RET_NTM_bin = cut(RET_NTB_r,  breaks = breaks,
 plot <- ggplot(cz_map) +
   aes(fill = RET_NTM_bin) +
   geom_sf(color = "white", linewidth = 0.05) +           # 1st: CZ fill + thin white internal borders
-  geom_sf(fill = NA, color = "black", linewidth = 0.2) +
+  geom_sf(fill = NA, color = "black", linewidth = 0.1) +
   scale_fill_manual(values   = colors,name     = "RET NTM",  na.value = "grey80",  drop     = FALSE  ) +
   labs( title   = "Retaliatory NTM exposure") +
   facet_wrap(~year) +
@@ -234,17 +241,66 @@ plot
 ggsave(filename = file.path(exp,  "RET_NTM.png"),plot = plot,  width = 5, height = 2, dpi = 300)
 
 
+
+
+
+# ── rescale ──────────────────────────
+breaks <- c(0, 0.05, 0.1, 0.2, 0.5, 1, Inf)
+labels <- c("0.0–0.05", "0.05–0.1", "0.1–0.2","0.2–0.5","0.5–1.0",  ">1.0")
+colors <- c("#FEFEBE", "#FDD58B", "#F4A657", "#D95F2B", "#B22421", "#6B0000")
+
+cz_map <- cz_map %>%  mutate(RET_NTM_bin = cut(RET_NTB_r,  breaks = breaks,
+                                               labels = labels,  include.lowest = TRUE))
+
+# ── Plot NTM ──────────────────────────────────────────────────────────────────────
+plot <- ggplot(cz_map) +
+  aes(fill = RET_NTM_bin) +
+  geom_sf(color = "white", linewidth = 0.05) +           # 1st: CZ fill + thin white internal borders
+  geom_sf(fill = NA, color = "black", linewidth = 0.1) +
+  scale_fill_manual(values   = colors,name     = "RET NTM",  na.value = "grey80",  drop     = FALSE  ) +
+  labs( title   = "Retaliatory NTM exposure") +
+  facet_wrap(~year) +
+  theme_void() +
+  theme_map
+
+plot
+ggsave(filename = file.path(exp,  "RET_NTM_scale.png"),plot = plot,  width = 5, height = 2, dpi = 300)
+
+
+
+
+################################################################################
 # ── NTM IV──────────────────────────
 summary(cz_map)
+
+# ── Define the exact bins and colors from the image ──────────────────────────
+breaks <- c(0, 0.01, 0.02, 0.03, 0.04, 0.06, Inf)
+labels <- c("0.00 - 0.01", "0.01 - 0.02", "0.02 - 0.03",
+            "0.03 - 0.04", "0.04 - 0.06", "> 0.06")
+
+cz_map <- cz_map %>%  mutate(RET_NTM_IV_bin = cut(RET_NTB_IV_r,  breaks = breaks,
+                                                  labels = labels,  include.lowest = TRUE))
+
+# ── Plot NTM ──────────────────────────────────────────────────────────────────────
+plot <- ggplot(cz_map) +
+  aes(fill = RET_NTM_IV_bin) +
+  geom_sf(color = "white", linewidth = 0.05) +           # 1st: CZ fill + thin white internal borders
+  geom_sf(fill = NA, color = "black", linewidth = 0.1) +
+  scale_fill_manual(values   = colors,name     = "RET NTM",  na.value = "grey80",  drop     = FALSE  ) +
+  labs( title   = "Retaliatory NTM exposure (using IV)") +
+  facet_wrap(~year) +
+  theme_void() +
+  theme_map
+
+plot
+
+ggsave(filename = file.path(exp,  "RET_NTM_IV.png"),plot = plot,  width = 5, height = 2, dpi = 300)
 
 
 
 # ── Define the exact bins and colors from the image ──────────────────────────
-breaks <- c(0, 0.013, 0.022, 0.030, 0.042, 0.061, 0.75)
-labels <- c("0.000 - 0.013", "0.013 - 0.022", "0.022 - 0.030",
-            "0.030 - 0.042", "0.042 - 0.061", "> 0.061")
-
-
+breaks <- c(0, 0.05, 0.1, 0.2, 0.5, 1, Inf)
+labels <- c("0.0–0.05", "0.05–0.1", "0.1–0.2","0.2–0.5","0.5–1.0",  ">1.0")
 colors <- c("#FEFEBE", "#FDD58B", "#F4A657", "#D95F2B", "#B22421", "#6B0000")
 
 cz_map <- cz_map %>%  mutate(RET_NTM_IV_bin = cut(RET_NTB_IV_r,  breaks = breaks,
@@ -254,7 +310,7 @@ cz_map <- cz_map %>%  mutate(RET_NTM_IV_bin = cut(RET_NTB_IV_r,  breaks = breaks
 plot <- ggplot(cz_map) +
   aes(fill = RET_NTM_IV_bin) +
   geom_sf(color = "white", linewidth = 0.05) +           # 1st: CZ fill + thin white internal borders
-  geom_sf(fill = NA, color = "black", linewidth = 0.2) +
+  geom_sf(fill = NA, color = "black", linewidth = 0.1) +
   scale_fill_manual(values   = colors,name     = "RET NTM",  na.value = "grey80",  drop     = FALSE  ) +
   labs( title   = "Retaliatory NTM exposure (using IV)") +
   facet_wrap(~year) +
@@ -262,6 +318,7 @@ plot <- ggplot(cz_map) +
   theme_map
 
 plot
-ggsave(filename = file.path(exp,  "RET_NTM_IV.png"),plot = plot,  width = 5, height = 2, dpi = 300)
+
+ggsave(filename = file.path(exp,  "RET_NTM_IV_scale.png"),plot = plot,  width = 5, height = 2, dpi = 300)
 
 

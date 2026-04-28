@@ -92,16 +92,6 @@ summary(merge_data)
 # get RET_ir at naics and CZ level
 ################################################################################
 
-names(merge_data)
-
-# create exposure indicator
-merge_data <- merge_data %>% mutate(
-  RET_tariff_ir = RET_i_tariff*share_labor_ir,
-  RET_NTB_ir = RET_i_NTB*share_labor_ir,
-  RET_NTB_ir_IV = RET_NTB_ir_IV*share_labor_ir)
-summary(merge_data)
-
-
 
 
 # get total labor by industry NAICS 3 digit code

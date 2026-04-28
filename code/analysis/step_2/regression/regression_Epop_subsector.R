@@ -240,12 +240,11 @@ names(sub_dta)
 
 reg <- feols(change_EPOP_2017_bis ~
                IMP_tariff_tot_ir_crop + IMP_tariff_tot_ir_forestry +
-               IMP_tariff_tot_ir_livestock + IMP_tariff_tot_ir_mining +
-               IMP_tariff_tot_ir_nonag +
+               IMP_tariff_tot_ir_livestock + IMP_tariff_tot_ir_nonag +
                RET_tariff_tot_r_crop + RET_tariff_tot_r_forestry +
-               RET_tariff_tot_r_livestock + RET_tariff_tot_r_mining +
-               RET_tariff_tot_r_nonag +
-               SUB + share_ag_mining*year + share_mfg*year + share_other*year +
+               RET_tariff_tot_r_livestock + RET_tariff_tot_r_nonag +
+               SUB + share_forestry*year + share_crop*year + share_livestock*year +
+               share_nonag*year + share_other*year +
                as.factor(division)*year + year*change_EPOP_2017_2016 +
                as.factor(year),
              data = sub_dta, weights = ~emp_2012)
@@ -260,36 +259,39 @@ summary(reg)
 
 # year as a dummy 
 
-reg1 <- feols(change_EPOP_2017_bis ~ IMP_tariff_tot_ir_crop + IMP_tariff_tot_ir_forestry +
-                IMP_tariff_tot_ir_livestock + IMP_tariff_tot_ir_mining +
-                IMP_tariff_tot_ir_nonag +
+reg1 <- feols(change_EPOP_2017_bis ~   
+                IMP_tariff_tot_ir_crop + IMP_tariff_tot_ir_forestry +
+                IMP_tariff_tot_ir_livestock + IMP_tariff_tot_ir_nonag + # IMP
                 RET_tariff_tot_r_crop + RET_tariff_tot_r_forestry +
-                RET_tariff_tot_r_livestock + RET_tariff_tot_r_mining +RET_tariff_tot_r_nonag + # tariff 
+                RET_tariff_tot_r_livestock + RET_tariff_tot_r_nonag +  # tariff 
                 RET_NTB_tot_r_crop + RET_NTB_tot_r_forestry +
-                RET_NTB_tot_r_livestock + RET_NTB_tot_r_mining +    RET_NTB_tot_r_nonag + # NTM
-                SUB + as.factor(year):share_ag_mining + as.factor(year):share_mfg + as.factor(year):share_other +
+                RET_NTB_tot_r_livestock + RET_NTB_tot_r_nonag + # NTM
+                SUB + as.factor(year):share_crop + as.factor(year):share_livestock + as.factor(year):share_nonag +
+                as.factor(year):share_forestry +
                 as.factor(division):as.factor(year) + year:change_EPOP_2017_2016 |
                 year, data = sub_dta, weights = ~emp_2012)
 
-reg2 <-  feols(change_EPOP_2017_bis ~ IMP_tariff_tot_ir_crop + IMP_tariff_tot_ir_forestry +
-                 IMP_tariff_tot_ir_livestock + IMP_tariff_tot_ir_mining +
-                 IMP_tariff_tot_ir_nonag +
+reg2 <-  feols(change_EPOP_2017_bis ~ 
+                 IMP_tariff_tot_ir_crop + IMP_tariff_tot_ir_forestry +
+                 IMP_tariff_tot_ir_livestock + IMP_tariff_tot_ir_nonag + # IMP
                  RET_tariff_tot_r_crop + RET_tariff_tot_r_forestry +
-                 RET_tariff_tot_r_livestock + RET_tariff_tot_r_mining +RET_tariff_tot_r_nonag + # tariff 
+                 RET_tariff_tot_r_livestock + RET_tariff_tot_r_nonag +  # tariff 
                  RET_NTB_tot_r_crop + RET_NTB_tot_r_forestry +
-                 RET_NTB_tot_r_livestock + RET_NTB_tot_r_mining +    RET_NTB_tot_r_nonag + # NTM
-                 SUB + as.factor(year):share_ag_mining + as.factor(year):share_mfg + as.factor(year):share_other +
+                 RET_NTB_tot_r_livestock +  RET_NTB_tot_r_nonag + # NTM
+                 SUB + as.factor(year):share_crop + as.factor(year):share_livestock + as.factor(year):share_nonag +
+                 as.factor(year):share_forestry +
                  as.factor(division):as.factor(year) + year:change_EPOP_2017_2016 |
                  year, data = sub_dta, weights = ~emp_2012)
 
-reg3 <-  feols(change_EPOP_2017_bis ~ IMP_tariff_tot_ir_crop + IMP_tariff_tot_ir_forestry +
-                 IMP_tariff_tot_ir_livestock + IMP_tariff_tot_ir_mining +
-                 IMP_tariff_tot_ir_nonag +
+reg3 <-  feols(change_EPOP_2017_bis ~ 
+                 IMP_tariff_tot_ir_crop + IMP_tariff_tot_ir_forestry +
+                 IMP_tariff_tot_ir_livestock + IMP_tariff_tot_ir_nonag + # IMP
                  RET_tariff_tot_r_crop + RET_tariff_tot_r_forestry +
-                 RET_tariff_tot_r_livestock + RET_tariff_tot_r_mining +RET_tariff_tot_r_nonag + # tariff 
+                 RET_tariff_tot_r_livestock + RET_tariff_tot_r_nonag +  # tariff 
                  RET_NTB_tot_IV_r_crop + RET_NTB_tot_IV_r_forestry +
-                 RET_NTB_tot_IV_r_livestock + RET_NTB_tot_IV_r_mining +  RET_NTB_tot_IV_r_nonag + # NTM IV 
-                 SUB + as.factor(year):share_ag_mining + as.factor(year):share_mfg + as.factor(year):share_other +
+                 RET_NTB_tot_IV_r_livestock + RET_NTB_tot_IV_r_nonag + # NTM IV 
+                 SUB + as.factor(year):share_crop + as.factor(year):share_livestock + as.factor(year):share_nonag +
+                 as.factor(year):share_forestry +
                  as.factor(division):as.factor(year) + year:change_EPOP_2017_2016 |
                  year, data = sub_dta, weights = ~emp_2012)
 

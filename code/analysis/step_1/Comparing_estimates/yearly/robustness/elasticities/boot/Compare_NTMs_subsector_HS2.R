@@ -42,7 +42,7 @@ sectors <- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/data/crosswalk/clean
 ################################################################################
 # 2) Drop extreme values (1st/99th percentile)
 ################################################################################
-quant <- 0.05
+quant <- 0.01
 
 FE_q    <- quantile(US$diff_ln_AVE_FE,               quant,     na.rm = TRUE)
 FE_qH   <- quantile(US$diff_ln_AVE_FE,           1 - quant,     na.rm = TRUE)
@@ -75,7 +75,6 @@ US1 <- US %>%
     diff_ln_AVE_FE_bench_Chen = ifelse(diff_ln_AVE_FE_bench_Chen < FE_bc_q | diff_ln_AVE_FE_bench_Chen > FE_bc_qH,NA, diff_ln_AVE_FE_bench_Chen),
     diff_ln_AVE_FE_wmean_Chen = ifelse(diff_ln_AVE_FE_wmean_Chen < FE_wc_q | diff_ln_AVE_FE_wmean_Chen > FE_wc_qH,NA, diff_ln_AVE_FE_wmean_Chen)
   )
-
 
 
 ################################################################################
@@ -188,8 +187,10 @@ base_hs2 <- trade_hs2 %>% filter(year == BASE_YEAR & draw == 1) %>%
   select(hs2, Trade_base_hs2 = Trade_hs2)
 
 trade_hs2 <- trade_hs2 %>%left_join(base_hs2, by="hs2") %>%
-  mutate( pct_trade_change_hs2 = if_else(   year > BASE_YEAR & !is.na(Trade_base_hs2) & Trade_base_hs2 > 0,
-                                            100 * (Trade_hs2 - Trade_base_hs2) / Trade_base_hs2,      NA  )  )
+  mutate(pct_trade_change_hs2 = if_else(year > BASE_YEAR & !is.na(Trade_base_hs2) & Trade_base_hs2 > 0,
+                                         100 * (Trade_hs2 - Trade_base_hs2) / Trade_base_hs2, NA),
+         trade_change_hs2 = if_else(year > BASE_YEAR & !is.na(Trade_base_hs2) & Trade_base_hs2 > 0,
+                                        (Trade_hs2 - Trade_base_hs2), NA),)
 trade_hs2_post <- trade_hs2 %>% filter(year > BASE_YEAR)
 trade_hs2_post <- trade_hs2_post %>% mutate(pct_trade_change_hs2_bis = if_else(pct_trade_change_hs2 >0, NA, pct_trade_change_hs2))
 
@@ -204,8 +205,10 @@ base_hs4 <- trade_hs4 %>% filter(year == BASE_YEAR) %>%
   select(hs4, Trade_base_hs4 = Trade_hs4)
 
 trade_hs4 <- trade_hs4 %>%left_join(base_hs4, by="hs4") %>%
-  mutate( pct_trade_change_hs4 = if_else(   year > BASE_YEAR & !is.na(Trade_base_hs4) & Trade_base_hs4 > 0,
-                                            100 * (Trade_hs4 - Trade_base_hs4) / Trade_base_hs4,      NA  )  )
+  mutate(pct_trade_change_hs4 = if_else(year > BASE_YEAR & !is.na(Trade_base_hs4) & Trade_base_hs4 > 0,
+                                        100 * (Trade_hs4 - Trade_base_hs4) / Trade_base_hs4,NA),
+         trade_change_hs4 = if_else(year > BASE_YEAR & !is.na(Trade_base_hs4) & Trade_base_hs4 > 0,
+                                    (Trade_hs4 - Trade_base_hs4),NA))
 trade_hs4_post <- trade_hs4 %>% filter(year > BASE_YEAR)
 trade_hs4_post <- trade_hs4_post %>% mutate(pct_trade_change_hs4_bis = if_else(pct_trade_change_hs4 >0, NA, pct_trade_change_hs4))
 
@@ -297,7 +300,7 @@ US_all_w_hs2 <- US_dta %>%   group_by(year,draw, hs2, subsector, hs2_description
               w_chen      =  mean(diff_ln_AVE_chen,   na.rm = TRUE),
               w_tariff    = weighted.mean(diff_log_tariff_2017,     w = weight_hs2, na.rm = TRUE),
               w_tariff_chen    = mean(diff_log_tariff_Chen,   na.rm = TRUE),
-
+              
               # weighted means - Chen elasticity variants
               w_FE_Chen           = weighted.mean(diff_ln_AVE_FE_Chen,            w = weight_hs2, na.rm = TRUE),
               w_FE_bench_Chen     = weighted.mean(diff_ln_AVE_FE_bench_Chen,      w = weight_hs2, na.rm = TRUE),
@@ -307,14 +310,13 @@ US_all_w_hs2 <- US_dta %>%   group_by(year,draw, hs2, subsector, hs2_description
               w_FE_log_mean_Chen  = weighted.mean(diff_ln_AVE_FE_log_wmean_Chen,  w = weight_hs2, na.rm = TRUE),
               
               .groups = "drop") %>%
-  left_join(trade_hs2_post %>% select(year, draw, hs2, pct_trade_change_hs2,pct_trade_change_hs2_bis  ),
+  left_join(trade_hs2_post %>% select(year, draw, hs2, pct_trade_change_hs2,pct_trade_change_hs2_bis, trade_change_hs2  ),
             by = c("year", "draw", "hs2")) %>%
   group_by(hs2) %>% mutate(w_chen = mean(w_chen, na.rm = TRUE))
 
 
 # aggregate at hs section
-US_all_q_hs2 <- US_all_w_hs2 %>%  
-  filter(year %in% c(2019)) %>% 
+US_all_q_hs2 <- US_all_w_hs2 %>%    filter(year %in% c(2019)) %>% 
   group_by(hs2, subsector, hs2_description) %>%
   summarise(
     # FE (non-benchmark)
@@ -383,6 +385,7 @@ US_all_q_hs2 <- US_all_w_hs2 %>%
     tariff_mean = mean(w_tariff, na.rm = TRUE),
     perc_change_trade_mean = mean(pct_trade_change_hs2, na.rm = TRUE),
     perc_change_trade_mean_bis =  mean(pct_trade_change_hs2_bis, na.rm = TRUE),
+    trade_change_hs2 = mean(trade_change_hs2, na.rm = TRUE),
     chen_mean = mean(w_chen, na.rm = TRUE),
     chen_tariff_mean = mean(w_tariff_chen, na.rm = TRUE),
     .groups = "drop"
@@ -394,51 +397,63 @@ write_xlsx( list("hs2_summary" = US_all_q_hs2),  path = file.path(OUT_PLOT_DIR, 
 
 ##### correlation matrix
 
-corr_vars <- c("FE_mean", "FEb_mean", "FEm_mean", "tariff_mean","chen_tariff_mean",  "chen_mean","perc_change_trade_mean","perc_change_trade_mean_bis")
+corr_vars <- c("FE_mean", "FEb_mean", "FEm_mean", "tariff_mean","chen_tariff_mean",  
+               "chen_mean","perc_change_trade_mean","perc_change_trade_mean_bis")
 
-corr_matrix <- US_all_q_hs2 %>%
-  ungroup() %>%
+# corr_vars <- c("FE_log_mean", "FEb_log_mean", "FEm_log_mean", "tariff_mean","chen_tariff_mean",  
+#                "chen_mean","perc_change_trade_mean","perc_change_trade_mean_bis","trade_change_hs2")
+# corr_vars <- c("FE_Chen_mean", "FEb_Chen_mean", "FEm_Chen_mean", "tariff_mean","chen_tariff_mean",  
+#                "chen_mean","perc_change_trade_mean","perc_change_trade_mean_bis","trade_change_hs2")
+
+
+corr_matrix <- US_all_q_hs2 %>%  ungroup() %>%
   select(all_of(corr_vars)) %>%
   cor(use = "pairwise.complete.obs")
 
-corr_labels <- c("FE", "FE_bench", "FE_wmean", "Tariff", "Tariff (Chen)","Chen","Trade change","Trade change (-)" )
+corr_labels <- c("FE", "FE_bench", "FE_wmean", "Tariff", "Tariff (Chen)","Chen","% Trade","%change (-)")
 
 rownames(corr_matrix) <- corr_labels
 colnames(corr_matrix) <- corr_labels
 
 p_hs2 <-ggcorrplot(corr_matrix,
-           method   = "square",
-           type     = "lower",
-           lab      = TRUE,
-           lab_size = 3.5,
-           colors   = c("#d73027", "white", "#4575b4"),
-           title    = "Correlation: AVE, tariff, and trade changes at HS2 digit level(2017 Vs 2019)",
-           ggtheme  = theme_minimal(base_size = 11))
+                   method   = "square",
+                   type     = "lower",
+                   lab      = TRUE,
+                   lab_size = 3.5,
+                   colors   = c("#d73027", "white", "#4575b4"),
+                   title    = "Correlation: AVE, tariff, and trade changes at HS2 digit level(2017 Vs 2019)",
+                   ggtheme  = theme_minimal(base_size = 11))
 p_hs2
 ggsave(filename = "corr_AVE_tariff_trade_2019_HS2.png",  path     = OUT_PLOT_DIR,  plot     = p_hs2,  width    = 7,  height   = 6,  dpi      = 300,
-  bg       = "white")
+       bg       = "white")
+
+
+
+
 
 names(US_all_q_hs2)
-corr_vars <- c("FE_log_Chen_mean", "FEb_log_Chen_mean", "FEm_log_Chen_mean", "tariff_mean", "perc_change_trade_mean", "chen_mean")
+
+corr_vars <- c("FE_log_Chen_mean", "FEb_log_Chen_mean", "FEm_log_Chen_mean",  "tariff_mean","chen_tariff_mean",  "chen_mean","perc_change_trade_mean","perc_change_trade_mean_bis")
 
 corr_matrix <- US_all_q_hs2 %>%
   ungroup() %>%
   select(all_of(corr_vars)) %>%
   cor(use = "pairwise.complete.obs")
+corr_labels <- c("FE log_Chen", "FE_bench log_Chen", "FE_wmean log_Chen","Tariff", "Tariff (Chen)","Chen","Trade change","Trade change (-)" )
 
-corr_labels <- c("FE log_Chen", "FE_bench log_Chen", "FE_wmean log_Chen", "Tariff", "Trade change", "Chen")
+
 
 rownames(corr_matrix) <- corr_labels
 colnames(corr_matrix) <- corr_labels
 
 p_chen <- ggcorrplot(corr_matrix,
-           method   = "square",
-           type     = "lower",
-           lab      = TRUE,
-           lab_size = 3.5,
-           colors   = c("#d73027", "white", "#4575b4"),
-           title    = "Correlation: AVE, tariff, and trade changes at HS2 digit level(2017 Vs 2019)",
-           ggtheme  = theme_minimal(base_size = 11))
+                     method   = "square",
+                     type     = "lower",
+                     lab      = TRUE,
+                     lab_size = 3.5,
+                     colors   = c("#d73027", "white", "#4575b4"),
+                     title    = "Correlation: AVE, tariff, and trade changes at HS2 digit level(2017 Vs 2019)",
+                     ggtheme  = theme_minimal(base_size = 11))
 p_chen
 # ggsave("corr_AVE_tariff_trade_2019.png", plot = p, width = 7, height = 6, dpi = 300)
 
@@ -449,7 +464,7 @@ p_chen
 
 
 names(US_dta)
-US_all_w_hs4 <- US_dta %>%   group_by(year, hs4, subsector) %>% 
+US_all_w_hs4 <- US_dta %>%   group_by(year, hs4, subsector) %>%   filter(year %in% c(2019)) %>% 
   summarise(  w_FE        = mean(diff_ln_AVE_FE,    na.rm = TRUE   ),
               w_FE_bench  = mean(diff_ln_AVE_FE_bench,   na.rm = TRUE),
               w_FE_mean   = mean(diff_ln_AVE_FE_wmean,  na.rm = TRUE),
@@ -467,6 +482,7 @@ names(US_all_w_hs4)
 
 
 corr_vars <- c("w_FE", "w_FE_bench", "w_FE_mean", "w_tariff", "pct_trade_change_hs4", "pct_trade_change_hs4_bis")
+corr_vars <- c("w_FE_log", "w_FE_log_bench", "w_FE_log_mean", "w_tariff", "pct_trade_change_hs4", "pct_trade_change_hs4_bis")
 
 corr_matrix <- US_all_w_hs4 %>%  ungroup() %>%
   select(all_of(corr_vars)) %>%
@@ -478,13 +494,13 @@ rownames(corr_matrix) <- corr_labels
 colnames(corr_matrix) <- corr_labels
 
 p_hs4 <-ggcorrplot(corr_matrix,
-               method   = "square",
-               type     = "lower",
-               lab      = TRUE,
-               lab_size = 3.5,
-               colors   = c("#d73027", "white", "#4575b4"),
-               title    = "Correlation: AVE, tariff, and trade changes at HS4 digit level(2017 Vs 2019)",
-               ggtheme  = theme_minimal(base_size = 11))
+                   method   = "square",
+                   type     = "lower",
+                   lab      = TRUE,
+                   lab_size = 3.5,
+                   colors   = c("#d73027", "white", "#4575b4"),
+                   title    = "Correlation: AVE, tariff, and trade changes at HS4 digit level(2017 Vs 2019)",
+                   ggtheme  = theme_minimal(base_size = 11))
 p_hs4
 ggsave(filename = "corr_AVE_tariff_trade_2019_HS4.png",  path     = OUT_PLOT_DIR,  plot     = p_hs4,  width    = 7,  height   = 6,  dpi      = 300,
        bg       = "white")

@@ -126,12 +126,12 @@ theme_map <- theme_minimal(base_size = 10, base_family = "Times New Roman") +
     axis.ticks         = element_blank(),
     panel.background   = element_rect(fill = "white", color = NA),
     plot.background    = element_rect(fill = "white", color = NA),
-    plot.title         = element_text(size = 9, hjust = 0.5),
+    plot.title         = element_text(size = 7, hjust = 0.5),
     strip.text         = element_text(size = 7, face = "bold", family = "Times New Roman"),
     strip.background   = element_blank(),
     legend.position    = "right",
-    legend.title       = element_text(size = 4),
-    legend.text        = element_text(size = 4),
+    legend.title       = element_text(size = 5),
+    legend.text        = element_text(size = 5),
     legend.key.height  = unit(0.08, "cm"),
     legend.key.width   = unit(0.08, "cm"),
     legend.spacing.y   = unit(0.02, "cm"),
@@ -139,7 +139,6 @@ theme_map <- theme_minimal(base_size = 10, base_family = "Times New Roman") +
     legend.box.spacing = unit(0.02, "cm"),
     plot.margin        = margin(0, 0, 0, 0)
   )
-
 
 ################################################################################
 # select sector
@@ -172,7 +171,7 @@ plot <- ggplot(subset(cz_map, year == 2019 )) +
   geom_sf(color = "white", linewidth = 0.05) +
   geom_sf(fill = NA, color = "black", linewidth = 0.2) +
   scale_fill_manual(values = colors, name = "IMP Tariff", na.value = "grey80", drop = FALSE) +
-  labs(title = paste("U.S. import tariff exposure in 2019 by subsector")) +
+  labs(title = paste("U.S. import tariff exposure in 2019 by sector")) +
   facet_wrap(~subsector) +
   theme_void() +
   theme_map_autor
@@ -183,19 +182,10 @@ ggsave(filename = file.path(exp, paste0("IMP_tariff_2019_subsector", "_autor.png
 
 
 # ── Define bins, labels, colors (all years faceted) ───────────────────────────
-breaks <- c(0, 0.01, 0.02, 0.03, 0.04, 0.06, 0.8)
-labels <- c("0.00-0.01", "0.01-0.02", "0.02-0.03",
-            "0.03-0.04", "0.04-0.06", "> 0.06")
-
-breaks <- c(0.00, 0.02, 0.04, 0.06, 0.08, 0.12,0.5 , Inf)
-labels <- c("0.00-0.02", "0.02-0.04", "0.04-0.06",
-            "0.06-0.08", "0.08-0.12", "0.12-0.80")
-
+breaks <- c(0, 0.03, 0.06, 0.08, 0.12, 0.15, Inf)
+labels <- c("0.00-0.03", "0.03-0.06", "0.06-0.08",
+            "0.08-0.12", "0.12-0.15", "> 0.15")
 colors <- c("#FEFEBE", "#FDD58B", "#F4A657", "#D95F2B", "#B22421", "#6B0000")
-breaks <- c(0.00, 0.02, 0.04, 0.06, 0.08, 0.15, 0.50, Inf)
-labels <- c("0.00-0.02", "0.02-0.04", "0.04-0.06",
-            "0.06-0.08", "0.08-0.12", "0.12-0.50", "0.50-0.0.9")
-colors <- c("#FEFEBE", "#FDD58B", "#F4A657", "#D95F2B", "#B22421", "#6B0000", "#3B0000")
 
 cz_map <- cz_map %>%
   mutate(IMP_tariff_tot_ir_bin = cut(IMP_tariff_tot_ir, breaks = breaks,
@@ -208,7 +198,7 @@ plot <- ggplot(subset(cz_map)) +
   geom_sf(fill = NA, color = "black", linewidth = 0.05) +
   facet_wrap(~subsector) +
   scale_fill_manual(values = colors, name = "IMP Tariff", na.value = "grey80", drop = FALSE) +
-  labs(title = paste("U.S. import tariff exposure by subsector")) +
+  labs(title = paste("U.S. import tariff exposure by sector")) +
   theme_void() +
   theme_map
 plot

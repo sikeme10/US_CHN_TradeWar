@@ -116,24 +116,26 @@ theme_map_autor <-  theme_minimal(base_size = 14, base_family = "Times New Roman
 
 theme_map <- theme_minimal(base_size = 10, base_family = "Times New Roman") +
   theme(
-    panel.spacing.x   = unit(0.3, "lines"),
-    panel.grid        = element_blank(),
-    axis.text         = element_blank(),
-    axis.ticks        = element_blank(),
-    panel.background  = element_rect(fill = "white", color = NA),
-    plot.background   = element_rect(fill = "white", color = NA),
-    plot.title        = element_text(size = 9, hjust = 0.5),
-    strip.text        = element_text(size = 8, face = "bold", family = "Times New Roman"),
-    legend.position   = "right",
-    legend.title      = element_text(size = 7),
-    legend.text       = element_text(size = 7),
-    legend.key.height = unit(0.3, "cm"),
-    legend.key.width  = unit(0.25, "cm"),
-    legend.margin     = margin(0, 0, 0, 0),
-    legend.box.spacing = unit(0.1, "cm"),
-    plot.margin       = margin(2, 2, 2, 2)
+    panel.spacing.x    = unit(-0.5, "lines"),  # negative pulls maps together
+    panel.spacing.y    = unit(-0.5, "lines"),
+    panel.grid         = element_blank(),
+    axis.text          = element_blank(),
+    axis.ticks         = element_blank(),
+    panel.background   = element_rect(fill = "white", color = NA),
+    plot.background    = element_rect(fill = "white", color = NA),
+    plot.title         = element_text(size = 7, hjust = 0.5),
+    strip.text         = element_text(size = 7, face = "bold", family = "Times New Roman"),
+    strip.background   = element_blank(),
+    legend.position    = "right",
+    legend.title       = element_text(size = 5),
+    legend.text        = element_text(size = 5),
+    legend.key.height  = unit(0.08, "cm"),
+    legend.key.width   = unit(0.08, "cm"),
+    legend.spacing.y   = unit(0.02, "cm"),
+    legend.margin      = margin(0, 0, 0, 0),
+    legend.box.spacing = unit(0.02, "cm"),
+    plot.margin        = margin(0, 0, 0, 0)
   )
-
 
 ################################################################################
 
@@ -201,9 +203,9 @@ cz_map <- cz_map %>%
 plot <- ggplot(cz_map) +
   aes(fill = SUB_bin) +
   geom_sf(color = "white", linewidth = 0.05) +
-  geom_sf(fill = NA, color = "black", linewidth = 0.2) + # CZ outlines in black
+  geom_sf(fill = NA, color = "black", linewidth = 0.1) + # CZ outlines in black
   scale_fill_manual(values   = colors, name = "SUB",    na.value = "grey80",    drop     = FALSE  ) +
-  labs( title   = "Farm subsidies per capita") +
+  labs( title   = "Farm subsidies per capita in US dollars") +
   facet_wrap(~year) +
   theme_void() +
   theme_map

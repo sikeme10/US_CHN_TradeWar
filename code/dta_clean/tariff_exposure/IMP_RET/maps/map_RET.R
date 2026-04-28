@@ -207,7 +207,7 @@ cz_map <- cz_map %>%
 plot <- ggplot(subset(cz_map, year == 2019)) +
   aes(fill = RET_tariff_bin) +
   geom_sf(color = "white", linewidth = 0.05) +           # 1st: CZ fill + thin white internal borders
-  geom_sf(fill = NA, color = "black", linewidth = 0.2) + # 2nd: CZ outlines in black (on top)
+  geom_sf(fill = NA, color = "black", linewidth = 0.1) + # 2nd: CZ outlines in black (on top)
   scale_fill_manual(values   = colors,name     = "RET Tariff",  na.value = "grey80",  drop     = FALSE  ) +
   labs(title   = "Retaliatory tariff exposure in 2019") +
   theme_void() +
@@ -224,6 +224,13 @@ labels <- c("0.00-0.03", "0.03-0.06", "0.06-0.08",
 colors <- c("#FEFEBE", "#FDD58B", "#F4A657", "#D95F2B", "#B22421", "#6B0000")
 # colors <- c("#FFFFFF", "#FEE08B", "#FDAE61", "#F46D43", "#D73027", "#A50026")
 
+# ── Define the exact bins and colors from the image ──────────────────────────
+breaks <- c(0, 0.013, 0.022, 0.030, 0.042, 0.061, 0.75)
+labels <- c("0.000 - 0.013", "0.013 - 0.022", "0.022 - 0.030",
+            "0.030 - 0.042", "0.042 - 0.061", "> 0.061")
+colors <- c("#FEFEBE", "#FDD58B", "#F4A657", "#D95F2B", "#B22421", "#6B0000")
+
+
 # ── Bin your RET variable ─────────────────────────────────────────────────────
 cz_map <- cz_map %>%
   mutate(RET_tariff_bin = cut(RET_tariff_r,
@@ -235,7 +242,7 @@ cz_map <- cz_map %>%
 plot <- ggplot(cz_map) +
   aes(fill = RET_tariff_bin) +
   geom_sf(color = "white", linewidth = 0.05) +           # 1st: CZ fill + thin white internal borders
-  geom_sf(fill = NA, color = "black", linewidth = 0.2) + # 2nd: CZ outlines in black (on top)
+  geom_sf(fill = NA, color = "black", linewidth = 0.1) + # 2nd: CZ outlines in black (on top)
   scale_fill_manual(values   = colors,name     = "RET Tariff",  na.value = "grey80",  drop     = FALSE  ) +
   labs(    title   = "Retaliatory tariff exposure") +
   theme_void() +

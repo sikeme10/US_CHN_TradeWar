@@ -26,19 +26,19 @@ library(ggplot2)
 ################################################################################
 # directory: 
 setwd("/data/sikeme/TRADE/US_CHN_TradeWar_git")
-dir_dta <-  "/data/sikeme/TRADE/US_CHN_TradeWar_git/output/Compare_values/yearly/robust"
+dir_dta <-   "/data/sikeme/TRADE/US_CHN_TradeWar_git/output/Compare_values/yearly/robust/elast"
 
-exp <-  "/data/sikeme/TRADE/US_CHN_TradeWar_git/output/IVs/regression/"
+exp <-  "/data/sikeme/TRADE/US_CHN_TradeWar_git/output/IVs/regression/elast/"
 
 ################################################################################
 # 1) Load data 
 ################################################################################
 
 # Load FE estimates 
-tariff_dta <- read_csv(paste0(dir_dta, "/US_ln_NTMs_base_2015_FE_boot_hs4.csv"))
+tariff_dta <- read_csv(paste0("/data/sikeme/TRADE/US_CHN_TradeWar_git/output/Compare_values/yearly/robust/US_ln_NTMs_base_2015_FE_boot_hs4.csv"))
 
 # NTM data 
-dta <- read_csv(paste0(dir_dta, "/US_ln_NTMs_base_2015_2017_hs4_FE_boot.csv"))
+dta <- read_csv(paste0(dir_dta, "/US_ln_NTMs_2015_2017_hs4_elast.csv"))
 
 table(dta$year)  
 colSums(is.na(dta))
@@ -124,6 +124,9 @@ names(dta)
 table(dta$sector)
 
 # merge with tariff data 
+class(dta$hs4)
+class(tariff_dta1$hs4)
+tariff_dta1$hs4 <- as.numeric(tariff_dta1$hs4)
 dta <- left_join(dta, tariff_dta1)
 colSums(is.na(dta))
 summary(dta)
@@ -160,9 +163,6 @@ plot <- ggplot(SOE_hs4)+
   theme_trade
 plot
 
-ggsave(filename = "/data/sikeme/TRADE/US_CHN_TradeWar_git/output/summary/SOE_dist/SOE_share_hs4_distribution.png",
-       plot = plot, width = 9,height = 6, units = "in", dpi = 300,bg = "white")
-
 
 
 ################################################################################
@@ -175,6 +175,7 @@ ggsave(filename = "/data/sikeme/TRADE/US_CHN_TradeWar_git/output/summary/SOE_dis
 
 class(dta$hs4)
 class(SOE_hs4$hs4)
+SOE_hs4$hs4 <- as.numeric(SOE_hs4$hs4)
 
 merged_hs4 <- full_join(dta, SOE_hs4)
 colSums(is.na(merged_hs4))
@@ -193,21 +194,21 @@ names(merged_hs4)
 unique(merged_hs4$year)
 # plot 
 
-ggplot(merged_hs4,aes(x = share_value_SOE, y = diff_ln_AVE_FE_wmean_w_mean)) +
+ggplot(merged_hs4,aes(x = share_value_SOE, y = diff_ln_AVE_FE_wmean)) +
   geom_point( alpha = 0.6) +
   facet_wrap(~ baseline_year) +
   geom_smooth(method = "loess", se = FALSE, color = "blue") +
   labs(title = "Change in AVE vs. SOE share",  x = "SOE share in 2010",  y = "Change in AVE (FE demean approach)"  ) +
   theme_minimal()
 
-ggplot(merged_hs4,aes(x = share_value_SOE, y = diff_ln_AVE_FE_w_mean)) +
+ggplot(merged_hs4,aes(x = share_value_SOE, y = diff_ln_AVE_FE)) +
   geom_point( alpha = 0.6) +
   facet_wrap(~ baseline_year) +
   geom_smooth(method = "loess", se = FALSE, color = "blue") +
   labs(title = "Change in AVE vs. SOE share",  x = "SOE share in 2010",  y = "Change in AVE (FE approach)"  ) +
   theme_minimal()
 
-ggplot(merged_hs4,aes(x = share_value_SOE, y = diff_ln_AVE_FE_bench_w_mean)) +
+ggplot(merged_hs4,aes(x = share_value_SOE, y = diff_ln_AVE_FE_bench)) +
   geom_point( alpha = 0.6) +
   facet_wrap(~ baseline_year) +
   geom_smooth(method = "loess", se = FALSE, color = "blue") +
@@ -216,7 +217,7 @@ ggplot(merged_hs4,aes(x = share_value_SOE, y = diff_ln_AVE_FE_bench_w_mean)) +
 
 
 ggplot(subset(merged_hs4, sector == "Ag"), 
-       aes(x = share_value_SOE, y = diff_ln_AVE_FE_bench_w_mean, color = factor(hs_section))) +
+       aes(x = share_value_SOE, y = diff_ln_AVE_FE_wmean, color = factor(hs_section))) +
   geom_point(alpha = 0.6) +
   facet_wrap(~ baseline_year) +
   geom_smooth(method = "loess", se = FALSE, color = "blue") +
@@ -228,7 +229,7 @@ ggplot(subset(merged_hs4, sector == "Ag"),
 
 
 ggplot(subset(merged_hs4, sector == "Manu"), 
-       aes(x = share_value_SOE, y = diff_ln_AVE_FE_bench_w_mean, color = factor(hs_section))) +
+       aes(x = share_value_SOE, y = diff_ln_AVE_FE_wmean, color = factor(hs_section))) +
   geom_point(alpha = 0.6) +
   facet_wrap(~ baseline_year) +
   geom_smooth(method = "loess", se = FALSE, color = "blue") +
@@ -255,7 +256,7 @@ FE_2015 <- feols(diff_ln_AVE_FE_w_mean ~ share_value_SOE + diff_log_tariff_2015,
 FE_bench_2015 <- feols(diff_ln_AVE_FE_bench_w_mean ~ share_value_SOE + diff_log_tariff_2015,
   data = subset(merged_hs4, baseline_year == 2015))
 
-FE_demean_2015 <- feols(diff_ln_AVE_FE_wmean_w_mean ~ share_value_SOE + diff_log_tariff_2015,
+FE_demean_2015 <- feols(diff_ln_AVE_FE_wmean ~ share_value_SOE + diff_log_tariff_2015,
                 data = subset(merged_hs4, baseline_year == 2015))
 
 # Table
@@ -271,7 +272,7 @@ FE_2017 <- feols(diff_ln_AVE_FE_w_mean ~ share_value_SOE + diff_log_tariff_2015,
 FE_bench_2017 <- feols(diff_ln_AVE_FE_bench_w_mean ~ share_value_SOE + diff_log_tariff_2015,
                        data = subset(merged_hs4, baseline_year == 2017))
 
-FE_demean_2017 <- feols(diff_ln_AVE_FE_wmean_w_mean ~ share_value_SOE + diff_log_tariff_2015,
+FE_demean_2017 <- feols(diff_ln_AVE_FE_wmean ~ share_value_SOE + diff_log_tariff_2015,
                         data = subset(merged_hs4, baseline_year == 2017))
 
 
@@ -292,8 +293,8 @@ FE_2017 <- feols(diff_ln_AVE_FE_w_mean ~ share_value_SOE,
 FE_bench_2017 <- feols(diff_ln_AVE_FE_bench_w_mean ~ share_value_SOE ,
                        data = subset(merged_hs4, baseline_year == 2017))
 
-FE_demean_2017 <- feols(diff_ln_AVE_FE_wmean_w_mean ~ share_value_SOE ,
-                        data = subset(merged_hs4, baseline_year == 2017))
+FE_demean_2017 <- feols(diff_ln_AVE_FE_wmean ~ share_value_SOE ,
+                        data = subset(merged_hs4, baseline_year == 2017), cluster= ~hs4)
 
 
 
@@ -359,14 +360,14 @@ write.csv(tbl, paste0(exp, "SOE_NTM_2017_cluster.csv"), row.names = FALSE)
 # with windsorized data
 AVE <- feols(diff_ln_AVE_FE_wmean_mean ~ share_value_SOE,
              data = subset(merged_hs4, baseline_year == 2017 & year %in% c(2018:2019)))
-AVE_2017 <- feols(diff_ln_AVE_FE_wmean_w_mean ~ as.factor(year) + share_value_SOE,
+AVE_2017 <- feols(diff_ln_AVE_FE_wmean ~ as.factor(year) + share_value_SOE,
                   data = subset(merged_hs4, baseline_year == 2017 & year %in% c(2018:2019)))
-AVE_2017_tar <- feols(diff_ln_AVE_FE_wmean_w_mean ~ as.factor(year) + diff_log_tariff_2017 + share_value_SOE,
+AVE_2017_tar <- feols(diff_ln_AVE_FE_wmean ~ as.factor(year) + diff_log_tariff_2017 + share_value_SOE,
                       data = subset(merged_hs4, baseline_year == 2017 & year %in% c(2018:2019)))
-AVE_2017_sector <- feols(diff_ln_AVE_FE_wmean_w_mean ~ as.factor(year) + as.factor(sector) +
+AVE_2017_sector <- feols(diff_ln_AVE_FE_wmean ~ as.factor(year) + as.factor(sector) +
                            diff_log_tariff_2017 + share_value_SOE,
                          data = subset(merged_hs4, baseline_year == 2017 & year %in% c(2018:2019)))
-AVE_2017_sector_interact <- feols(diff_ln_AVE_FE_wmean_w_mean ~ as.factor(year) +
+AVE_2017_sector_interact <- feols(diff_ln_AVE_FE_wmean ~ as.factor(year) +
                                     diff_log_tariff_2017 + as.factor(sector) * share_value_SOE,
                                   data = subset(merged_hs4, baseline_year == 2017 & year %in% c(2018:2019)))
 
@@ -387,7 +388,7 @@ write.csv(tbl_w, paste0(exp, "SOE_NTM_2017_w.csv"), row.names = FALSE)
 ################################################################################
 {
 # Fit the model
-AVE_2017_2017_sector_interact <- feols(diff_ln_AVE_FE_wmean_w_mean ~ diff_log_tariff_2015 + 
+AVE_2017_2017_sector_interact <- feols(diff_ln_AVE_FE_wmean ~ diff_log_tariff_2015 + 
                                          as.factor(year) + as.factor(sector) +  share_value_SOE,
                                        data = subset(merged_hs4, baseline_year == 2017 & year %in% c(2018:2019)))
 
@@ -398,7 +399,7 @@ df_model <- subset(merged_hs4, baseline_year == 2017 & year %in% c(2018:2019))
 df_model$row_id <- seq_len(nrow(df_model))
 
 # Identify non-NA rows across all variables used in the model
-used_rows <- which(complete.cases(df_model[, c("diff_ln_AVE_FE_wmean_w_mean", 
+used_rows <- which(complete.cases(df_model[, c("diff_ln_AVE_FE_wmean", 
                                                "diff_log_tariff_2015", 
                                                "year", 
                                                "sector", 
@@ -410,12 +411,12 @@ df_model$predicted_diff_ln_AVE_FE_wmean[used_rows] <- predict(AVE_2017_2017_sect
 
 # Diagnostics
 summary(df_model$predicted_diff_ln_AVE_FE_wmean)
-summary(df_model$diff_ln_AVE_FE_wmean_w_mean)
+summary(df_model$diff_ln_AVE_FE_wmean)
 
 colSums(is.na(df_model))
 
 plot <- ggplot(df_model) +
-  geom_density(aes(x = diff_ln_AVE_FE_wmean_w_mean, fill = "Actual"), alpha = 0.3) +
+  geom_density(aes(x = diff_ln_AVE_FE_wmean, fill = "Actual"), alpha = 0.3) +
   geom_density(aes(x = predicted_diff_ln_AVE_FE_wmean, fill = "Predicted"), alpha = 0.3) +
   scale_fill_manual(values = c("Actual" = "blue", "Predicted" = "red")) +
   scale_x_continuous(limits = c(-5, 10)) +
@@ -428,8 +429,8 @@ ggsave(filename = "/data/sikeme/TRADE/US_CHN_TradeWar_git/output/IVs/summary/SOE
 
 
 df_model <- df_model %>%  select(year, sector, hs_section, hs2, hs4,
-                                 diff_ln_AVE_FE_wmean_w_mean, predicted_diff_ln_AVE_FE_wmean, diff_log_tariff_2017) %>% 
-  rename(diff_ln_AVE_FE_wmean = diff_ln_AVE_FE_wmean_w_mean)
+                                 diff_ln_AVE_FE_wmean, predicted_diff_ln_AVE_FE_wmean, diff_log_tariff_2017) %>% 
+  rename(diff_ln_AVE_FE_wmean = diff_ln_AVE_FE_wmean)
 colSums(is.na(df_model))
 
 write_csv(df_model, "/data/sikeme/TRADE/US_CHN_TradeWar_git/output/IVs/predicted/SOE_IV_predicted_AVE_w.csv")
@@ -465,7 +466,7 @@ summary(df_model$diff_ln_AVE_FE_wmean_mean)
 colSums(is.na(df_model))
 
 plot <- ggplot(df_model) +
-  geom_density(aes(x = diff_ln_AVE_FE_wmean_w_mean, fill = "Actual"), alpha = 0.3) +
+  geom_density(aes(x = diff_ln_AVE_FE_wmean, fill = "Actual"), alpha = 0.3) +
   geom_density(aes(x = predicted_diff_ln_AVE_FE_wmean, fill = "Predicted"), alpha = 0.3) +
   scale_fill_manual(values = c("Actual" = "blue", "Predicted" = "red")) +
   scale_x_continuous(limits = c(-5, 10)) +
@@ -517,7 +518,7 @@ summary(df_model$diff_ln_AVE_FE_wmean_mean)
 colSums(is.na(df_model))
 
 plot <- ggplot(df_model) +
-  geom_density(aes(x = diff_ln_AVE_FE_wmean_w_mean, fill = "Actual"), alpha = 0.3) +
+  geom_density(aes(x = diff_ln_AVE_FE_wmean, fill = "Actual"), alpha = 0.3) +
   geom_density(aes(x = predicted_diff_ln_AVE_FE_wmean, fill = "Predicted"), alpha = 0.3) +
   scale_fill_manual(values = c("Actual" = "blue", "Predicted" = "red")) +
   scale_x_continuous(limits = c(-5, 10)) +
@@ -566,15 +567,15 @@ tbl
 # windsorized sample
 FE_2015_SOE_notar        <- feols(diff_ln_AVE_FE_w_mean    ~ as.factor(year)*share_value_SOE,
                                   data = subset(merged_hs4_all, baseline_year == 2015))
-FE_2015_SOE_notar_demean <- feols(diff_ln_AVE_FE_wmean_w_mean ~ as.factor(year)*share_value_SOE,
+FE_2015_SOE_notar_demean <- feols(diff_ln_AVE_FE_wmean ~ as.factor(year)*share_value_SOE,
                                   data = subset(merged_hs4_all, baseline_year == 2015))
 FE_2015_SOE_tar          <- feols(diff_ln_AVE_FE_w_mean    ~ as.factor(year)*share_value_SOE + diff_log_tariff_2015,
                                   data = subset(merged_hs4_all, baseline_year == 2015))
-FE_2015_SOE_tar_demean   <- feols(diff_ln_AVE_FE_wmean_w_mean ~ as.factor(year)*share_value_SOE + diff_log_tariff_2015,
+FE_2015_SOE_tar_demean   <- feols(diff_ln_AVE_FE_wmean ~ as.factor(year)*share_value_SOE + diff_log_tariff_2015,
                                   data = subset(merged_hs4_all, baseline_year == 2015))
 FE_2015_SOE_tarX         <- feols(diff_ln_AVE_FE_w_mean    ~ as.factor(year)*share_value_SOE + as.factor(year)*diff_log_tariff_2015,
                                   data = subset(merged_hs4_all, baseline_year == 2015))
-FE_2015_SOE_tarX_demean  <- feols(diff_ln_AVE_FE_wmean_w_mean ~ as.factor(year)*share_value_SOE + as.factor(year)*diff_log_tariff_2015,
+FE_2015_SOE_tarX_demean  <- feols(diff_ln_AVE_FE_wmean ~ as.factor(year)*share_value_SOE + as.factor(year)*diff_log_tariff_2015,
                                   data = subset(merged_hs4_all, baseline_year == 2015))
 
 # Table
@@ -598,9 +599,9 @@ FE_2015_SOE_tar_demean   <- feols(diff_ln_AVE_FE_wmean_mean ~ as.factor(year)*sh
                                   data = subset(merged_hs4_all, baseline_year == 2015),  cluster = ~hs4)
 
 # Winsorized sample
-FE_2015_SOE_notar        <- feols(diff_ln_AVE_FE_wmean_w_mean ~ as.factor(year)*share_value_SOE,
+FE_2015_SOE_notar        <- feols(diff_ln_AVE_FE_wmean ~ as.factor(year)*share_value_SOE,
                                   data = subset(merged_hs4_all, baseline_year == 2015),  cluster = ~hs4)
-FE_2015_SOE_tar_w      <- feols(diff_ln_AVE_FE_wmean_w_mean ~ as.factor(year)*share_value_SOE  + diff_log_tariff_2015,
+FE_2015_SOE_tar_w      <- feols(diff_ln_AVE_FE_wmean ~ as.factor(year)*share_value_SOE  + diff_log_tariff_2015,
                                   data = subset(merged_hs4_all, baseline_year == 2015),  cluster = ~hs4)
 
 
@@ -681,11 +682,11 @@ tbl
 write_csv(as.data.frame(tbl), paste0(exp,"NTBs_SOE_tariff.csv"))
 
 
-SOE_2017 <- feols(diff_ln_AVE_FE_wmean_w_mean ~ as.factor(year) + share_value_SOE ,
+SOE_2017 <- feols(diff_ln_AVE_FE_wmean ~ as.factor(year) + share_value_SOE ,
                   data = subset(merged_hs4, baseline_year == 2017))
-SOE_bis_2017 <- feols(diff_ln_AVE_FE_wmean_w_mean ~ as.factor(year) + share_value_SOE +diff_log_tariff_2017 ,
+SOE_bis_2017 <- feols(diff_ln_AVE_FE_wmean ~ as.factor(year) + share_value_SOE +diff_log_tariff_2017 ,
                       data = subset(merged_hs4, baseline_year == 2017))
-tariff_2017 <- feols(diff_ln_AVE_FE_wmean_w_mean ~ as.factor(year) + diff_log_tariff_2017 ,
+tariff_2017 <- feols(diff_ln_AVE_FE_wmean ~ as.factor(year) + diff_log_tariff_2017 ,
                      data = subset(merged_hs4, baseline_year == 2017))
 SOE_tar_2017 <- feols(diff_log_tariff_2017 ~  as.factor(year) + share_value_SOE ,
                       data = subset(merged_hs4, baseline_year == 2017))
@@ -724,7 +725,7 @@ FE_2015 <- feols(diff_ln_AVE_FE_w_mean ~  as.factor(year)*diff_log_tariff_2015,
 FE_bench_2015 <- feols(diff_ln_AVE_FE_bench_w_mean ~ as.factor(year)*diff_log_tariff_2015,
                        data = subset(merged_hs4_all, baseline_year == 2015))
 
-FE_demean_2015 <- feols(diff_ln_AVE_FE_wmean_w_mean ~ as.factor(year)*diff_log_tariff_2015,
+FE_demean_2015 <- feols(diff_ln_AVE_FE_wmean ~ as.factor(year)*diff_log_tariff_2015,
                         data = subset(merged_hs4_all, baseline_year == 2015))
 
 FE_log_2015 <- feols(diff_ln_AVE_FE_log_w_mean ~  as.factor(year)*diff_log_tariff_2015,
@@ -756,7 +757,7 @@ FE_2017 <- feols(diff_ln_AVE_FE_w_mean ~ diff_log_tariff_2017,
 FE_bench_2017 <- feols(diff_ln_AVE_FE_bench_w_mean ~ diff_log_tariff_2017,
                        data = subset(merged_hs4, baseline_year == 2017))
 
-FE_demean_2017 <- feols(diff_ln_AVE_FE_wmean_w_mean ~ diff_log_tariff_2017,
+FE_demean_2017 <- feols(diff_ln_AVE_FE_wmean ~ diff_log_tariff_2017,
                         data = subset(merged_hs4, baseline_year == 2017))
 
 FE_log_2017 <- feols(diff_ln_AVE_FE_log_w_mean ~  diff_log_tariff_2017,
@@ -782,24 +783,24 @@ write_csv(as.data.frame(tbl), paste0(exp,"NTBs_tariff_specific.csv"))
 ################################################################################
 # relationship: tariff Vs NTBs
 ################################################################################
-FE_2015 <- feols(diff_ln_AVE_FE_wmean_w_mean ~ diff_log_tariff_2015,
+FE_2015 <- feols(diff_ln_AVE_FE_wmean ~ diff_log_tariff_2015,
                         data = subset(merged_hs4_all, baseline_year == 2015))
 
-FE_2017 <- feols(diff_ln_AVE_FE_wmean_w_mean ~ diff_log_tariff_2017,
+FE_2017 <- feols(diff_ln_AVE_FE_wmean ~ diff_log_tariff_2017,
                         data = subset(merged_hs4, baseline_year == 2017))
 
 
-FE_sector_2015 <- feols(diff_ln_AVE_FE_wmean_w_mean ~ sector*diff_log_tariff_2015,
+FE_sector_2015 <- feols(diff_ln_AVE_FE_wmean ~ sector*diff_log_tariff_2015,
                         data = subset(merged_hs4_all, baseline_year == 2015))
 
-FE_sector_2017 <- feols(diff_ln_AVE_FE_wmean_w_mean ~ sector*diff_log_tariff_2017,
+FE_sector_2017 <- feols(diff_ln_AVE_FE_wmean ~ sector*diff_log_tariff_2017,
                         data = subset(merged_hs4, baseline_year == 2017))
 
 
-FE_year_2015 <- feols(diff_ln_AVE_FE_wmean_w_mean ~ as.factor(year)*diff_log_tariff_2015,
+FE_year_2015 <- feols(diff_ln_AVE_FE_wmean ~ as.factor(year)*diff_log_tariff_2015,
                         data = subset(merged_hs4_all, baseline_year == 2015))
 
-FE_year_2017 <- feols(diff_ln_AVE_FE_wmean_w_mean ~ as.factor(year)*diff_log_tariff_2017,
+FE_year_2017 <- feols(diff_ln_AVE_FE_wmean ~ as.factor(year)*diff_log_tariff_2017,
                         data = subset(merged_hs4, baseline_year == 2017))
 
 
@@ -823,7 +824,7 @@ FE_2015 <- feols(diff_ln_AVE_FE_w_mean ~  as.factor(year)*diff_log_tariff_2015,
 FE_bench_2015 <- feols(diff_ln_AVE_FE_bench_w_mean ~ as.factor(year)*diff_log_tariff_2015,
                        data = subset(merged_hs4_all, baseline_year == 2015))
 
-FE_demean_2015 <- feols(diff_ln_AVE_FE_wmean_w_mean ~ as.factor(year)*diff_log_tariff_2015,
+FE_demean_2015 <- feols(diff_ln_AVE_FE_wmean ~ as.factor(year)*diff_log_tariff_2015,
                         data = subset(merged_hs4_all, baseline_year == 2015))
 
 FE_log_2015 <- feols(diff_ln_AVE_FE_log_w_mean ~  as.factor(year)*diff_log_tariff_2015,
@@ -855,7 +856,7 @@ FE_2017 <- feols(diff_ln_AVE_FE_w_mean ~  as.factor(year)*diff_log_tariff_2017,
 FE_bench_2017 <- feols(diff_ln_AVE_FE_bench_w_mean ~ as.factor(year)*diff_log_tariff_2017,
                        data = subset(merged_hs4, baseline_year == 2017))
 
-FE_demean_2017 <- feols(diff_ln_AVE_FE_wmean_w_mean ~ as.factor(year)*diff_log_tariff_2017,
+FE_demean_2017 <- feols(diff_ln_AVE_FE_wmean ~ as.factor(year)*diff_log_tariff_2017,
                         data = subset(merged_hs4, baseline_year == 2017))
 
 FE_log_2017 <- feols(diff_ln_AVE_FE_log_w_mean ~  as.factor(year)*diff_log_tariff_2017,

@@ -22,7 +22,7 @@ library(frontier)
 ################################################################################
 # USER CHOICES (change these only)
 ################################################################################
-BASE_YEAR <- 2015
+BASE_YEAR <- 2017
 # SECTOR    <- "Ag"   # e.g. "Ag", "Manuf", etc.
 SECTOR    <- "subsectors" 
 
@@ -223,20 +223,21 @@ theme_trade <- theme_minimal(base_size = 14, base_family = "Times New Roman") +
 
 
 # ---- consistent legend keys across ALL plots ----
-legend_breaks <- c("FE", "FE_demeaned", "FE_bench", "tariff", "Chen_et_al")
+legend_breaks <- c("FE", "FE_demeaned", "FE_bench", "FEm_log_mean",  "tariff", "Chen_et_al")
 
 legend_labels <- c(  "FE"          = "FE",
                      "FE_demeaned" = "FE (demeaned)",
                      "FE_bench"    = "FE (benchmark)",
                      "tariff"      = "Tariff",
-                     "Chen_et_al"  = "Chen et al.")
+                     "Chen_et_al"  = "Chen et al.",
+                     "FEm_log_mean" = "FE (log-demeaned)" )
 
 legend_colors <- c(  "FE"          = "blue",
                      "FE_demeaned" = "orange",
                      "FE_bench"    = "purple",
                      "tariff"      = "darkgreen",
-                     "Chen_et_al"  = "red")
-
+                     "Chen_et_al"  = "red",
+                     "FEm_log_mean"    = "brown")
 
 
 ################################################################################
@@ -351,6 +352,10 @@ US_dta_q_sect <- US_dta_w_sect %>%  group_by(year, subsector) %>%
             FEm_lo   = quantile(w_FE_mean, 0.025, na.rm = TRUE),
             FEm_hi   = quantile(w_FE_mean, 0.975, na.rm = TRUE),
             
+            FE_log_mean  = mean(w_FE_log, na.rm = TRUE),
+            FEb_log_mean = mean(w_FE_log_bench, na.rm = TRUE),
+            FEm_log_mean = mean(w_FE_log_mean, na.rm = TRUE),
+            
             tariff_mean = mean(w_tariff, na.rm = TRUE),
             chen_mean   = mean(w_chen, na.rm = TRUE),
             
@@ -386,6 +391,7 @@ p_hs_sect <- ggplot(US_dta_q_sect, aes(x = year)) +
   geom_line(aes(y = FE_mean,     color = "FE"),          linewidth = 1) +
   geom_line(aes(y = FEm_mean,    color = "FE_demeaned"), linewidth = 1) +
   geom_line(aes(y = FEb_mean,    color = "FE_bench"),    linewidth = 1) +
+  geom_line(aes(y = FEm_log_mean,color = "FEm_log_mean"),linewidth = 1) +
   geom_line(aes(y = tariff_mean, color = "tariff"),      linewidth = 1) +
   geom_line(aes(y = chen_mean,   color = "Chen_et_al"),  linetype = "dashed", linewidth = 1) +
   scale_color_manual(values = legend_colors,
@@ -398,7 +404,7 @@ p_hs_sect <- ggplot(US_dta_q_sect, aes(x = year)) +
   theme_trade
 p_hs_sect
 
-ggsave(  filename = file.path(OUT_PLOT_DIR, paste0("Compare_ln_AVE_", SECTOR, "_subsector_weight_boot" ,".png")),
+ggsave(  filename = file.path(OUT_PLOT_DIR, paste0("Compare_ln_AVE_", SECTOR, "_subsector_weight_log_boot" ,".png")),
          plot = p_hs_sect, width = 10, height = 6, dpi = 300)
 
 

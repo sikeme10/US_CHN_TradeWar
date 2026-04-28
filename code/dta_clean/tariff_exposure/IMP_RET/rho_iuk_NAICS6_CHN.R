@@ -53,6 +53,7 @@ HS_product <- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/data/HS_codes/HS_
 
 # US tot export 
 US_tot_export <- read_csv("trade/US_tot_export_schott_2012.csv")
+US_reexport <- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/data/trade/re_export_clean_2012.csv")
 
 ################################################################################
 # Data cleaning and preparation
@@ -70,6 +71,7 @@ names(US_tot_export)
 US_import$HS6 <- as.numeric(US_import$HS6)
 HS_NAICS$HS6 <- as.numeric(HS_NAICS$HS6)
 tariff$hs6_H4 <- as.numeric(tariff$hs6_H4)
+US_reexport$HS6 <- as.numeric(US_reexport$HS6)
 HS_product$HS_2012_Product_Code <- as.numeric(HS_product$HS_2012_Product_Code)
 
 
@@ -90,6 +92,8 @@ HS_NAICS <- HS_NAICS %>% filter(HS6 %in% HS_product$HS_2012_Product_Code)
 tariff <- tariff %>% filter(hs6_H4 %in% HS_product$HS_2012_Product_Code) 
 US_import <- US_import %>% filter(HS6 %in% HS_product$HS_2012_Product_Code)
 US_tot_export <- US_tot_export %>% filter(HS6 %in% HS_product$HS_2012_Product_Code)
+US_reexport <- US_reexport %>% filter(HS6 %in% HS_product$HS_2012_Product_Code)
+
 
 years <- unique(tariff$year)
 years
@@ -233,6 +237,12 @@ Merge_trade <- left_join(US_import, HS_NAICS)
 colSums(is.na(Merge_trade))
 names(Merge_trade)
 
+# get US rexport and tot US export 
+US_tot_export <- left_join(US_tot_export, US_reexport)
+identical(US_tot_export$export_val_USD, US_tot_export$domestic_export_USD)
+# test <- US_tot_export %>%  filter(export_val_USD != tot_export_USD)
+
+
 
 names(US_tot_export)
 class(US_tot_export$HS6)
@@ -243,7 +253,9 @@ US_tot_export1 <- US_tot_export1 %>% filter(!is.na(naics))
 
 # aggregate at naics level
 US_tot_export2 <- US_tot_export1 %>% group_by(naics) %>% 
-  summarise(tot_export_val_USD = sum(export_val_USD, na.rm= TRUE))
+  summarise(tot_export_val_USD = sum(domestic_export_USD, na.rm= TRUE)) # domestic export without reexport
+
+
 
 ################################################################################
 # merge back with US import and US output 

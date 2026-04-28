@@ -64,7 +64,7 @@ names(output_NAICS6)
 class(US_import$HS6)
 unique(US_import$year)
 names(US_tot_export)
-
+names(HS_product)
 
 # Convert HS6 to character in US_export and HS_NAICS datasets
 US_import$HS6 <- as.numeric(US_import$HS6)
@@ -79,7 +79,7 @@ US_import <- US_import %>%   rename(ExporterISO3  = ISO3_Code, Exporter = Countr
   select(-cty_code, -ISO_Code)
 names(tariff)
 tariff <- tariff %>% mutate(ImporterISO3 = "USA")
-
+HS_NAICS <- HS_NAICS %>% select(HS6, naics)
 
 # Drop year 2012 from US_import and output_NAICS6
 US_import <- US_import %>% select(-year) 
@@ -265,6 +265,7 @@ Merge1 <- Merge1 %>% mutate(
   IMP_it_2017 = 100*gamma_iuu*rho_tau_2017)
 summary(Merge1)
 
+length(unique(Merge1$naics))
 
 ################################################################################
 # export data 

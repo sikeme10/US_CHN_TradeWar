@@ -43,7 +43,7 @@ names(EPOP)
 Labor <- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/data/QCEW/QCEW_2012_weights_CZ.csv")
 
 census_div <- read_csv( "/data/sikeme/TRADE/US_CHN_TradeWar_git/data/crosswalk_CZ_county/census_div_czone_2012.csv")
-sector_shares <- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/data/QCEW/sector_share_2012.csv")
+sector_shares <- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/data/QCEW/subsector_share_2012.csv")
 names(sector_shares)
 names(census_div)
 ################################################################################
@@ -166,14 +166,10 @@ merge2 <- left_join(merge,RET_tot_industry_wide )
 merge2 <- left_join(merge2,IMP_tot_industry_wide )
 
 vars_to_zero <- c(
-  "RET_tariff_tot_r_crop", "RET_tariff_tot_r_forestry", "RET_tariff_tot_r_livestock",
-  "RET_tariff_tot_r_mining", "RET_tariff_tot_r_nonag",
-  "RET_NTB_tot_r_crop", "RET_NTB_tot_r_forestry", "RET_NTB_tot_r_livestock",
-  "RET_NTB_tot_r_mining", "RET_NTB_tot_r_nonag",
-  "RET_NTB_tot_IV_r_crop", "RET_NTB_tot_IV_r_forestry", "RET_NTB_tot_IV_r_livestock",
-  "RET_NTB_tot_IV_r_mining", "RET_NTB_tot_IV_r_nonag",
-  "IMP_tariff_tot_ir_crop", "IMP_tariff_tot_ir_forestry", "IMP_tariff_tot_ir_livestock",
-  "IMP_tariff_tot_ir_mining", "IMP_tariff_tot_ir_nonag")
+  "RET_tariff_tot_r_crop", "RET_tariff_tot_r_forestry", "RET_tariff_tot_r_livestock", "RET_tariff_tot_r_nonag",
+  "RET_NTB_tot_r_crop", "RET_NTB_tot_r_forestry", "RET_NTB_tot_r_livestock", "RET_NTB_tot_r_nonag",
+  "RET_NTB_tot_IV_r_crop", "RET_NTB_tot_IV_r_forestry", "RET_NTB_tot_IV_r_livestock", "RET_NTB_tot_IV_r_nonag",
+  "IMP_tariff_tot_ir_crop", "IMP_tariff_tot_ir_forestry", "IMP_tariff_tot_ir_livestock", "IMP_tariff_tot_ir_nonag")
 
 merge2 <- merge2 %>%
   mutate(across(all_of(vars_to_zero), ~if_else(year < 2018, 0, .)))

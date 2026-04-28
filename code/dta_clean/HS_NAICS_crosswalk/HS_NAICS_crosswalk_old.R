@@ -101,46 +101,29 @@ colSums(is.na(dta_D))
 
 
 
-################################################################################
-# for each avoid the many to many mapping 
+
+
 ################################################################################
 # multiple products codes map to multiple NAICS code and vice versa
-# we would like to have Many HS codes map to only one NAICS industry
+
 
 # How many unique NAICS each HS6 maps to
-HS6_to_NAICS_schott <- dta_schott %>%  group_by(HS6) %>%
+HS6_to_NAICS <- dta_schott %>%  group_by(HS6) %>%
   summarise(n_naics = n_distinct(naics)) %>%  arrange(desc(n_naics))
-HS6_to_NAICS_schott
-# we can select only HS codes and naics combination that has HS codes mapping to only one NAICS code 
-HS6_to_NAICS_schott <- HS6_to_NAICS_schott %>% filter(n_naics ==1)
-length(unique(HS6_to_NAICS_schott$HS6))
-# filter only one to one mapping:
-dta_schott <- dta_schott %>% filter(HS6 %in% HS6_to_NAICS_schott$HS6)
-length(unique(dta_schott$HS6))
+HS6_to_NAICS
 
-
-# How many unique NAICS6_D each HS6 maps to
-HS6_to_NAICS_diane <- dta_D %>%  group_by(HS6) %>% summarise(n_naics = n_distinct(naics6_D)) %>%
-  arrange(desc(n_naics))
-HS6_to_NAICS_diane
-# we can select only HS codes and naics combination that has HS codes mapping to only one NAICS code 
-HS6_to_NAICS_diane <- HS6_to_NAICS_diane %>% filter(n_naics ==1)
-length(unique(HS6_to_NAICS_diane$HS6))
-# filter only one to one mapping:
-dta_D <- dta_D %>% filter(HS6 %in% HS6_to_NAICS_diane$HS6)
-length(unique(dta_D$HS6))
-
-
-
-
-# How many unique HS6 each maps to NAICS maps
-# schott
+# How many unique HS6 each NAICS maps to
 NAICS_to_HS6 <- dta_schott %>%  group_by(naics) %>%
   summarise(n_hs6 = n_distinct(HS6)) %>%  arrange(desc(n_hs6))
 NAICS_to_HS6
 
+
+# How many unique NAICS6_D each HS6 maps to
+HS6_to_NAICS <- dta_D %>%  group_by(HS6) %>% summarise(n_naics = n_distinct(naics6_D)) %>%
+  arrange(desc(n_naics))
+HS6_to_NAICS
+
 # How many unique HS6 each NAICS6_D maps to
-#diane
 NAICS_to_HS6 <- dta_D %>% group_by(naics6_D) %>%  summarise(n_hs6 = n_distinct(HS6)) %>%
   arrange(desc(n_hs6))
 NAICS_to_HS6
@@ -152,7 +135,7 @@ names(dta_schott)
 names(HS_product)
 
 dta_D <- dta_D %>% select(HS6 , naics6_D, j, crop) %>% rename(subsector = j , ag_subsector = crop )
-dta_schott <- dta_schott %>% select(HS6 , naics)
+dta_schott <-dta_schott %>% select(HS6 , naics)
 
 
 
@@ -189,59 +172,46 @@ length(unique(dta_D$naics))
 merge <- bind_rows(dta_D, dta_schott2)
 length(unique(merge$HS6))
 length(unique(merge$naics))
-colSums((is.na(merge)))
+
 
 ######################################################################################
 # whatever product was not matched we can use package to get back 
-######################################################################################
 
 length(unique(merge$HS6))
 class(merge$HS6)
-class(HS_product$HS_2012_Product_Code)
 length(unique(merge$naics))
 length(unique(HS_product$HS_2012_Product_Code))
 colSums(is.na(merge))
-
-# are ll product codes in merge in HS 2012 revision product codes?
-sum(merge$HS6 %in% HS_product$HS_2012_Product_Code)
-
 
 
 Product_codes1 <- HS_product %>% select(HS_2012_Product_Code, HS_2012_Product_Description) %>%
   rename(HS6 = HS_2012_Product_Code)
 length(unique(Product_codes1$HS6))
-sum(duplicated(Product_codes1[, c("HS6", "HS_2012_Product_Description")]))
-Product_codes1 <- Product_codes1 %>% distinct(HS6, HS_2012_Product_Description, .keep_all = TRUE)
 
-# add missing HS 6 code in merge
+
 merge1 <- full_join(merge, Product_codes1, by = c("HS6","HS_2012_Product_Description"))
 length(unique(merge1$HS6))
+
 colSums(is.na(merge1))
 merge1 <- merge1 %>% filter(!is.na(HS6))
 
 
-
-####################################
-# use the concordance option to match with weights 
-# by having weights being False --> output HS-NAICS match with the highest weight
-
 library(concordance)
-merge2 <- merge1 %>%
+merge1 <- merge1 %>%
   mutate(naics1 = ifelse(is.na(naics),
                          sapply(HS6, function(x) {
                            result <- concord_hs_naics(x, origin = "HS4", destination = "NAICS", dest.digit = 6, all = FALSE)
                            result[[1]]
                          }),
                          naics))
-colSums(is.na(merge2))
-length(unique(merge2$naics1))
-length(unique(merge2$HS6))
+colSums(is.na(merge1))
+length(unique(merge1$naics1))
 
-merge3 <- merge2 %>% select(HS6, naics1,HS_2012_Product_Description, subsector , ag_subsector) %>% rename(naics = naics1)
-length(unique(merge3$naics))
-length(unique(merge3$HS6))
-colSums(is.na(merge3))
-merge3 <- merge3 %>% filter(!is.na(naics))
+merge2 <- merge1 %>% select(HS6, naics1,HS_2012_Product_Description, subsector , ag_subsector) %>% rename(naics = naics1)
+length(unique(merge2$naics))
+length(unique(merge1$HS6))
+colSums(is.na(merge2))
+merge2 <- merge2 %>% filter(!is.na(naics))
 
 
 ################################################################################
@@ -249,13 +219,13 @@ merge3 <- merge3 %>% filter(!is.na(naics))
 # check if an output exist for each :
 unique(nchar(NAICS6$naics))
 NAICS6$naics <- as.character(NAICS6$naics)
-length(unique(merge3$naics))
-test <- merge3 %>% filter((naics %in% unique(NAICS6$naics)))
+length(unique(merge2$naics))
+test <- merge2 %>% filter((naics %in% unique(NAICS6$naics)))
 length(unique(test$naics))
 
 
 # Pull the two vectors
-naics_a <- unique(merge3$naics)
+naics_a <- unique(merge2$naics)
 naics_b <- unique(NAICS6$naics)
 
 # Basic counts
@@ -269,16 +239,8 @@ length(setdiff(naics_b, naics_a))     # in B but not A
 
 names(NAICS6)
 
-merge4 <- left_join(merge3, NAICS6)
-colSums(is.na(merge4))
-test <- merge4 %>% filter(is.na(naics_description ))
-length(unique(test$HS6))
-sum(!grepl("^\\d+$", as.character(test$naics[!is.na(test$naics)])))
-# drop if not in 2012 NAICS codes
-merge4 <- merge4 %>%  mutate(naics = ifelse(is.na(naics_description), NA, naics))
-# Non-numeric naics values
-sum(grepl("[^0-9]", as.character(merge4$naics[!is.na(merge4$naics)])))
-colSums(is.na(merge4))
+merge2 <- left_join(merge2, NAICS6)
+colSums(is.na(merge2))
 
 
 ################################################################################
@@ -286,46 +248,29 @@ colSums(is.na(merge4))
 # drop replicates (due to subesector )
 
 
-colSums(is.na(merge3))
+colSums(is.na(merge2))
 
 # recode if ag and nonag just put it in ag
-unique(merge4$subsector)
-merge4 <- merge4 %>%  group_by(HS6, naics) %>%
+unique(merge2$subsector)
+merge2 <- merge2 %>%  group_by(HS6, naics) %>%
   mutate(subsector = case_when( n() > 1 & any(subsector %in% c("crop", "livestock")) ~ subsector[subsector %in% c("crop", "livestock")][1],
                                 TRUE ~ subsector  )) %>%  ungroup()
 
-# put mining in nonag
-merge4 <- merge4 %>% mutate(ag_subsector = if_else(subsector == "mining", "mining", ag_subsector),
-                            subsector = if_else(subsector =="mining", "nonag", subsector ))
-unique(merge4$subsector)
-unique(merge4$ag_subsector)
-colSums(is.na(merge4))
-
-merge5 <- merge4 %>% mutate(naics = as.numeric(naics))
-colSums(is.na(merge5))
-
-write_csv(merge4, "/data/sikeme/TRADE/US_CHN_TradeWar_git/data/crosswalk/clean_HS6_naics6_2012_test.csv")
-
-# by hand refill HS naics subscetor codes using Claude:
-library(readxl)
-merge5  <- read_excel("crosswalk/clean_HS6_naics6_2012_new_version.xlsx")
+write_csv(merge2, "/data/sikeme/TRADE/US_CHN_TradeWar_git/data/crosswalk/clean_HS6_naics6_2012_test.csv")
 
 
-################################################################################
-
-merge5 <- merge5 %>% distinct(HS6,naics, .keep_all = TRUE)
+merge3 <- merge2 %>% distinct(HS6,naics, .keep_all = TRUE)
 
 
-length(unique(merge5$naics))
-length(unique(merge5$HS6))
-colSums(is.na(merge5))
+length(unique(merge3$naics))
+length(unique(merge3$HS6))
+colSums(is.na(merge3))
 
-sapply(merge5, class)
 
 
 # get at HS6-naics 6 level
 
-write_csv(merge5, "/data/sikeme/TRADE/US_CHN_TradeWar_git/data/crosswalk/clean_HS6_naics6_2012.csv")
+write_csv(merge3, "/data/sikeme/TRADE/US_CHN_TradeWar_git/data/crosswalk/clean_HS6_naics6_2012.csv")
 
 test <- read_csv( "/data/sikeme/TRADE/US_CHN_TradeWar_git/data/crosswalk/clean_HS6_naics6_2012.csv")
 ######################################################################################

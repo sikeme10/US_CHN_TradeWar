@@ -40,6 +40,7 @@ labor<- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/data/QCEW/QCEW_2012_nai
 
 # get subsector classification from Diane
 sectors <- read_csv("crosswalk/HS6_NAICS_Diane/NAICS_industry_2012.csv")
+HS_NAICS <- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/data/crosswalk/clean_HS6_naics6_2012.csv")
 
 
 ################################################################################
@@ -154,17 +155,50 @@ merge_data <- merge_data %>% mutate( sector = case_when( sector_label =="Agricul
 table(merge_data$sector)
 
 ###############################################################################
+names(HS_NAICS)
+colSums(is.na(HS_NAICS))
+HS_NAICS <- HS_NAICS %>% select(naics, subsector, ag_subsector, naics_description)
+HS_NAICS <- HS_NAICS %>% distinct() %>% filter(!is.na(naics))
 
-# merge with sector definition from Diane
-names(sectors)
-sectors <- sectors %>% select(naics, subsector, ag_subsector)
-sectors <- sectors %>% distinct() %>% filter(!is.na(naics))
-sectors <- sectors %>%  group_by(naics, subsector) %>%
+# check if duplicates:
+test <- HS_NAICS %>%  filter(duplicated(naics) | duplicated(naics, fromLast = TRUE))
+test <- HS_NAICS %>%  group_by(naics) %>%
+  summarise(n_subsector = n_distinct(subsector),
+            subsectors = paste(unique(subsector), collapse = ", ")  ) %>%
+  filter(n_subsector > 1)
+# if non ag and crop/livestock put it in crop and livestock
+HS_NAICS <- HS_NAICS %>%  group_by(naics) %>%
+  mutate(
+    subsector = case_when(
+      # forestry + crop + nonag → crop (put this first: most specific)
+      all(c("forestry", "crop", "nonag") %in% subsector) ~ "crop",
+      
+      # nonag + livestock → livestock
+      any(subsector == "livestock") & any(subsector == "nonag") ~ "livestock",
+      
+      # nonag + crop → crop
+      any(subsector == "crop") & any(subsector == "nonag") ~ "crop",
+      
+      # nonag + forestry → nonag
+      any(subsector == "forestry") & any(subsector == "nonag") ~ "nonag",
+      
+      # otherwise keep original value
+      TRUE ~ subsector    )  ) %>%  ungroup()
+test <- HS_NAICS %>%  group_by(naics) %>%
+  summarise(n_subsector = n_distinct(subsector),
+            subsectors = paste(unique(subsector), collapse = ", ")  ) %>%
+  filter(n_subsector > 1)
+table(HS_NAICS$subsector)
+length(unique(HS_NAICS$naics))
+# manually adjust some other 
+HS_NAICS <- HS_NAICS %>%
+  mutate( subsector = case_when(naics == 311225 ~ "crop", naics == 311119 ~ "livestock",TRUE ~ subsector)  )
+
+
+
+sectors <- HS_NAICS %>%  group_by(naics, subsector) %>%
   summarise(ag_subsector = paste(ag_subsector, collapse = ", "), .groups = "drop")
 length(unique(sectors$naics))
-test <- sectors %>% filter(duplicated(naics) | duplicated(naics, fromLast = TRUE))
-sectors <- sectors %>%  group_by(naics) %>%
-  filter(if (n_distinct(subsector) > 1) subsector == "crop" else TRUE) %>%  ungroup()
 
 merge_data1 <- left_join(merge_data, sectors)
 colSums(is.na(merge_data1))
@@ -198,11 +232,142 @@ colSums(is.na(merge_data1))
 
 names(merge_data1)
 
+# crop <- merge_data1 %>% filter(subsector== "crop")
+# unique(crop$NAICS_description)
+# crop <- crop %>%
+#   mutate(sector_group = case_when(
+#     # Manufacturing — must come BEFORE farming categories
+#     grepl("milling|mfg|manufacturing|canning|processing|roasting",  NAICS_description, ignore.case = TRUE) ~ "Food Manufacturing",
+#     # Grain & Oilseed farming
+#     grepl("Soybean|Oilseed|Dry pea|Wheat|Corn farming|Rice farming|Other grain",    NAICS_description, ignore.case = TRUE) ~ "Grain & Oilseed Farming",
+#     # Fruit & Nut
+#     grepl("grove|orchard|vineyard|Berry|strawberry|Tree nut|noncitrus fruit",   NAICS_description, ignore.case = TRUE) ~ "Fruit & Nut Farming",
+#     # Vegetable
+#     grepl("Potato|vegetable|melon", NAICS_description, ignore.case = TRUE) ~ "Vegetable Farming",
+#     
+#     # Cotton
+#     grepl("Cotton", NAICS_description, ignore.case = TRUE) ~ "Cotton Farming",
+#     grepl("textile", NAICS_description, ignore.case = TRUE) ~ "Textile Manufacturing",
+#     
+#     # Tobacco
+#     grepl("Tobacco", NAICS_description, ignore.case = TRUE) ~ "Tobacco Farming",
+#     
+#     # Nursery
+#     grepl("Nursery|Floriculture", NAICS_description, ignore.case = TRUE) ~ "Nursery & Floriculture",
+#     
+#     # Other crops
+#     grepl("Sugarcane|Hay|Sugar beet",   NAICS_description, ignore.case = TRUE) ~ "Other Crops",
+#     
+#     TRUE ~ "Other"
+#   ))
+# table(crop$sector_group)
+# print(crop %>%   distinct(sector_group, NAICS_description) %>%   arrange(sector_group), n = Inf)
+# 
+# 
+# 
+# livestock  <- merge_data1 %>% filter(subsector== "livestock")
+# unique(livestock$NAICS_description)
+# 
+# livestock <- livestock %>%
+#   mutate(sector_group = case_when(
+#     # Cattle
+#     grepl("Beef cattle|Cattle feedlots", NAICS_description) ~ "Cattle Farming",
+#     
+#     # Hogs
+#     grepl("Hog and pig", NAICS_description) ~ "Hog & Pig Farming",
+#     
+#     # Meat processing — must come BEFORE Poultry Farming
+#     grepl("slaughtering|Rendering|byproduct|Poultry processing", NAICS_description, ignore.case = TRUE) ~ "Meat Processing",
+#     
+#     # Poultry farming
+#     grepl("Chicken|Turkey|Poultry|Broiler", NAICS_description, ignore.case = TRUE) ~ "Poultry Farming",
+#     
+#     # Small livestock
+#     grepl("Sheep|Goat", NAICS_description) ~ "Sheep & Goat Farming",
+#     
+#     # Other animal production
+#     grepl("Apiculture|Horse|Fur-bearing|All other animal", NAICS_description) ~ "Other Animal Production",
+#     
+#     # Dairy manufacturing
+#     grepl("milk|butter|Cheese|dairy|Ice cream", NAICS_description, ignore.case = TRUE) ~ "Dairy Manufacturing",
+#     
+#     # Leather
+#     grepl("Leather|hide", NAICS_description, ignore.case = TRUE) ~ "Leather & Hides",
+#     
+#     TRUE ~ "Other"
+#   ))
+# print(livestock %>%   distinct(sector_group, NAICS_description) %>%   arrange(sector_group), n = Inf)
+
+
+
 crop <- merge_data1 %>% filter(subsector== "crop")
 unique(crop$NAICS_description)
+crop <- crop %>%
+  mutate(sector_group = case_when(
+    # Non-food manufacturing carve-outs FIRST
+    grepl("miscellaneous chemical|miscellaneous manufacturing|textile|Pulp mills", NAICS_description, ignore.case = TRUE) ~ "Other Manufacturing",
+    
+    # Food & beverage manufacturing (all lumped together)
+    grepl("milling|processing|manufacturing|canning|refining|blending|confectionery|cereal|breakfast|snack|coffee|tea|syrup|spice|sauce|mayonnaise|dressing|nut.*butter|roasted|Breweries|Wineries|Distilleries",
+          NAICS_description, ignore.case = TRUE) ~ "Food Manufacturing",
+    
+    # Farming categories
+    grepl("Soybean|Oilseed|Dry pea|Wheat|Corn farming|Rice farming|Other grain",
+          NAICS_description, ignore.case = TRUE) ~ "Grain & Oilseed Farming",
+    
+    
+    grepl("orchard|vineyard|Berry|strawberry|Tree nut|noncitrus fruit|Orange groves|Citrus",
+          NAICS_description, ignore.case = TRUE) ~ "Fruit & Nut Farming",
+    
+    grepl("Potato|vegetable|melon", NAICS_description, ignore.case = TRUE) ~ "Vegetable Farming",
+    
+    grepl("Cotton", NAICS_description, ignore.case = TRUE) ~ "Cotton Farming",
+    grepl("Tobacco", NAICS_description, ignore.case = TRUE) ~ "Tobacco Farming",
+    grepl("Nursery|Floriculture", NAICS_description, ignore.case = TRUE) ~ "Nursery & Floriculture",
+    grepl("Sugarcane|Hay|Sugar beet", NAICS_description, ignore.case = TRUE) ~ "Other Crops",
+    
+    TRUE ~ "Other"
+  ))
+table(crop$sector_group)
+print(crop %>%   distinct(sector_group, NAICS_description) %>%   arrange(sector_group), n = Inf)
+
+
 
 livestock  <- merge_data1 %>% filter(subsector== "livestock")
 unique(livestock$NAICS_description)
+
+livestock <- livestock %>%
+  mutate(sector_group = case_when(
+    # Cattle (kept in case of future data)
+    grepl("Beef cattle|Cattle feedlots|Dairy cattle", NAICS_description, ignore.case = TRUE) ~ "Cattle Farming",
+    
+    # Hogs
+    grepl("Hog and pig", NAICS_description, ignore.case = TRUE) ~ "Hog & Pig Farming",
+    
+    # Meat processing — BEFORE poultry farming
+    grepl("slaughtering|Rendering|byproduct|Poultry processing", NAICS_description, ignore.case = TRUE) ~ "Meat Processing",
+    
+    # Poultry farming (kept in case of future data)
+    grepl("Chicken|Turkey|Broiler|Poultry(?! processing)", NAICS_description, ignore.case = TRUE, perl = TRUE) ~ "Poultry Farming",
+    
+    # Small livestock
+    grepl("Sheep|Goat", NAICS_description, ignore.case = TRUE) ~ "Sheep & Goat Farming",
+    
+    # Other animal production
+    grepl("Apiculture|Horse|Fur-bearing|All other animal production", NAICS_description, ignore.case = TRUE) ~ "Other Animal Production",
+    
+    # Dairy manufacturing
+    grepl("milk|butter|Cheese|dairy|Ice cream", NAICS_description, ignore.case = TRUE) ~ "Dairy Manufacturing",
+    
+    # Leather
+    grepl("Leather|hide", NAICS_description, ignore.case = TRUE) ~ "Leather & Hides",
+    
+    # Catch-all food & chemical mfg linked to livestock chain
+    grepl("miscellaneous food manufacturing|organic chemical manufacturing|Dog and cat food|animal food manufacturing", NAICS_description, ignore.case = TRUE) ~ "Other Manufacturing",
+    
+    TRUE ~ "Other"  ))
+print(livestock %>%   distinct(sector_group, NAICS_description) %>%   arrange(sector_group), n = Inf)
+
 
 
 ###############################################################################
@@ -211,7 +376,7 @@ unique(livestock$NAICS_description)
 
 # a) aggregate at CZ level: get REP_r at crop level
 names(crop)
-RET_crop_r <- crop %>% group_by(year, czone_2012, NAICS_description) %>% 
+RET_crop_r <- crop %>% group_by(year, czone_2012, sector_group) %>% 
   summarise(RET_i_tariff = sum(RET_i_tariff, na.rm = TRUE),
             RET_i_NTB = sum(RET_i_NTB, na.rm = TRUE),
             RET_i_NTB_IV = sum(RET_i_NTB_IV, na.rm = TRUE),
@@ -221,13 +386,13 @@ RET_crop_r <- crop %>% group_by(year, czone_2012, NAICS_description) %>%
             RET_NTB_tot_IV_r = sum(RET_NTB_tot_ir_IV, na.rm = TRUE))
 summary(RET_crop_r)  
 
-write_csv(crop, paste0("/data/sikeme/TRADE/US_CHN_TradeWar_git/data/created_exposure/NAICS6/RET_r_crop_IV.csv") )
+write_csv(RET_crop_r, paste0("/data/sikeme/TRADE/US_CHN_TradeWar_git/data/created_exposure/NAICS6/RET_r_crop_IV.csv") )
 
 
 
 # b) aggregate at CZ level: get REP_r at livestock level
 names(livestock)
-RET_livestock_r <- livestock %>% group_by(year, czone_2012, NAICS_description) %>% 
+RET_livestock_r <- livestock %>% group_by(year, czone_2012, sector_group) %>% 
   summarise(RET_i_tariff = sum(RET_i_tariff, na.rm = TRUE),
             RET_i_NTB = sum(RET_i_NTB, na.rm = TRUE),
             RET_i_NTB_IV = sum(RET_i_NTB_IV, na.rm = TRUE),

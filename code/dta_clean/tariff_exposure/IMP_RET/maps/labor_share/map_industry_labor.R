@@ -34,10 +34,18 @@ exp <- "/data/sikeme/TRADE/US_CHN_TradeWar_git/output/summary/exposure_maps"
 
 ################################################################################ 
 sectors <- read_csv("crosswalk/HS6_NAICS_Diane/NAICS_industry_2012.csv")
+sapply(sectors, class)
 dta <- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/data/QCEW/QCEW_2012_naics6_CZ.csv")
 
 cw_cty_czone_2012 <- read_csv("crosswalk_CZ_county/cw_cty_czone_2012.csv")
 names(cw_cty_czone_2012)
+
+
+output_NAICS6 <- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/data/Census_output/output_NAICS_6.csv")
+names(output_NAICS6)
+output_NAICS6 <- output_NAICS6 %>% select(NAICS6_2012, NAICS_description)
+sapply(output_NAICS6, class)
+
 ################################################################################ 
 
 # merge with sector definition from Diane
@@ -51,6 +59,12 @@ test <- sectors %>% filter(duplicated(naics) | duplicated(naics, fromLast = TRUE
 sectors <- sectors %>%  group_by(naics) %>%
   filter(if (n_distinct(subsector) > 1) subsector == "crop" else TRUE) %>%  ungroup()
 class(sectors$naics)
+
+# merge with NAICS detail info
+sectors <- left_join(sectors, output_NAICS6, by = c("naics" = "NAICS6_2012"))
+
+
+
 
 
 ################################################################################ 
@@ -67,6 +81,10 @@ test <- dta %>% filter(is.na(subsector))
 unique(test$naics)
 dta <- dta %>% mutate(subsector = if_else(is.na(subsector), "nonag", subsector))
 unique(dta$subsector)
+
+# Compute total employment by CZ and sector
+sector_emp <- dta %>%  group_by(czone_2012, subsector) %>%
+  summarise(emp_sector = sum(emp, na.rm = TRUE), .groups = "drop")
 
 # Compute total employment by CZ and sector
 sector_emp <- dta %>%  group_by(czone_2012, subsector) %>%

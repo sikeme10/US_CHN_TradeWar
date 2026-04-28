@@ -69,6 +69,7 @@ US_export <- US_export %>%
 # Drop year 2012 from US_export and output_NAICS6
 US_export <- US_export %>% select(-year) 
 output_NAICS6 <- output_NAICS6 %>% select(-year)
+HS_NAICS <- HS_NAICS %>% select(HS6, naics)
 
 # Filter HS2012 product codes
 HS_NAICS <- HS_NAICS %>% filter(HS6 %in% HS_product$HS_2012_Product_Code)
@@ -179,6 +180,8 @@ colSums(is.na(Merge_trade_output))
 
 names(Merge_trade_output)
 colSums(is.na(Merge_trade_output))
+test <- Merge_trade_output %>% filter(ImporterISO3 == "CHN" & hs2 == 2)
+
 
 # Sum exports and output at NAICS 6-digit level
 Merge <- Merge_trade_output %>% 
@@ -194,6 +197,7 @@ Merge <- Merge_trade_output %>%
     diff_log_tariff_2017 = mean(diff_log_tariff_2017, na.rm = TRUE)  )
 colSums(is.na(Merge))
 summary(Merge)
+test2 <- Merge %>% filter(ImporterISO3 == "CHN")
 
 ################################################################################
 # 4. Create shares

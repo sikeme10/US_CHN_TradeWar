@@ -225,8 +225,149 @@ write_csv(dta_import2, "data/SOE_dta/SOE_share_2010.csv")
 
 
 ################################################################################
+# pick country of interest 
+################################################################################
 
 
+
+
+library(readr)
+library(dplyr)
+library(purrr)
+library(stringr)
+library(tidyr)
+library(concordance)
+
+build_trade_panel <- function(iso3_code,
+                              trade_direction = "import",
+                              data_dir        = "data/SOE_dta/2010") {
+  
+  files <- list.files(data_dir, pattern = "\\.csv$", full.names = TRUE)
+  
+  process_one <- function(path) {
+    message("Processing: ", basename(path))
+    
+    read_csv(path, show_col_types = FALSE) %>%
+      mutate(
+        SOE = case_when(
+          EntNatNm %in% c("state-owned enterprises", "collective enterprise") ~ 1,
+          is.na(EntNatNm) ~ NA_real_,
+          TRUE ~ 0
+        )
+      ) %>%
+      filter(ImpExpTypeNm == trade_direction, ISO3 == iso3_code) %>%
+      group_by(EndDt, HSCd, HSNm, SOE) %>%
+      summarise(
+        Trade_value_USD = sum(USD, na.rm = TRUE),
+        Quantity        = sum(Quantity, na.rm = TRUE),
+        .groups = "drop"
+      ) %>%
+      mutate(source_file = basename(path))
+  }
+  
+  dta_all <- map_dfr(files, process_one)
+  
+  if (nrow(dta_all) == 0) {
+    warning("No rows found for ISO3 == '", iso3_code,
+            "' with direction '", trade_direction, "'.")
+    return(dta_all)
+  }
+  
+  # Aggregate to year level
+  dta_all <- dta_all %>%
+    mutate(Year = str_sub(EndDt, 1, 4)) %>%
+    group_by(Year, HSCd, HSNm, SOE) %>%
+    summarise(
+      Trade_value_USD = sum(Trade_value_USD, na.rm = TRUE),
+      Quantity        = sum(Quantity, na.rm = TRUE),
+      .groups = "drop"
+    )
+  
+  # Aggregate to HS6
+  dta_all <- dta_all %>%
+    mutate(hs6 = str_sub(HSCd, 1, 6)) %>%
+    group_by(Year, hs6, SOE) %>%
+    summarise(
+      Trade_value_USD = sum(Trade_value_USD, na.rm = TRUE),
+      Quantity        = sum(Quantity, na.rm = TRUE),
+      .groups = "drop"
+    )
+  
+  # Concord HS2007 (HS3) to HS2017 (HS5)
+  dta_all$hs6_H5 <- concord_hs(
+    sourcevar   = dta_all$hs6,
+    origin      = "HS3",
+    destination = "HS5",
+    dest.digit  = 6,
+    all         = FALSE
+  )
+  
+  n_dropped <- sum(is.na(dta_all$hs6_H5))
+  if (n_dropped > 0) {
+    message("Dropping ", n_dropped, " rows with no HS2017 concordance.")
+  }
+  
+  dta_all <- dta_all %>%
+    filter(!is.na(hs6_H5)) %>%
+    group_by(Year, hs6_H5, SOE) %>%
+    summarise(
+      Trade_value_USD = sum(Trade_value_USD, na.rm = TRUE),
+      Quantity        = sum(Quantity, na.rm = TRUE),
+      .groups = "drop"
+    )
+  
+  # Pivot wider by SOE status
+  dta_wide <- dta_all %>%
+    mutate(
+      SOE = case_when(
+        SOE == 1   ~ "SOE",
+        SOE == 0   ~ "non_SOE",
+        is.na(SOE) ~ "Unknown"
+      )
+    ) %>%
+    pivot_wider(
+      names_from  = SOE,
+      values_from = c(Trade_value_USD, Quantity),
+      names_glue  = "{.value}_{SOE}",
+      values_fill = 0
+    )
+  
+  # Make sure all expected columns exist even if a category is absent
+  expected_cols <- c(
+    "Trade_value_USD_SOE", "Trade_value_USD_non_SOE", "Trade_value_USD_Unknown",
+    "Quantity_SOE",        "Quantity_non_SOE",        "Quantity_Unknown"
+  )
+  for (col in expected_cols) {
+    if (!col %in% names(dta_wide)) dta_wide[[col]] <- 0
+  }
+  
+  # Totals and shares
+  dta_wide <- dta_wide %>%
+    mutate(
+      tot_Trade_value_USD = Trade_value_USD_SOE + Trade_value_USD_non_SOE + Trade_value_USD_Unknown,
+      tot_Quantity        = Quantity_SOE + Quantity_non_SOE + Quantity_Unknown,
+      share_value_SOE     = ifelse(tot_Trade_value_USD > 0,
+                                   Trade_value_USD_SOE / tot_Trade_value_USD,
+                                   NA_real_),
+      ISO3            = iso3_code,
+      trade_direction = trade_direction
+    )
+  
+  dta_wide
+}
+
+USA_imports <- build_trade_panel("USA", trade_direction = "import")
+CAN_imports <- build_trade_panel("CAN", trade_direction = "import")
+BRA_imports <- build_trade_panel("BRA", trade_direction = "import")
+AUS_imports <- build_trade_panel("AUS", trade_direction = "import")
+JPN_imports <- build_trade_panel("JPN", trade_direction = "import")
+
+
+write_csv(USA_imports, "data/SOE_dta/SOE_share_USA_2010.csv")
+write_csv(CAN_imports, "data/SOE_dta/SOE_share_CAN_2010.csv")
+write_csv(BRA_imports, "data/SOE_dta/SOE_share_BRA_2010.csv")
+write_csv(AUS_imports, "data/SOE_dta/SOE_share_AUS_2010.csv")
+write_csv(JPN_imports, "data/SOE_dta/SOE_share_JPN_2010.csv")
 
 
 

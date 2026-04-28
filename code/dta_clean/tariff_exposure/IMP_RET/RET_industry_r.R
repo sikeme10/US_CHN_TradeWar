@@ -40,6 +40,7 @@ labor<- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/data/QCEW/QCEW_2012_nai
 
 # get subsector classification from Diane
 sectors <- read_csv("crosswalk/HS6_NAICS_Diane/NAICS_industry_2012.csv")
+HS_NAICS <- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/data/crosswalk/clean_HS6_naics6_2012.csv")
 
 
 ################################################################################
@@ -98,12 +99,30 @@ labor$sector_label <- dplyr::case_when(
 
 # labor <-labor%>% filter(naics %in% naics_to_use)
 
+# # get sector level labor to create sector level labor shares at CZ
+# sector_labor <- labor %>%   group_by(czone_2012, sector_label) %>% 
+#   summarise(
+#     sector_estabs_CZ     = sum(estabs,       na.rm = TRUE),
+#     sector_emp_CZ        = sum(emp,          na.rm = TRUE),
+#     sector_wages_total_CZ = sum(wages_total, na.rm = TRUE)  )
+# 
+# # get CZ level labor to create total labor shares at CZ
+# tot_labor <- labor %>%   group_by(czone_2012) %>% 
+#   summarise(
+#     tot_estabs_CZ     = sum(estabs,       na.rm = TRUE),
+#     tot_emp_CZ        = sum(emp,          na.rm = TRUE),
+#     tot_wages_total_CZ = sum(wages_total, na.rm = TRUE)  )
+# 
+# # Step 2: compute labor shares at naics-CZ level from labor ONLY
+# labor <- labor %>%
+#   left_join(tot_labor, by = "czone_2012") %>%
+#   left_join(sector_labor, by = c("czone_2012", "sector_label")) %>%
+#   mutate(share_tot_labor_ir = if_else(tot_emp_CZ > 0, emp / tot_emp_CZ, 0),
+#          share_sector_labor_ir = if_else(tot_emp_CZ > 0, emp / tot_emp_CZ, 0),)
+# summary(labor)
+
+
 # get sector level labor to create sector level labor shares at CZ
-sector_labor <- labor %>%   group_by(czone_2012, sector_label) %>% 
-  summarise(
-    sector_estabs_CZ     = sum(estabs,       na.rm = TRUE),
-    sector_emp_CZ        = sum(emp,          na.rm = TRUE),
-    sector_wages_total_CZ = sum(wages_total, na.rm = TRUE)  )
 
 # get CZ level labor to create total labor shares at CZ
 tot_labor <- labor %>%   group_by(czone_2012) %>% 
@@ -115,10 +134,8 @@ tot_labor <- labor %>%   group_by(czone_2012) %>%
 # Step 2: compute labor shares at naics-CZ level from labor ONLY
 labor <- labor %>%
   left_join(tot_labor, by = "czone_2012") %>%
-  left_join(sector_labor, by = c("czone_2012", "sector_label")) %>%
-  mutate(share_tot_labor_ir = if_else(tot_emp_CZ > 0, emp / tot_emp_CZ, 0),
-         share_sector_labor_ir = if_else(tot_emp_CZ > 0, emp / tot_emp_CZ, 0),)
-summary(labor)
+  mutate(share_tot_labor_ir = if_else(tot_emp_CZ > 0, emp / tot_emp_CZ, 0))
+
 
 ################################################################################
 
@@ -137,10 +154,7 @@ names(merge_data)
 merge_data <- merge_data %>% mutate(
   RET_tariff_tot_ir = RET_i_tariff * share_tot_labor_ir,
   RET_NTB_tot_ir    = RET_i_NTB    * share_tot_labor_ir,
-  RET_NTB_tot_ir_IV    = RET_i_NTB_IV    * share_tot_labor_ir,
-  RET_tariff_sect_ir = RET_i_tariff * share_tot_labor_ir,
-  RET_NTB_sect_ir    = RET_i_NTB    * share_tot_labor_ir,
-  RET_NTB_sect_ir_IV    = RET_i_NTB_IV    * share_tot_labor_ir)
+  RET_NTB_tot_ir_IV    = RET_i_NTB_IV    * share_tot_labor_ir)
 
 length(unique(merge_data$naics))
 summary(merge_data)
@@ -157,17 +171,52 @@ merge_data <- merge_data %>% mutate( sector = case_when( sector_label =="Agricul
 table(merge_data$sector)
 
 ###############################################################################
+names(HS_NAICS)
+colSums(is.na(HS_NAICS))
+HS_NAICS <- HS_NAICS %>% select(naics, subsector, ag_subsector, naics_description)
+HS_NAICS <- HS_NAICS %>% distinct() %>% filter(!is.na(naics))
 
-# merge with sector definition from Diane
-names(sectors)
-sectors <- sectors %>% select(naics, subsector, ag_subsector)
-sectors <- sectors %>% distinct() %>% filter(!is.na(naics))
-sectors <- sectors %>%  group_by(naics, subsector) %>%
+# check if duplicates:
+test <- HS_NAICS %>%  filter(duplicated(naics) | duplicated(naics, fromLast = TRUE))
+test <- HS_NAICS %>%  group_by(naics) %>%
+  summarise(n_subsector = n_distinct(subsector),
+            subsectors = paste(unique(subsector), collapse = ", ")  ) %>%
+  filter(n_subsector > 1)
+# if non ag and crop/livestock put it in crop and livestock
+HS_NAICS <- HS_NAICS %>%  group_by(naics) %>%
+  mutate(
+    subsector = case_when(
+      # forestry + crop + nonag → crop (put this first: most specific)
+      all(c("forestry", "crop", "nonag") %in% subsector) ~ "crop",
+      
+      # nonag + livestock → livestock
+      any(subsector == "livestock") & any(subsector == "nonag") ~ "livestock",
+      
+      # nonag + crop → crop
+      any(subsector == "crop") & any(subsector == "nonag") ~ "crop",
+      
+      # nonag + forestry → nonag
+      any(subsector == "forestry") & any(subsector == "nonag") ~ "nonag",
+      
+      # otherwise keep original value
+      TRUE ~ subsector    )  ) %>%  ungroup()
+test <- HS_NAICS %>%  group_by(naics) %>%
+  summarise(n_subsector = n_distinct(subsector),
+            subsectors = paste(unique(subsector), collapse = ", ")  ) %>%
+  filter(n_subsector > 1)
+table(HS_NAICS$subsector)
+length(unique(HS_NAICS$naics))
+# manually adjust some other 
+HS_NAICS <- HS_NAICS %>%
+  mutate( subsector = case_when(naics == 311225 ~ "crop", naics == 311119 ~ "livestock",TRUE ~ subsector)  )
+
+
+
+sectors <- HS_NAICS %>%  group_by(naics, subsector) %>%
   summarise(ag_subsector = paste(ag_subsector, collapse = ", "), .groups = "drop")
 length(unique(sectors$naics))
-test <- sectors %>% filter(duplicated(naics) | duplicated(naics, fromLast = TRUE))
-sectors <- sectors %>%  group_by(naics) %>%
-  filter(if (n_distinct(subsector) > 1) subsector == "crop" else TRUE) %>%  ungroup()
+
+###############################################################################
 
 merge_data1 <- left_join(merge_data, sectors)
 colSums(is.na(merge_data1))
@@ -176,26 +225,6 @@ test <- merge_data1 %>%  filter(is.na(subsector))
 unique(test$NAICS_description)
 
 
-
-merge_data1 <- merge_data1 %>%
-  mutate(subsector = case_when(
-    !is.na(subsector)                                                        ~ subsector,
-    sector == "Manu"                                                         ~ "nonag",
-    NAICS_description == "Software publishers"                               ~ "nonag",
-    NAICS_description %in% c(   "Sugarcane farming (11193)",    "Nursery and tree production (111421)",
-      "Floriculture production (111422)"    )                                                                        ~ "crop",
-    NAICS_description %in% c( "Beef cattle ranching and farming (112111)",
-      "Cattle feedlots (112112)", "Chicken egg production (11231)",
-      "Broilers and other meat-type chicken production (11232)",
-      "Turkey production (11233)",  "Poultry hatcheries (11234)",
-      "Other poultry production (11239)"    )    ~ "livestock",    
-    TRUE  ~ subsector  ))
-
-# verify
-colSums(is.na(merge_data1))
-unique(merge_data1$subsector)
-
-colSums(is.na(merge_data1))
 
 ###############################################################################
 # total by industries 

@@ -82,4 +82,4 @@ write_csv(dta_NAICS4 , "/data/sikeme/TRADE/US_CHN_TradeWar_git/data/Census_outpu
 
 write_csv(dta_NAICS3 , "/data/sikeme/TRADE/US_CHN_TradeWar_git/data/Census_output/manufacturing_output_NAICS3.csv")
 
-
+test <- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/data/Census_output/manufacturing_output_NAICS6.csv")

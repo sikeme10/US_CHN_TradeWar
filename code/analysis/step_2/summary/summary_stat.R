@@ -66,13 +66,15 @@ cor_matrix <- dta_2018 %>%
   rename(`IMP tariff` = IMP_tariff_r, `RET tariff` = RET_tariff_r, 
          `RET NTM` = RET_NTB_r,`RET NTM (IV)`= RET_NTB_IV_r) %>%  cor(use = "pairwise.complete.obs")
 
-ggcorrplot(cor_matrix,
+plot <- ggcorrplot(cor_matrix,
            method   = "square",
            type     = "lower",
            lab      = TRUE,
-           lab_size = 4,
-           colors   = c("#6D2B09", "white", "#2B4B6D"),
-           title    = "Correlation Matrix")
+           lab_size = 5,
+           colors   = c("#6D2B09", "white", "#2B4B6D"))
+plot
+ggsave(paste0(exp,"correlation_plot_Xvars_IV.png"), plot = plot, width = 12, height = 10, dpi = 300)
+
 
 library(corrplot)
 
@@ -101,80 +103,120 @@ dta_sector_2018 <- dta_sector %>% filter(year >2017)
 
 names(dta_sector_2018)
 library(ggcorrplot)
-cor_matrix <- dta_sector_2018 %>% filter(year == 2018) %>%
+cor_matrix <- dta_sector_2018 %>% 
   select( SUB,
-    RET_tariff_tot_r_crop, RET_tariff_tot_r_forestry, RET_tariff_tot_r_livestock, RET_tariff_tot_r_mining, RET_tariff_tot_r_nonag,
-    RET_NTB_tot_r_crop, RET_NTB_tot_r_forestry, RET_NTB_tot_r_livestock, RET_NTB_tot_r_mining, RET_NTB_tot_r_nonag,
-    RET_NTB_tot_IV_r_crop, RET_NTB_tot_IV_r_forestry, RET_NTB_tot_IV_r_livestock, RET_NTB_tot_IV_r_mining, RET_NTB_tot_IV_r_nonag,
-    IMP_tariff_tot_ir_crop, IMP_tariff_tot_ir_forestry, IMP_tariff_tot_ir_livestock, IMP_tariff_tot_ir_mining, IMP_tariff_tot_ir_nonag
-  ) %>%
+          RET_tariff_tot_r_crop, RET_tariff_tot_r_livestock, RET_tariff_tot_r_nonag,
+          RET_NTB_tot_r_crop, RET_NTB_tot_r_livestock, RET_NTB_tot_r_nonag,
+          RET_NTB_tot_IV_r_crop, RET_NTB_tot_IV_r_livestock, RET_NTB_tot_IV_r_nonag,
+          IMP_tariff_tot_ir_crop, IMP_tariff_tot_ir_livestock, IMP_tariff_tot_ir_nonag  ) %>%
   rename(
     # RET tariff by sector
     `RET tariff Crop`     = RET_tariff_tot_r_crop,
-    `RET tariff Forestry` = RET_tariff_tot_r_forestry,
     `RET tariff Livestock`= RET_tariff_tot_r_livestock,
-    `RET tariff Mining`   = RET_tariff_tot_r_mining,
     `RET tariff NonAg`    = RET_tariff_tot_r_nonag,
-    # RET NTM by sector
-    `RET NTM Crop`        = RET_NTB_tot_r_crop,
-    `RET NTM Forestry`    = RET_NTB_tot_r_forestry,
-    `RET NTM Livestock`   = RET_NTB_tot_r_livestock,
-    `RET NTM Mining`      = RET_NTB_tot_r_mining,
-    `RET NTM NonAg`       = RET_NTB_tot_r_nonag,
     # RET NTM IV by sector
     `RET NTM IV Crop`     = RET_NTB_tot_IV_r_crop,
-    `RET NTM IV Forestry` = RET_NTB_tot_IV_r_forestry,
     `RET NTM IV Livestock`= RET_NTB_tot_IV_r_livestock,
-    `RET NTM IV Mining`   = RET_NTB_tot_IV_r_mining,
     `RET NTM IV NonAg`    = RET_NTB_tot_IV_r_nonag,
+    # RET NTM IV by sector
+    `RET NTM Crop`     = RET_NTB_tot_r_crop,
+    `RET NTM Livestock`= RET_NTB_tot_r_livestock,
+    `RET NTM NonAg`    = RET_NTB_tot_r_nonag,
     # IMP tariff by sector
     `IMP tariff Crop`     = IMP_tariff_tot_ir_crop,
-    `IMP tariff Forestry` = IMP_tariff_tot_ir_forestry,
     `IMP tariff Livestock`= IMP_tariff_tot_ir_livestock,
-    `IMP tariff Mining`   = IMP_tariff_tot_ir_mining,
     `IMP tariff NonAg`    = IMP_tariff_tot_ir_nonag  ) %>%
   cor(use = "pairwise.complete.obs")
+
 
 plot <- ggcorrplot(cor_matrix,
                    method   = "square",
                    type     = "lower",
                    lab      = TRUE,
-                   lab_size = 3,
-                   colors   = c("#6D2B09", "white", "#2B4B6D"),
-                   title    = "Correlation Matrix 2018")
+                   lab_size = 5,
+                   colors   = c("#6D2B09", "white", "#2B4B6D"))+
+  theme(
+    axis.text.x  = element_text(size = 15),
+    axis.text.y  = element_text(size = 15),
+    legend.text  = element_text(size = 15),
+    legend.title = element_text(size = 15),
+    legend.key.height = unit(1.5, "cm"),  # taller legend bar
+    legend.key.width  = unit(0.5, "cm")  )
+plot
+ggsave(paste0(exp,"correlation_plot_Xvars_industry_IV.png"), plot = plot, width = 12, height = 10, dpi = 300)
+
+
+
+
+names(dta_sector_2018)
+library(ggcorrplot)
+cor_matrix <- dta_sector_2018 %>% filter(year == 2018) %>%
+  select( SUB,
+          RET_tariff_tot_r_crop, RET_tariff_tot_r_livestock, RET_tariff_tot_r_nonag,
+          RET_NTB_tot_r_crop, RET_NTB_tot_r_livestock, RET_NTB_tot_r_nonag,
+          RET_NTB_tot_IV_r_crop, RET_NTB_tot_IV_r_livestock, RET_NTB_tot_IV_r_nonag,
+          IMP_tariff_tot_ir_crop, IMP_tariff_tot_ir_livestock, IMP_tariff_tot_ir_nonag  ) %>%
+  rename(
+    # RET tariff by sector
+    `RET tariff Crop`     = RET_tariff_tot_r_crop,
+    `RET tariff Livestock`= RET_tariff_tot_r_livestock,
+    `RET tariff NonAg`    = RET_tariff_tot_r_nonag,
+    # RET NTM IV by sector
+    `RET NTM IV Crop`     = RET_NTB_tot_IV_r_crop,
+    `RET NTM IV Livestock`= RET_NTB_tot_IV_r_livestock,
+    `RET NTM IV NonAg`    = RET_NTB_tot_IV_r_nonag,
+    # RET NTM IV by sector
+    `RET NTM Crop`     = RET_NTB_tot_r_crop,
+    `RET NTM Livestock`= RET_NTB_tot_r_livestock,
+    `RET NTM NonAg`    = RET_NTB_tot_r_nonag,
+    # IMP tariff by sector
+    `IMP tariff Crop`     = IMP_tariff_tot_ir_crop,
+    `IMP tariff Livestock`= IMP_tariff_tot_ir_livestock,
+    `IMP tariff NonAg`    = IMP_tariff_tot_ir_nonag  ) %>%
+  cor(use = "pairwise.complete.obs")
+
+
+plot <- ggcorrplot(cor_matrix,
+                   method   = "square",
+                   type     = "lower",
+                   lab      = TRUE,
+                   lab_size = 5,
+                   colors   = c("#6D2B09", "white", "#2B4B6D"))+
+  theme(
+    axis.text.x  = element_text(size = 15),
+    axis.text.y  = element_text(size = 15),
+    legend.text  = element_text(size = 15),
+    legend.title = element_text(size = 15),
+    legend.key.height = unit(1.5, "cm"),  # taller legend bar
+    legend.key.width  = unit(0.5, "cm")  )
 plot
 ggsave(paste0(exp,"correlation_plot_Xvars_industry_IV_2018.png"), plot = plot, width = 12, height = 10, dpi = 300)
 
+
+# for 2019
+
 cor_matrix <- dta_sector_2018 %>% filter(year == 2019) %>%
   select( SUB,
-    RET_tariff_tot_r_crop, RET_tariff_tot_r_forestry, RET_tariff_tot_r_livestock, RET_tariff_tot_r_mining, RET_tariff_tot_r_nonag,
-    RET_NTB_tot_r_crop, RET_NTB_tot_r_forestry, RET_NTB_tot_r_livestock, RET_NTB_tot_r_mining, RET_NTB_tot_r_nonag,
-    RET_NTB_tot_IV_r_crop, RET_NTB_tot_IV_r_forestry, RET_NTB_tot_IV_r_livestock, RET_NTB_tot_IV_r_mining, RET_NTB_tot_IV_r_nonag,
-    IMP_tariff_tot_ir_crop, IMP_tariff_tot_ir_forestry, IMP_tariff_tot_ir_livestock, IMP_tariff_tot_ir_mining, IMP_tariff_tot_ir_nonag  ) %>%
+          RET_tariff_tot_r_crop, RET_tariff_tot_r_livestock, RET_tariff_tot_r_nonag,
+          RET_NTB_tot_r_crop, RET_NTB_tot_r_livestock, RET_NTB_tot_r_nonag,
+          RET_NTB_tot_IV_r_crop, RET_NTB_tot_IV_r_livestock, RET_NTB_tot_IV_r_nonag,
+          IMP_tariff_tot_ir_crop, IMP_tariff_tot_ir_livestock, IMP_tariff_tot_ir_nonag  ) %>%
   rename(
     # RET tariff by sector
     `RET tariff Crop`     = RET_tariff_tot_r_crop,
-    `RET tariff Forestry` = RET_tariff_tot_r_forestry,
     `RET tariff Livestock`= RET_tariff_tot_r_livestock,
-    `RET tariff Mining`   = RET_tariff_tot_r_mining,
     `RET tariff NonAg`    = RET_tariff_tot_r_nonag,
-    # RET NTM by sector
-    `RET NTM Crop`        = RET_NTB_tot_r_crop,
-    `RET NTM Forestry`    = RET_NTB_tot_r_forestry,
-    `RET NTM Livestock`   = RET_NTB_tot_r_livestock,
-    `RET NTM Mining`      = RET_NTB_tot_r_mining,
-    `RET NTM NonAg`       = RET_NTB_tot_r_nonag,
     # RET NTM IV by sector
     `RET NTM IV Crop`     = RET_NTB_tot_IV_r_crop,
-    `RET NTM IV Forestry` = RET_NTB_tot_IV_r_forestry,
     `RET NTM IV Livestock`= RET_NTB_tot_IV_r_livestock,
-    `RET NTM IV Mining`   = RET_NTB_tot_IV_r_mining,
     `RET NTM IV NonAg`    = RET_NTB_tot_IV_r_nonag,
+    # RET NTM IV by sector
+    `RET NTM Crop`     = RET_NTB_tot_r_crop,
+    `RET NTM Livestock`= RET_NTB_tot_r_livestock,
+    `RET NTM NonAg`    = RET_NTB_tot_r_nonag,
     # IMP tariff by sector
     `IMP tariff Crop`     = IMP_tariff_tot_ir_crop,
-    `IMP tariff Forestry` = IMP_tariff_tot_ir_forestry,
     `IMP tariff Livestock`= IMP_tariff_tot_ir_livestock,
-    `IMP tariff Mining`   = IMP_tariff_tot_ir_mining,
     `IMP tariff NonAg`    = IMP_tariff_tot_ir_nonag  ) %>%
   cor(use = "pairwise.complete.obs")
 
@@ -182,9 +224,15 @@ plot <- ggcorrplot(cor_matrix,
                    method   = "square",
                    type     = "lower",
                    lab      = TRUE,
-                   lab_size =3,
-                   colors   = c("#6D2B09", "white", "#2B4B6D"),
-                   title    = "Correlation Matrix 2019")
+                   lab_size = 5,
+                   colors   = c("#6D2B09", "white", "#2B4B6D"))+
+  theme(
+    axis.text.x  = element_text(size = 15),
+    axis.text.y  = element_text(size = 15),
+    legend.text  = element_text(size = 15),
+    legend.title = element_text(size = 15),
+    legend.key.height = unit(1.5, "cm"),  # taller legend bar
+    legend.key.width  = unit(0.5, "cm")  )
 plot
 ggsave(paste0(exp,"correlation_plot_Xvars_industry_IV_2019.png"), plot = plot, width = 12, height = 10, dpi = 300)
 

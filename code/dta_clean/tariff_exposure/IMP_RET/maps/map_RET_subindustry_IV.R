@@ -28,6 +28,7 @@ library(viridis)
 rm(list=ls())
 # Set directory
 setwd("/data/sikeme/TRADE/US_CHN_TradeWar_git/data")
+
 getwd()
 
 exp <- "/data/sikeme/TRADE/US_CHN_TradeWar_git/output/summary/exposure_maps"
@@ -127,12 +128,12 @@ theme_map <- theme_minimal(base_size = 10, base_family = "Times New Roman") +
     axis.ticks         = element_blank(),
     panel.background   = element_rect(fill = "white", color = NA),
     plot.background    = element_rect(fill = "white", color = NA),
-    plot.title         = element_text(size = 9, hjust = 0.5),
+    plot.title         = element_text(size = 7, hjust = 0.5),
     strip.text         = element_text(size = 7, face = "bold", family = "Times New Roman"),
     strip.background   = element_blank(),
     legend.position    = "right",
-    legend.title       = element_text(size = 4),
-    legend.text        = element_text(size = 4),
+    legend.title       = element_text(size = 5),
+    legend.text        = element_text(size = 5),
     legend.key.height  = unit(0.08, "cm"),
     legend.key.width   = unit(0.08, "cm"),
     legend.spacing.y   = unit(0.02, "cm"),
@@ -162,6 +163,8 @@ labels <- c("0.00 - 0.01", "0.01 - 0.02", "0.02 - 0.03",
             "0.03 - 0.04", "0.04 - 0.06", "> 0.06")
 colors <- c("#FEFEBE", "#FDD58B", "#F4A657", "#D95F2B", "#B22421", "#6B0000")
 
+
+
 cz_map <- cz_map %>%
   mutate(RET_tariff_bin = cut(RET_tariff_tot_r,breaks = breaks,
                               labels = labels,include.lowest = TRUE))
@@ -170,9 +173,9 @@ cz_map <- cz_map %>%
 plot <- ggplot(subset(cz_map, year == 2019 )) +
   aes(fill = RET_tariff_bin) +
   geom_sf(color = "white", linewidth = 0.05) +
-  geom_sf(fill = NA, color = "black", linewidth = 0.2) +
+  geom_sf(fill = NA, color = "black", linewidth = 0.1) +
   scale_fill_manual(values = colors, name = "RET Tariff", na.value = "grey80", drop = FALSE) +
-  labs(title = paste("Retaliatory tariff exposure in 2019 by subsector")) +
+  labs(title = paste("Retaliatory tariff exposure in 2019 by sector")) +
   facet_wrap(~subsector) +
   theme_void() +
   theme_map_autor
@@ -183,17 +186,11 @@ ggsave(filename = file.path(exp, paste0("RET_tariff_2019_subsector", "_autor.png
 
 
 # ── Define bins, labels, colors (all years faceted) ───────────────────────────
-breaks <- c(0, 0.01, 0.02, 0.03, 0.04, 0.06, Inf)
-labels <- c("0.00-0.01", "0.01-0.02", "0.02-0.03",
-            "0.03-0.04", "0.04-0.06", "> 0.06")
+
+breaks <- c(0, 0.01, 0.02, 0.03, 0.04, 0.06, 0.75)
+labels <- c("0.00 - 0.01", "0.01 - 0.02", "0.02 - 0.03",
+            "0.03 - 0.04", "0.04 - 0.06", "> 0.06")
 colors <- c("#FEFEBE", "#FDD58B", "#F4A657", "#D95F2B", "#B22421", "#6B0000")
-
-
-
-breaks <- c(0, 0.01, 0.02, 0.03, 0.04, 0.06, 0.50, Inf)
-labels <- c("0.00-0.02", "0.02-0.04", "0.04-0.06",
-            "0.06-0.08", "0.08-0.12", "0.12-0.50", ">0.50")
-colors <- c("#FEFEBE", "#FDD58B", "#F4A657", "#D95F2B", "#B22421", "#6B0000", "#3B0000")
 
 cz_map <- cz_map %>%
   mutate(RET_tariff_bin = cut(RET_tariff_tot_r, breaks = breaks,
@@ -206,7 +203,7 @@ plot <- ggplot(subset(cz_map)) +
   geom_sf(fill = NA, color = "black", linewidth = 0.05) +
   facet_wrap(~subsector) +
   scale_fill_manual(values = colors, name = "RET Tariff", na.value = "grey80", drop = FALSE) +
-  labs(title = paste("Retaliatory tariff exposure by subsector")) +
+  labs(title = paste("Retaliatory tariff exposure by sector")) +
   theme_void() +
   theme_map
 plot
@@ -214,14 +211,16 @@ ggsave(filename = file.path(exp, paste0("RET_tariff_subsector.png")),
        plot = plot, width = 5, height = 2, dpi = 300)
 
 
-
+library(ggplot2)
+library(sf)
+library(patchwork)
 plot_2018 <- ggplot(subset(cz_map, year == 2018)) +
   aes(fill = RET_tariff_bin) +
   geom_sf(color = "white", linewidth = 0.05) +
   geom_sf(fill = NA, color = "black", linewidth = 0.05) +
   facet_wrap(~subsector) +
   scale_fill_manual(values = colors, name = "RET Tariff", na.value = "grey80", drop = FALSE) +
-  labs(title = paste("Retaliatory tariff exposure by subsector: 2018")) +
+  labs(title = paste("Retaliatory tariff exposure by sector: 2018")) +
   theme_void() +
   theme_map
 
@@ -231,7 +230,7 @@ plot_2019 <- ggplot(subset(cz_map, year == 2019)) +
   geom_sf(fill = NA, color = "black", linewidth = 0.05) +
   facet_wrap(~subsector) +
   scale_fill_manual(values = colors, name = "RET Tariff", na.value = "grey80", drop = FALSE) +
-  labs(title = paste("Retaliatory tariff exposure by subsector: 2019")) +
+  labs(title = paste("Retaliatory tariff exposure by sector: 2019")) +
   theme_void() +
   theme_map
 plot <- plot_2018 / plot_2019
@@ -243,21 +242,16 @@ ggsave(filename = file.path(exp, paste0("RET_tariff_subsector_year.png")), plot 
 summary(cz_map)
 
 # ── NTM ───────────────────────────────────────────────────────────────────────
-breaks <- c(-Inf, 0, 0.05, 0.1, 0.5, 1.75, Inf)
-labels <- c("<0", "0.00-0.05", "0.05-0.10", "0.10-0.50", "0.50-1.50", ">1.50")
-
-breaks <- c(-001, 0.1, 0.02, 0.03, 0.04, 0.06, 0.8)
-labels <- c("0.00-0.01", "0.01-0.02", "0.02-0.03",
-            "0.03-0.04", "0.04-0.06", "> 0.06")
-
+# ── Define the exact bins and colors from the image ──────────────────────────
+breaks <- c(0, 0.05, 0.1, 0.2, 0.5, 1, Inf)
+labels <- c("0.0–0.05", "0.05–0.1", "0.1–0.2","0.2–0.5","0.5–1.0",  ">1.0")
 colors <- c("#FEFEBE", "#FDD58B", "#F4A657", "#D95F2B", "#B22421", "#6B0000")
 
+breaks <- c(0, 0.01, 0.02, 0.03, 0.04, 0.06, 0.75)
 
 
-
-breaks <- c(-Inf, 0.01, 0.02, 0.03, 0.04, 0.06, 0.50, Inf)
-labels <- c("0.00-0.02", "0.02-0.04", "0.04-0.06",
-            "0.06-0.08", "0.08-0.12", "0.12-0.50", ">0.50")
+breaks <- c(-Inf, 0.01, 0.02, 0.03, 0.04, 0.06, 0.75, Inf)
+labels <- c("<0.01","0.01-0.02","0.02-0.03","0.03-0.04","0.04-0.06","0.06-0.75",">0.75")
 colors <- c("#FEFEBE", "#FDD58B", "#F4A657", "#D95F2B", "#B22421", "#6B0000", "#3B0000")
 
 
@@ -270,7 +264,7 @@ plot <- ggplot(subset(cz_map)) +
   geom_sf(color = "white", linewidth = 0.05) +
   geom_sf(fill = NA, color = "black", linewidth = 0.05) +
   scale_fill_manual(values = colors, name = "RET NTM", na.value = "grey80", drop = FALSE) +
-  labs(title = paste("Retaliatory NTM exposure by subsector")) +
+  labs(title = paste("Retaliatory NTM exposure by sector")) +
   facet_wrap(~subsector) +
   theme_void() +
   theme_map
@@ -281,10 +275,11 @@ ggsave(filename = file.path(exp, paste0("RET_NTM_subsector.png")),
 
 
 # ── NTM IV ────────────────────────────────────────────────────────────────────
-breaks <- c(-001, 0.1, 0.02, 0.03, 0.04, 0.06, 0.8)
-labels <- c("0.00-0.01", "0.01-0.02", "0.02-0.03",
-            "0.03-0.04", "0.04-0.06", "> 0.06")
-colors <- c("#FEFEBE", "#FDD58B", "#F4A657", "#D95F2B", "#B22421", "#6B0000")
+
+breaks <- c(-Inf, 0.01, 0.02, 0.03, 0.04, 0.06, 0.75, Inf)
+labels <- c("<0.01","0.01-0.02","0.02-0.03","0.03-0.04","0.04-0.06","0.06-0.75",">0.75")
+colors <- c("#FEFEBE", "#FDD58B", "#F4A657", "#D95F2B", "#B22421", "#6B0000", "#3B0000")
+
 
 cz_map <- cz_map %>%
   mutate(RET_NTM_IV_bin = cut(RET_NTB_tot_IV_r, breaks = breaks,
@@ -295,7 +290,7 @@ plot <- ggplot(subset(cz_map)) +
   geom_sf(color = "white", linewidth = 0.05) +
   geom_sf(fill = NA, color = "black", linewidth = 0.05) +
   scale_fill_manual(values = colors, name = "RET NTM", na.value = "grey80", drop = FALSE) +
-  labs(title = paste("Retaliatory NTM exposure (using IV) by subsector" )) +
+  labs(title = paste("Retaliatory NTM exposure (using IV) by sector" )) +
   facet_wrap(~subsector) +
   theme_void() +
   theme_map
