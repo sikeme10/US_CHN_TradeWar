@@ -1,0 +1,287 @@
+
+
+################################################################################
+#                              Create tau hat (CHINA tariffs on US)
+
+
+# we obtain Chinese tariffs imposed on US  as well other countries and estimate the tau value 
+# We create a log change in tariff vairable relative to 2017
+
+################################################################################
+
+
+library(readr)
+library(tidyr)
+library(dplyr)
+library(data.table)
+library(stringi)
+library(fixest)
+library(countrycode)
+library(tidyverse)
+library(vroom)
+library(labelled)
+library(haven)
+
+################################################################################
+
+rm(list=ls())
+# Set directory
+setwd("/data/sikeme/TRADE/US_CHN_TradeWar_git/")
+getwd()
+
+exp <- "/data/sikeme/TRADE/US_CHN_TradeWar_git/data/tariff_dta"
+
+################################################################################
+
+# load data
+dir_dta <-  "/data/sikeme/TRADE/US_CHN_TradeWar_git/output/Compare_values/yearly/robust/elast/"
+
+estimated_tau <- read_csv(paste0(dir_dta, "US_ln_NTMs_base_2017_FE_boot_hs4_elast.csv"))
+# estimated_tau_IV <- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/output/IVs/predicted/SOE_IV_predicted_AVE.csv")
+# estimated_tau_IV <- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/output/IVs/predicted/SOE_IV_predicted_AVE_bis.csv")
+
+# from soderbery elastcitities:
+estimated_tau_IV <- read_csv( "/data/sikeme/TRADE/US_CHN_TradeWar_git/output/IVs/predicted/SOE_IV_predicted_AVE_elast_bis.csv")
+
+
+# tariff data 
+dir_dta_tariff <- "/data/sikeme/TRADE/US_CHN_TradeWar_git/output/Compare_values/yearly/robust/"
+tariffs <- read_csv(paste0(dir_dta_tariff, "estimates_log_tariff_FE_boot.csv"))
+
+ROW_tariffs <- read_csv("data/tariff_dta/teti/ROW_tariff_on_US_monthly.csv")
+
+################################################################################
+# 1) for estimated chinese tariff rate 
+################################################################################
+
+quant <- 0.05
+
+FE_q   <- quantile(estimated_tau$diff_ln_AVE_FE,        quant,      na.rm = TRUE)
+FE_qH  <- quantile(estimated_tau$diff_ln_AVE_FE,        1 - quant,  na.rm = TRUE)
+FE_b_q <- quantile(estimated_tau$diff_ln_AVE_FE_bench,  quant,      na.rm = TRUE)
+FE_b_qH<- quantile(estimated_tau$diff_ln_AVE_FE_bench,  1 - quant,  na.rm = TRUE)
+FE_w_q <- quantile(estimated_tau$diff_ln_AVE_FE_wmean,  quant,      na.rm = TRUE)
+FE_w_qH<- quantile(estimated_tau$diff_ln_AVE_FE_wmean,  1 - quant,  na.rm = TRUE)
+
+cat("FE [1%,99%]:", FE_q, FE_qH,"| Bench [1%,99%]:", FE_b_q, FE_b_qH, "| Wmean [1%,99%]:", FE_w_q, FE_w_qH, "\n")
+
+estimated_tau1 <- estimated_tau %>%
+  mutate(diff_ln_AVE_FE        = ifelse(diff_ln_AVE_FE        < FE_q   | diff_ln_AVE_FE        > FE_qH,  NA, diff_ln_AVE_FE),
+         diff_ln_AVE_FE_bench  = ifelse(diff_ln_AVE_FE_bench  < FE_b_q | diff_ln_AVE_FE_bench  > FE_b_qH,NA, diff_ln_AVE_FE_bench),
+         diff_ln_AVE_FE_wmean  = ifelse(diff_ln_AVE_FE_wmean  < FE_w_q | diff_ln_AVE_FE_wmean  > FE_w_qH,NA, diff_ln_AVE_FE_wmean)  )
+
+names(estimated_tau1)
+estimated_tau1 <- estimated_tau1 %>% group_by(year, hs2,hs4, ExporterISO3, ImporterISO3) %>%
+  summarise(diff_ln_AVE_FE = mean(diff_ln_AVE_FE, na.rm = TRUE),
+            diff_ln_AVE_FE_bench = mean(diff_ln_AVE_FE_bench, na.rm = TRUE),
+            diff_ln_AVE_FE_wmean = mean(diff_ln_AVE_FE_wmean, na.rm = TRUE),
+            diff_log_tariff_2017 = mean(diff_log_tariff_2017, na.rm = TRUE) )
+
+
+estimated_tau1 <- estimated_tau1 %>%  filter(year %in% c(2018:2019))
+
+colSums(is.na(estimated_tau1))
+
+# merge with IV estimated 
+names(estimated_tau1)
+names(estimated_tau_IV)
+
+estimated_tau_IV <- estimated_tau_IV %>% select(year, hs4, predicted_diff_ln_AVE_FE_wmean)
+
+estimated_tau2 <- left_join(estimated_tau1, estimated_tau_IV, by = c("year",  "hs4"))
+colSums(is.na(estimated_tau2))
+summary(estimated_tau2)
+
+# drop tariff
+estimated_tau2 <- estimated_tau2 %>% select(-diff_log_tariff_2017)
+################################################################################
+# Filter tariffs for USA exports (2018-2019)
+################################################################################
+
+unique(tariffs$ExporterISO3)
+
+tariffs <- tariffs %>%  filter(ExporterISO3 == "USA",   year %in% 2018:2019) %>%
+  select(year, hs2, hs4, hs6_H5, ExporterISO3, ImporterISO3,
+         hs_section, sector, diff_log_tariff_2015, diff_log_tariff_2017  )
+colSums(is.na(tariffs))
+names(tariffs)
+summary(tariffs)
+
+
+
+# for ROW tariffs;
+names(ROW_tariffs)
+ROW_tariffs <- ROW_tariffs  %>% rename(
+  ROW_tariff  = ROW_tariff_onUS , ROW_tariff_2015 =  ROW_tariff_onUS_2015 ,
+  ROW_tariff_2017  = ROW_tariff_onUS_2017)
+
+ROW_tariffs <- ROW_tariffs %>%
+  mutate(across(c(ROW_tariff, ROW_tariff_2015, ROW_tariff_2017), ~ . / 100  ),
+       across(c(ROW_tariff, ROW_tariff_2015, ROW_tariff_2017), ~ log(1 + .),   .names = "ln_{.col}")  )
+#  create log change of tariff 
+ROW_tariffs <- ROW_tariffs %>% 
+  mutate(diff_log_tariff_2015 = ln_ROW_tariff- ln_ROW_tariff_2015,
+         diff_log_tariff_2017 = ln_ROW_tariff- ln_ROW_tariff_2017) %>%
+  select(- c(ROW_tariff, ROW_tariff_2015, ROW_tariff_2017, ln_ROW_tariff, ln_ROW_tariff_2015 ,ln_ROW_tariff_2017))
+ROW_tariffs <- ROW_tariffs %>%   mutate(across(c(diff_log_tariff_2015, diff_log_tariff_2017), ~coalesce(., 0)))
+summary(ROW_tariffs)
+test <- ROW_tariffs %>% filter(diff_log_tariff_2017 > 1)
+
+ROW_tariffs <- ROW_tariffs %>%
+  mutate(hs6_H5 = str_pad(as.character(hs6_H5), width = 6, side = "left", pad = "0"),
+         hs2    = as.numeric(substr(hs6_H5, 1, 2)),    hs4    = substr(hs6_H5, 1, 4)  )
+
+sapply(tariffs, class)
+sapply(ROW_tariffs, class)
+
+# sum at yearly level:
+names(ROW_tariffs)
+ROW_tariffs <- ROW_tariffs %>%
+  group_by(ImporterISO3, ExporterISO3, hs2, hs4, hs6_H5, year) %>%
+  summarise(  diff_log_tariff_2015 = mean(diff_log_tariff_2015, na.rm = TRUE),
+              diff_log_tariff_2017 = mean(diff_log_tariff_2017, na.rm = TRUE),
+              .groups = "drop"  )
+
+
+merge <- bind_rows(ROW_tariffs, tariffs)
+colSums(is.na(merge))
+# Fill in the missing values
+merge <- merge %>%  group_by(hs6_H5) %>%
+  fill(hs_section, sector, .direction = "downup") %>%
+  ungroup()
+
+
+################################################################################
+
+# mereg NTMs and tariffs 
+names(merge)
+names(estimated_tau1)
+colSums(is.na(estimated_tau2))
+sapply(merge, class)
+sapply(estimated_tau2, class)
+
+estimated_tau2 <- estimated_tau2 %>%
+  mutate(hs4 = as.character(hs4),
+         hs4 = ifelse(nchar(hs4) == 3, paste0("0", hs4), hs4))
+
+
+estimated_tau3 <- full_join(estimated_tau2,merge )
+names(estimated_tau3)
+colSums(is.na(estimated_tau3))
+
+# NTMS AVEs be 0 for countries different from CHN
+estimated_tau3 <- estimated_tau3 %>%
+  mutate(across(
+    c(diff_ln_AVE_FE, diff_ln_AVE_FE_bench, diff_ln_AVE_FE_wmean, predicted_diff_ln_AVE_FE_wmean),
+    ~ifelse(ImporterISO3 != "CHN", 0, .)  ))
+
+
+
+################################################################################
+
+estimated_tau4 <- estimated_tau3  %>% group_by(hs2,hs4,hs6_H5, ExporterISO3, ImporterISO3) %>%
+  summarise(diff_ln_AVE_FE = mean(diff_ln_AVE_FE, na.rm = TRUE),
+            diff_ln_AVE_FE_bench = mean(diff_ln_AVE_FE_bench, na.rm = TRUE),
+            diff_ln_AVE_FE_wmean = mean(diff_ln_AVE_FE_wmean, na.rm = TRUE),
+            predicted_diff_ln_AVE_FE_wmean = mean(predicted_diff_ln_AVE_FE_wmean, na.rm =TRUE),
+            diff_log_tariff_2017 = mean(diff_log_tariff_2017, na.rm = TRUE) )
+colSums(is.na(estimated_tau4))
+
+estimated_tau4_year <- estimated_tau3 %>% group_by(year, hs2,hs4,hs6_H5, ExporterISO3, ImporterISO3) %>%
+  summarise(diff_ln_AVE_FE = mean(diff_ln_AVE_FE, na.rm = TRUE),
+            diff_ln_AVE_FE_bench = mean(diff_ln_AVE_FE_bench, na.rm = TRUE),
+            diff_ln_AVE_FE_wmean = mean(diff_ln_AVE_FE_wmean, na.rm = TRUE),
+            predicted_diff_ln_AVE_FE_wmean = mean(predicted_diff_ln_AVE_FE_wmean, na.rm =TRUE),
+            diff_log_tariff_2017 = mean(diff_log_tariff_2017, na.rm = TRUE) )
+colSums(is.na(estimated_tau2))
+class(estimated_tau2$hs6_H5)
+
+
+################################################################################
+
+# concord for product code 
+library(concordance)
+estimated_tau4 <- estimated_tau4 %>%  mutate(hs6_H4 = concord(hs6_H5, origin = "HS5", destination = "HS4", dest.digit = 6, all = FALSE))
+colSums(is.na(estimated_tau4))
+
+any(duplicated(estimated_tau4$hs6_H4))
+
+estimated_tau2_h4 <- estimated_tau4 %>%
+  group_by(hs2, hs4, hs6_H4, ExporterISO3, ImporterISO3) %>%
+  summarise(
+    diff_ln_AVE_FE = mean(diff_ln_AVE_FE, na.rm = TRUE),
+    diff_ln_AVE_FE_bench = mean(diff_ln_AVE_FE_bench, na.rm = TRUE),
+    diff_ln_AVE_FE_wmean = mean(diff_ln_AVE_FE_wmean, na.rm = TRUE),
+    predicted_diff_ln_AVE_FE_wmean = mean(predicted_diff_ln_AVE_FE_wmean, na.rm =TRUE),
+    diff_log_tariff_2017 = mean(diff_log_tariff_2017, na.rm = TRUE),
+    .groups = "drop"  )
+
+
+# concord for product code 
+library(concordance)
+estimated_tau4_year <- estimated_tau4_year %>%  mutate(hs6_H4 = concord(hs6_H5, origin = "HS5", destination = "HS4", dest.digit = 6, all = FALSE))
+colSums(is.na(estimated_tau4_year))
+
+any(duplicated(estimated_tau4_year$hs6_H4))
+
+estimated_tau2_h4_year <- estimated_tau4_year %>%
+  group_by(year, hs2, hs4, hs6_H4, ExporterISO3, ImporterISO3) %>%
+  summarise(
+    diff_ln_AVE_FE = mean(diff_ln_AVE_FE, na.rm = TRUE),
+    diff_ln_AVE_FE_bench = mean(diff_ln_AVE_FE_bench, na.rm = TRUE),
+    diff_ln_AVE_FE_wmean = mean(diff_ln_AVE_FE_wmean, na.rm = TRUE),
+    predicted_diff_ln_AVE_FE_wmean = mean(predicted_diff_ln_AVE_FE_wmean, na.rm =TRUE),
+    diff_log_tariff_2017 = mean(diff_log_tariff_2017, na.rm = TRUE),
+    .groups = "drop"  )
+table(estimated_tau2_h4_year$year)
+
+
+# get tariffs applied to U.S.
+write_csv(estimated_tau2_h4,  paste0("data/created_exposure/tau/import_tau_elast_", quant, "_IV.csv"))
+write_csv(estimated_tau2_h4_year,  paste0("data/created_exposure/tau/import_tau_year_elast_", quant, "_IV.csv"))
+
+
+
+# 
+# 
+# ################################################################################
+# # 2) for ROW on US tariff rate
+# ################################################################################
+# 
+# names(teti)
+# unique(teti$exporter)
+# unique(teti$importer)
+# 
+# 
+# # aggregate at the yearly level
+# teti <- teti %>% group_by(importer, exporter, hs6, year, nomenclature) %>%
+#   summarise(tariff = mean(tariff, na.rm =  TRUE ))
+# # keep only exporter where tariff changes
+# teti <- teti %>%
+#   group_by(importer, exporter, hs6) %>%
+#   filter(n_distinct(tariff) > 1) %>%    # keep only groups where tariff varies over time
+#   ungroup()
+# unique(teti$importer)
+# 
+# 
+# 
+# 
+# 
+# # create log of tariff
+# merge <- merge %>%
+#   mutate(across( c(US_tariff, US_tariff_2015, US_tariff_2017), ~ . / 100  ),
+#          across(c(US_tariff, US_tariff_2015, US_tariff_2017), ~ log(1 + .),   .names = "ln_{.col}")  )
+# 
+# summary(merge)
+# 
+# # create log change of tariff
+# 
+# merge <- merge %>% mutate(change_log_tariff_2015 = ln_US_tariff - ln_US_tariff_2015,
+#                           change_log_tariff_2017 = ln_US_tariff - ln_US_tariff_2017)
+# names(merge)
+# merge <- merge %>% select(hs6, year, ExporterISO3 , change_log_tariff_2015, change_log_tariff_2017) %>%
+#   rename(US_change_log_tariff_2015 = change_log_tariff_2015, US_change_log_tariff_2017 = change_log_tariff_2017)
+# 
+
+
+

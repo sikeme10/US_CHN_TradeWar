@@ -2,7 +2,7 @@
 # Gravity regression analysis: residual approach (parameterized)
 ################################################################################
 
-rm(list=ls())
+rm(list=ls()); gc()
 
 library(readr)
 library(tidyr)
@@ -42,7 +42,7 @@ sectors <- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/data/crosswalk/clean
 ################################################################################
 # 2) Drop extreme values (1st/99th percentile)
 ################################################################################
-quant <- 0.01
+quant <- 0.05
 
 FE_q    <- quantile(US$diff_ln_AVE_FE,               quant,     na.rm = TRUE)
 FE_qH   <- quantile(US$diff_ln_AVE_FE,           1 - quant,     na.rm = TRUE)
@@ -406,11 +406,12 @@ corr_vars <- c("FE_mean", "FEb_mean", "FEm_mean", "tariff_mean","chen_tariff_mea
 #                "chen_mean","perc_change_trade_mean","perc_change_trade_mean_bis","trade_change_hs2")
 
 
-corr_matrix <- US_all_q_hs2 %>%  ungroup() %>%
-  select(all_of(corr_vars)) %>%
+corr_matrix <- US_all_q_hs2 %>%  ungroup() %>%  select(all_of(corr_vars)) %>%
   cor(use = "pairwise.complete.obs")
 
 corr_labels <- c("FE", "FE_bench", "FE_wmean", "Tariff", "Tariff (Chen)","Chen","% Trade","%change (-)")
+
+
 
 rownames(corr_matrix) <- corr_labels
 colnames(corr_matrix) <- corr_labels
@@ -434,12 +435,23 @@ ggsave(filename = "corr_AVE_tariff_trade_2019_HS2.png",  path     = OUT_PLOT_DIR
 names(US_all_q_hs2)
 
 corr_vars <- c("FE_log_Chen_mean", "FEb_log_Chen_mean", "FEm_log_Chen_mean",  "tariff_mean","chen_tariff_mean",  "chen_mean","perc_change_trade_mean","perc_change_trade_mean_bis")
+corr_labels <- c("FE log_Chen", "FE_bench log_Chen", "FE_wmean log_Chen","Tariff", "Tariff (Chen)","Chen","Trade change","Trade change (-)" )
+
+
+corr_vars <- c("FE_mean", "FEb_mean", "FEm_mean", 
+               "FE_Chen_mean", "FEb_Chen_mean", "FEm_Chen_mean",
+               "FE_log_Chen_mean", "FEb_log_Chen_mean", "FEm_log_Chen_mean", 
+               "tariff_mean","chen_tariff_mean",  "chen_mean")
+corr_labels <- c("FE", "FE_bench", "FE_wmean",
+                 "FE Chen", "FE Chen", "FE_wmean Chen",
+                 "FE log_Chen", "FE bench log_Chen", "FE_wmean log_Chen",
+                 "Tariff", "Tariff (Chen)","Chen")
+
 
 corr_matrix <- US_all_q_hs2 %>%
   ungroup() %>%
   select(all_of(corr_vars)) %>%
   cor(use = "pairwise.complete.obs")
-corr_labels <- c("FE log_Chen", "FE_bench log_Chen", "FE_wmean log_Chen","Tariff", "Tariff (Chen)","Chen","Trade change","Trade change (-)" )
 
 
 
@@ -468,6 +480,10 @@ US_all_w_hs4 <- US_dta %>%   group_by(year, hs4, subsector) %>%   filter(year %i
   summarise(  w_FE        = mean(diff_ln_AVE_FE,    na.rm = TRUE   ),
               w_FE_bench  = mean(diff_ln_AVE_FE_bench,   na.rm = TRUE),
               w_FE_mean   = mean(diff_ln_AVE_FE_wmean,  na.rm = TRUE),
+              
+              w_FE_Chen        = mean(diff_ln_AVE_FE_Chen,    na.rm = TRUE   ),
+              w_FE_bench_Chen  = mean(diff_ln_AVE_FE_bench_Chen,   na.rm = TRUE),
+              w_FE_mean_Chen   = mean(diff_ln_AVE_FE_wmean_Chen,  na.rm = TRUE),
               
               # added (log)
               w_FE_log        = mean(diff_ln_AVE_FE_log,   na.rm = TRUE    ),
@@ -507,11 +523,115 @@ ggsave(filename = "corr_AVE_tariff_trade_2019_HS4.png",  path     = OUT_PLOT_DIR
 
 
 
+
+
+corr_vars <- c("w_FE", "w_FE_bench", "w_FE_mean", 
+               "w_FE_Chen", "w_FE_bench_Chen", "w_FE_mean_Chen",
+               "w_tariff", "pct_trade_change_hs4", "pct_trade_change_hs4_bis")
+
+corr_matrix <- US_all_w_hs4 %>%  ungroup() %>%  select(all_of(corr_vars)) %>%
+  cor(use = "pairwise.complete.obs")
+
+
+
+corr_labels <- c("FE", "FE_bench", "FE_wmean",
+               "FE_chen", "FE_bench_chen", "FE_wmean_chen",
+               "w_tariff", "pct_trade_change_hs4", "pct_trade_change_hs4_bis")
+
+
+rownames(corr_matrix) <- corr_labels
+colnames(corr_matrix) <- corr_labels
+
+library(ggcorrplot)
+p_hs4 <-ggcorrplot(corr_matrix,
+                   method   = "square",
+                   type     = "lower",
+                   lab      = TRUE,
+                   lab_size = 3.5,
+                   colors   = c("#d73027", "white", "#4575b4"),
+                   title    = "Correlation: AVE, tariff, and trade changes at HS4 digit level(2017 Vs 2019)",
+                   ggtheme  = theme_minimal(base_size = 11))
+p_hs4
 ################################################################################
 
-library(writexl)
-write_xlsx( list("hs4_summary" = US_all_q_hs4),  path = file.path(OUT_PLOT_DIR, paste0("hs4_summary_all_", quant , ".xlsx")))
+# ################################################################################
+# # a) HS 4 level level
+# ################################################################################
+theme_trade <- theme_minimal(base_size = 14, base_family = "Times New Roman") +
+  theme(
+    panel.spacing.x = unit(1.2, "lines"),
+    plot.title = element_text(size = 12, hjust = 0.5),
+    panel.background = element_rect(fill = "white", color = NA),
+    plot.background  = element_rect(fill = "white", color = NA),
+    axis.text.x = element_text(size = 11),
+    axis.text.y = element_text(size = 11),
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    legend.text  = element_text(size = 12),
+    legend.title = element_text(size = 12)  )
 
-US_all_q_hs4
+names(US_dta)
+US_all_w_hs4 <- US_dta %>%   group_by(year, hs4, subsector) %>%   filter(year %in% c(2018:2019)) %>% 
+  summarise(  w_FE        = mean(diff_ln_AVE_FE,    na.rm = TRUE   ),
+              w_FE_bench  = mean(diff_ln_AVE_FE_bench,   na.rm = TRUE),
+              w_FE_mean   = mean(diff_ln_AVE_FE_wmean,  na.rm = TRUE),
+              
+              w_FE_Chen        = mean(diff_ln_AVE_FE_Chen,    na.rm = TRUE   ),
+              w_FE_bench_Chen  = mean(diff_ln_AVE_FE_bench_Chen,   na.rm = TRUE),
+              w_FE_mean_Chen  = mean(diff_ln_AVE_FE_wmean_Chen,  na.rm = TRUE),
+              
+              # added (log)
+              w_FE_log        = mean(diff_ln_AVE_FE_log,   na.rm = TRUE    ),
+              w_FE_log_bench  = mean(diff_ln_AVE_FE_log_bench,   na.rm = TRUE),
+              w_FE_log_mean   = mean(diff_ln_AVE_FE_log_wmean,   na.rm = TRUE),
+              
+              w_tariff    = mean(diff_log_tariff_2017,  na.rm = TRUE),
+              .groups = "drop") %>%
+  left_join(trade_hs4_post %>% select(year, hs4, pct_trade_change_hs4,pct_trade_change_hs4_bis ), by = c("year", "hs4")) 
 
+names(US_all_w_hs4)
+
+library(ggplot2)
+library(patchwork)
+
+plot_comparison <- function(data, x_var, y_var, x_lab, y_lab, title) {
+  data %>%
+    ggplot(aes(x = .data[[x_var]], y = .data[[y_var]])) +
+    geom_point(alpha = 0.3, size = 0.8) +
+    geom_abline(intercept = 0, slope = 1, color = "red", linetype = "dashed") +
+    labs(x = x_lab, y = y_lab, title = title) +
+    theme_trade
+}
+
+
+p1 <- plot_comparison(US_all_w_hs4,
+                      x_var = "w_FE",
+                      y_var = "w_FE_Chen",
+                      x_lab = expression(Delta ~ ln(1 + AVE) ~ "(Soderbery)"),
+                      y_lab = expression(Delta ~ ln(1 + AVE) ~ "(Chen et al.)"),
+                      title = "FE model")
+
+p2 <- plot_comparison(US_all_w_hs4,
+                      x_var = "w_FE_bench",
+                      y_var = "w_FE_bench_Chen",
+                      x_lab = expression(Delta ~ ln(1 + AVE) ~ "(Soderbery)"),
+                      y_lab = expression(Delta ~ ln(1 + AVE) ~ "(Chen et al.)"),
+                      title = "FE model with benchmark")
+
+p3 <- plot_comparison(US_all_w_hs4,
+                      x_var = "w_FE_mean",
+                      y_var = "w_FE_mean_Chen",
+                      x_lab = expression(Delta ~ ln(1 + AVE) ~ "(Soderbery)"),
+                      y_lab = expression(Delta ~ ln(1 + AVE) ~ "(Chen et al.)"),
+                      title = "FE model with demeaning")
+plot <- (p1 | p2 | p3) +
+  plot_annotation(
+    title = "Comparing AVE estimates: Soderbery vs Chen et al. elasticities across FE methods",
+    theme = theme_trade)
+  
+plot
+
+
+ggsave(  filename = file.path(OUT_PLOT_DIR, paste0("Compare_elastcities" ,".png")),
+         plot = plot, width = 11, height = 6, dpi = 300)
 

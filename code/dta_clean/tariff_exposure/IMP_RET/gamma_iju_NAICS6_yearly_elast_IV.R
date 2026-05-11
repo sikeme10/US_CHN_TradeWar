@@ -36,7 +36,8 @@ output_NAICS6 <- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/data/Census_ou
 HS_NAICS <- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/data/crosswalk/clean_HS6_naics6_2012.csv")
 
 # Load tariff data
- tariff <- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/data/created_exposure/tau/import_tau_year_0.05_IV.csv")
+# tariff <- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/data/created_exposure/tau/import_tau_year_0.05_IV.csv")
+tariff <- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/data/created_exposure/tau/import_tau_year_elast_0.05_IV.csv")
 
 
 # Load HS product codes
@@ -250,7 +251,7 @@ test <- Merge_All %>% filter(RET_i_NTB_IV > 100)
 # 5. Export results
 ################################################################################
 
-write_csv(Merge1, paste0(exp, "/gamma_iju_naics6_IV.csv"))
-write_csv(Merge_All, paste0(exp, "/RET_i_naics6_IV.csv"))
+write_csv(Merge1, paste0(exp, "/gamma_iju_naics6_elast_IV.csv"))
+write_csv(Merge_All, paste0(exp, "/RET_i_naics6_elast_IV.csv"))
 
 

@@ -375,13 +375,13 @@ p_hs_sect <- ggplot(US_dta_w_sect, aes(x = year)) +
   geom_line(aes(y = FEm_mean,    color = "FE_demeaned"), linewidth = 1) +
   geom_line(aes(y = FEb_mean,    color = "FE_bench"),    linewidth = 1) +
   geom_line(aes(y = tariff_mean, color = "tariff"),      linewidth = 1) +
-  geom_line(aes(y = chen_mean,   color = "Chen_et_al"),  linetype = "dashed", linewidth = 1) +
+  # geom_line(aes(y = chen_mean,   color = "Chen_et_al"),  linetype = "dashed", linewidth = 1) +
   scale_color_manual(values = legend_colors,
                      breaks = legend_breaks,
                      labels = legend_labels,
                      name   = "Variables") +
   facet_wrap(~ hs_section_lab) +
-  labs(title = paste0("Weighted average Δ ln(1+AVE) by sectors (relative to ", BASE_YEAR, ") \n using HS4 level elasticities"),
+  labs(title = paste0("Weighted average Δ ln(1+AVE) by sectors (relative to ", BASE_YEAR, ") using Soderbery level elasticities"),
        x = "Year",   y = "Weighted Δ ln(1+AVE)"  ) +
   theme_trade
 p_hs_sect
@@ -417,13 +417,13 @@ p_hs_sect <- ggplot(US_dta_w_sect, aes(x = year)) +
   geom_line(aes(y = FEm_mean_Chen,    color = "FE_demeaned"), linewidth = 1) +
   geom_line(aes(y = FEb_mean_Chen,    color = "FE_bench"),    linewidth = 1) +
   geom_line(aes(y = tariff_mean, color = "tariff"),      linewidth = 1) +
-  geom_line(aes(y = chen_mean,   color = "Chen_et_al"),  linetype = "dashed", linewidth = 1) +
+  # geom_line(aes(y = chen_mean,   color = "Chen_et_al"),  linetype = "dashed", linewidth = 1) +
   scale_color_manual(values = legend_colors,
                      breaks = legend_breaks,
                      labels = legend_labels,
                      name   = "Variables") +
   facet_wrap(~ hs_section_lab) +
-  labs(title = paste0("Weighted average Δ ln(1+AVE) by sectors (relative to ", BASE_YEAR, ") \n using Chen et al. elasticities"),
+  labs(title = paste0("Weighted average Δ ln(1+AVE) by sectors (relative to ", BASE_YEAR, ") using Chen et al. elasticities"),
        x = "Year",   y = "Weighted Δ ln(1+AVE)"  ) +
   theme_trade
 p_hs_sect
