@@ -1,0 +1,234 @@
+---
+title: "regression_sector_specific"
+output:
+  html_document:
+    css: styles.css
+---
+
+```{r, include = FALSE}
+rm(list=ls())
+
+library(readr)
+library(tidyr)
+library(dplyr)
+library(data.table)
+library(stringi)
+library(fixest)
+library(countrycode)
+library(tidyverse)
+library(vroom)
+library(sf)
+library(tigris)
+library(ggplot2)
+library(viridis)
+library(kableExtra)
+library(corrplot)
+
+################################################################################
+# Load data
+dta <- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/data/Pop_reg_dta/merge_elast_subsector_county_sector_specific.csv")
+exp <- "/data/sikeme/TRADE/US_CHN_TradeWar_git/output/step_2/regression/"
+```
+
+<style>
+.main-container {
+  max-width: 1800px !important;
+}
+
+.vscroll-plot {
+    height: 600px;
+    overflow-y: scroll;
+    overflow-x: scroll;
+}
+
+.TableDiv {
+    height: 600px;
+    overflow-y: scroll;
+    overflow-x: scroll;
+}
+</style>
+
+```{r setup-functions, echo = FALSE}
+sub_dta <- dta %>% filter(year %in% c(2018:2019))
+
+# ---------------------------------------------------------------------------
+# Helpers: everything that used to be copy-pasted per subsector lives here.
+# A "sector" is identified by its suffix (crop / livestock / nonag). All the
+# sector-specific variable names are built from that suffix.
+# ---------------------------------------------------------------------------
+
+# Build the analysis frame for one outcome x subsector
+build_sector_dta <- function(data, outcome, sub) {
+  vars <- c(
+    "year", "fips", "division", outcome,
+    paste0("IMP_tariff_tot_ir_", sub),
+    paste0("RET_tariff_tot_r_", sub),
+    paste0("RET_NTB_tot_r_", sub),
+    paste0("RET_NTB_tot_IV_r_", sub),
+    "SUB",
+    paste0("share_", sub),
+    paste0(outcome, "_pretrend"),
+    "emp_2012"
+  )
+  data %>%
+    filter(subsector == sub) %>%
+    select(all_of(vars))
+}
+
+# Correlation plot (drops the id columns before correlating)
+plot_sector_cor <- function(d) {
+  cm <- d %>%
+    select(-year, -fips, -emp_2012) %>%
+    cor(use = "complete.obs")
+  corrplot(cm, method = "circle", addCoef.col = "black",
+           number.cex = 0.6, tl.cex = 0.8)
+}
+
+# Run the four nested specifications.
+#   iv          : use the IV-constructed NTB variable instead of the raw one
+#   include_sub : add SUB to the RHS (TRUE for crop/livestock, FALSE for nonag)
+run_sector_reg <- function(d, outcome, sub, iv = FALSE, include_sub = TRUE) {
+  imp   <- paste0("IMP_tariff_tot_ir_", sub)
+  ret   <- paste0("RET_tariff_tot_r_", sub)
+  ntb   <- paste0(if (iv) "RET_NTB_tot_IV_r_" else "RET_NTB_tot_r_", sub)
+  share <- paste0("share_", sub)
+  pre   <- paste0(outcome, "_pretrend")
+
+  core <- paste(imp, "+", ret, "+", ntb, if (include_sub) "+ SUB" else "")
+  rhs2 <- paste(core, "+ as.factor(year):", share)
+  rhs3 <- paste(rhs2, "+ as.factor(division):as.factor(year)")
+  rhs4 <- paste(rhs3, "+ year:", pre)
+
+  f <- function(rhs) as.formula(paste(outcome, "~", rhs, "| year"))
+
+  list(
+    feols(f(core), data = d, weights = ~emp_2012, cluster = ~fips),
+    feols(f(rhs2), data = d, weights = ~emp_2012, cluster = ~fips),
+    feols(f(rhs3), data = d, weights = ~emp_2012, cluster = ~fips),
+    feols(f(rhs4), data = d, weights = ~emp_2012, cluster = ~fips)
+  )
+}
+
+# Format the four models into the styled table
+sector_table <- function(models) {
+  etable(models[[1]], models[[2]], models[[3]], models[[4]],
+         headers = c("(1)", "(2)", "(3)", "(4)"),
+         drop    = "division",
+         digits  = 4,
+         fitstat = ~ n + r2 + ar2 + f + f.p + rmse,
+         extralines = list(
+           "-^Year FE"                         = as.list(rep("Yes", 4)),
+           "-^Sector x year-month FE"          = list("No", "Yes", "Yes", "Yes"),
+           "-^Census division x year-month FE" = list("No", "No",  "Yes", "Yes"),
+           "-^Pre-trend CZ outcome 2017"       = list("No", "No",  "No",  "Yes")
+         )) %>%
+    kable() %>%
+    kable_styling(full_width = TRUE)
+}
+
+# Convenience wrapper: OLS table then IV table for one outcome x subsector.
+# nonag is detected automatically to drop SUB.
+sector_tables <- function(d, outcome, sub) {
+  inc <- sub != "nonag"
+  list(
+    ols = sector_table(run_sector_reg(d, outcome, sub, iv = FALSE, include_sub = inc)),
+    iv  = sector_table(run_sector_reg(d, outcome, sub, iv = TRUE,  include_sub = inc))
+  )
+}
+```
+
+# Employment to population ratio  {.tabset}
+
+## Crop sector    {.tabset}
+
+```{r, echo = FALSE}
+d <- build_sector_dta(sub_dta, "delta_EPOP", "crop")
+plot_sector_cor(d)
+tabs <- sector_tables(d, "delta_EPOP", "crop")
+tabs$ols
+tabs$iv
+```
+
+## Livestock sector
+
+```{r, echo = FALSE}
+d <- build_sector_dta(sub_dta, "delta_EPOP", "livestock")
+plot_sector_cor(d)
+tabs <- sector_tables(d, "delta_EPOP", "livestock")
+tabs$ols
+tabs$iv
+```
+
+## non ag
+
+```{r, echo = FALSE}
+d <- build_sector_dta(sub_dta, "delta_EPOP", "nonag")
+plot_sector_cor(d)
+tabs <- sector_tables(d, "delta_EPOP", "nonag")
+tabs$ols
+tabs$iv
+```
+
+# Log employment change  {.tabset}
+
+## Crop sector    {.tabset}
+
+```{r, echo = FALSE}
+d <- build_sector_dta(sub_dta, "delta_log_emp", "crop")
+plot_sector_cor(d)
+tabs <- sector_tables(d, "delta_log_emp", "crop")
+tabs$ols
+tabs$iv
+```
+
+## Livestock sector
+
+```{r, echo = FALSE}
+d <- build_sector_dta(sub_dta, "delta_log_emp", "livestock")
+plot_sector_cor(d)
+tabs <- sector_tables(d, "delta_log_emp", "livestock")
+tabs$ols
+tabs$iv
+```
+
+## non ag
+
+```{r, echo = FALSE}
+d <- build_sector_dta(sub_dta, "delta_log_emp", "nonag")
+plot_sector_cor(d)
+tabs <- sector_tables(d, "delta_log_emp", "nonag")
+tabs$ols
+tabs$iv
+```
+
+# Log wage change  {.tabset}
+
+## Crop sector    {.tabset}
+
+```{r, echo = FALSE}
+d <- build_sector_dta(sub_dta, "delta_log_wages", "crop")
+plot_sector_cor(d)
+tabs <- sector_tables(d, "delta_log_wages", "crop")
+tabs$ols
+tabs$iv
+```
+
+## Livestock sector
+
+```{r, echo = FALSE}
+d <- build_sector_dta(sub_dta, "delta_log_wages", "livestock")
+plot_sector_cor(d)
+tabs <- sector_tables(d, "delta_log_wages", "livestock")
+tabs$ols
+tabs$iv
+```
+
+## non ag
+
+```{r, echo = FALSE}
+d <- build_sector_dta(sub_dta, "delta_log_wages", "nonag")
+plot_sector_cor(d)
+tabs <- sector_tables(d, "delta_log_wages", "nonag")
+tabs$ols
+tabs$iv
+```

@@ -124,7 +124,7 @@ process_one <- function(path) {
     mutate(
       SOE = case_when(
         EntNatNm %in% c("state-owned enterprises", "collective enterprise") ~ 1,
-        is.na(EntNatNm) ~ NA_real_,
+         # is.na(EntNatNm) ~ NA_real_,
         TRUE ~ 0      )    ) %>%
     filter(ImpExpTypeNm == "import", ISO3 == "USA") %>%
     group_by(EndDt, HSCd, HSNm, SOE) %>%
@@ -137,8 +137,27 @@ process_one <- function(path) {
 
 # Loop over all files + bind
 dta_import_all <- map_dfr(files_2010, process_one)
+unique(dta_import_all$SOE)
 
-dta_import_all
+colSums(is.na(dta_import_all))
+
+
+
+# 
+# test <- dta_import_all %>% filter(EntCd =="4111960144")
+# length(unique(dta_import_all$EntNm))
+# 
+# # fill up for missing SOE or not 
+# dta_import_all1 <- dta_import_all %>% group_by(EntCd) %>%
+#   fill(all_of(c("EntNm", "EntNatCd", "EntNatNm")), .direction = "downup") %>%
+#   ungroup()
+# 
+# colSums(is.na(dta_import_all))
+# colSums(is.na(dta_import_all1))
+
+
+
+
 
 ################################################################################
 # aggregate a importer and year level
@@ -251,7 +270,7 @@ build_trade_panel <- function(iso3_code,
       mutate(
         SOE = case_when(
           EntNatNm %in% c("state-owned enterprises", "collective enterprise") ~ 1,
-          is.na(EntNatNm) ~ NA_real_,
+          # is.na(EntNatNm) ~ NA_real_,
           TRUE ~ 0
         )
       ) %>%
@@ -321,8 +340,7 @@ build_trade_panel <- function(iso3_code,
     mutate(
       SOE = case_when(
         SOE == 1   ~ "SOE",
-        SOE == 0   ~ "non_SOE",
-        is.na(SOE) ~ "Unknown"
+        SOE == 0   ~ "non_SOE"
       )
     ) %>%
     pivot_wider(
@@ -334,9 +352,8 @@ build_trade_panel <- function(iso3_code,
   
   # Make sure all expected columns exist even if a category is absent
   expected_cols <- c(
-    "Trade_value_USD_SOE", "Trade_value_USD_non_SOE", "Trade_value_USD_Unknown",
-    "Quantity_SOE",        "Quantity_non_SOE",        "Quantity_Unknown"
-  )
+    "Trade_value_USD_SOE", "Trade_value_USD_non_SOE", 
+    "Quantity_SOE",        "Quantity_non_SOE"  )
   for (col in expected_cols) {
     if (!col %in% names(dta_wide)) dta_wide[[col]] <- 0
   }
@@ -344,8 +361,8 @@ build_trade_panel <- function(iso3_code,
   # Totals and shares
   dta_wide <- dta_wide %>%
     mutate(
-      tot_Trade_value_USD = Trade_value_USD_SOE + Trade_value_USD_non_SOE + Trade_value_USD_Unknown,
-      tot_Quantity        = Quantity_SOE + Quantity_non_SOE + Quantity_Unknown,
+      tot_Trade_value_USD = Trade_value_USD_SOE + Trade_value_USD_non_SOE ,
+      tot_Quantity        = Quantity_SOE + Quantity_non_SOE ,
       share_value_SOE     = ifelse(tot_Trade_value_USD > 0,
                                    Trade_value_USD_SOE / tot_Trade_value_USD,
                                    NA_real_),
@@ -370,4 +387,76 @@ write_csv(AUS_imports, "data/SOE_dta/SOE_share_AUS_2010.csv")
 write_csv(JPN_imports, "data/SOE_dta/SOE_share_JPN_2010.csv")
 
 
+###############################################################################
+# get total US import trade shares in 2010
+###############################################################################
+data_dir        = "data/SOE_dta/2010"
+trade_direction = "import"
+
+
+
+  
+  files <- list.files(data_dir, pattern = "\\.csv$", full.names = TRUE)
+  
+  process_one <- function(path) {
+    message("Processing: ", basename(path))
+    
+    read_csv(path, show_col_types = FALSE) %>%
+      mutate(
+        SOE = case_when(
+          EntNatNm %in% c("state-owned enterprises", "collective enterprise") ~ 1,
+          # is.na(EntNatNm) ~ NA_real_,
+          TRUE ~ 0
+        )
+      ) %>%
+      filter(ImpExpTypeNm == trade_direction) %>%
+      group_by(EndDt, HSCd, HSNm, ISO3) %>%
+      summarise(
+        Trade_value_USD = sum(USD, na.rm = TRUE),
+        Quantity        = sum(Quantity, na.rm = TRUE),
+        .groups = "drop"
+      ) %>%
+      mutate(source_file = basename(path))
+  }
+  
+  dta_all <- map_dfr(files, process_one)
+  
+# Aggregate to year level
+  dta_all <- dta_all %>%    mutate(Year = str_sub(EndDt, 1, 4)) %>%
+    group_by(Year, HSCd, HSNm, ISO3) %>%
+    summarise(Trade_value_USD = sum(Trade_value_USD, na.rm = TRUE),
+              Quantity        = sum(Quantity, na.rm = TRUE),
+              .groups = "drop"    )
+  
+  # Aggregate to HS6
+  dta_all_hs4 <- dta_all %>%
+    mutate(hs6 = str_sub(HSCd, 1, 6),
+           hs4 = str_sub(HSCd, 1, 4),) %>%
+    group_by(Year, hs4, ISO3) %>%
+    summarise(
+      Trade_value_USD = sum(Trade_value_USD, na.rm = TRUE),
+      Quantity        = sum(Quantity, na.rm = TRUE),
+      .groups = "drop"    )
+  colSums(is.na(dta_all_hs4))
+ 
+  
+  tot_trade <- dta_all_hs4 %>% group_by(Year, hs4)%>%
+    summarise(
+      tot_Trade_value_USD = sum(Trade_value_USD, na.rm = TRUE),
+      tot_Quantity        = sum(Quantity, na.rm = TRUE))
+    
+    
+  dta_all_hs4 <- left_join(dta_all_hs4, tot_trade)
+
+  
+ 
+  # Totals and US import shares 
+  US_dta_hs4 <- dta_all_hs4 %>% filter(ISO3 == "USA") %>% 
+    mutate(share_import_value = ifelse(tot_Trade_value_USD > 0, Trade_value_USD / tot_Trade_value_USD,
+                                   NA_real_)   )
+  summary(US_dta_hs4)
+  
+
+
+write_csv(US_dta_hs4, "data/SOE_dta/US_import_share_2010.csv")
 

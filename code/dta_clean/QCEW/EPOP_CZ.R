@@ -56,9 +56,9 @@ names(labor)
 
 
 # rename some variables
-labor <- labor %>% rename(fips = `Area\r\nCode`, year = Year, wage = `Annual Total Wages`,
+labor <- labor %>% rename(fips = `Area\r\nCode`, year = Year, wage_total = `Annual Total Wages`,
                           estab = `Annual Average Establishment Count`, employment = `Annual Average Employment`)
-labor <- labor %>% select(fips, year,Area , Ownership, Own,Industry, wage , estab, employment )
+labor <- labor %>% select(fips, year,Area , Ownership, Own,Industry, wage_total , estab, employment )
 unique(labor$year)
 
 table(labor$Ownership,labor$Own)
@@ -106,7 +106,7 @@ names(labor2)
 labor2 <- labor2 %>% group_by(year,czone_2012)  %>% 
   summarise(estab = sum(estab, na.rm= TRUE),
             employment = sum(employment, na.rm= TRUE),
-            wage = sum(wage, na.rm= TRUE))
+            wage_total = sum(wage_total, na.rm= TRUE))
 table(labor2$year)
 summary(labor2)
 test <- labor2 %>% filter(employment==0)
@@ -130,7 +130,8 @@ labor3 <- left_join(labor2, Pop)
 summary(labor3)
 names(labor3)
 labor3 <-labor3 %>% mutate(EPOP = employment / total_pop,
-                           EPOP_work = employment / working_age_pop)
+                           EPOP_work = employment / working_age_pop,
+                           wage_per_worker = if_else(employment != 0 , wage_total/employment, 0))
 summary(labor3)
 
 test <- labor3 %>% filter(EPOP >1)

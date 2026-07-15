@@ -24,10 +24,10 @@ library(viridis)
 
 ################################################################################
 # LOad data 
-dta <- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/data/Pop_reg_dta/merge_elast_subsector.csv")
+dta <- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/data/Pop_reg_dta/merge_elast_subsector_county.csv")
 names(dta)
 
-exp <- "/data/sikeme/TRADE/US_CHN_TradeWar_git/output/step_2/regression/elast/"
+exp <- "/data/sikeme/TRADE/US_CHN_TradeWar_git/output/step_2/regression/elast/county/"
 
 
 ################################################################################
@@ -118,7 +118,8 @@ names(sub_dta)
 
 # 1) Tariffs only
 reg_tar <- feols(change_EPOP_2017_bis ~ as.factor(year)*IMP_tariff_r_2019 + as.factor(year)*RET_tariff_r_2019 +
-                   SUB + as.factor(year), data = sub_dta, weights = ~emp_2012)
+                   SUB | year
+                 , data = sub_dta, weights = ~emp_2012, cluster = fips)
 
 # reg_tar <- feols(change_EPOP_2017_bis ~ as.factor(year)*IMP_tariff_r_2019 + as.factor(year)*RET_tariff_r_2019 +
 #                    SUB + share_crop*year + year*share_livestock + share_nonag*year +  as.factor(division)*year + year*change_EPOP_2017_2016 +
@@ -313,6 +314,7 @@ tbl <- etable(reg1, reg2, reg3,
               digits  = 4,
               fitstat = ~ n + r2 + ar2 + f + f.p + rmse)
 
+
 tbl
 write_csv(as.data.frame(tbl), paste0(exp, "reg_main_subsector.csv"))
 
@@ -356,6 +358,47 @@ tbl <- etable(reg1, reg2, reg3, reg4,
 
 tbl
 write_csv(as.data.frame(tbl), paste0(exp, "reg_main_NTMIV_controls.csv"))
+
+
+
+
+# when adding controls:
+summary(sub_dta$change_EPOP_2017_bis)
+reg1 <- feols(change_EPOP_2017_bis ~ IMP_tariff_r + RET_tariff_r + RET_NTB_r |
+                year, data = sub_dta, weights = ~emp_2012)
+
+reg2 <- feols(change_EPOP_2017_bis ~ IMP_tariff_r + RET_tariff_r + RET_NTB_r +
+                SUB + as.factor(year):share_crop + as.factor(year):share_livestock + as.factor(year):share_nonag +
+                as.factor(year):share_forestry   | 
+                year, data = sub_dta, weights = ~emp_2012, cluster = ~fips)
+
+reg3 <- feols(change_EPOP_2017_bis ~ IMP_tariff_r + RET_tariff_r + RET_NTB_r +
+                SUB + as.factor(year):share_crop + as.factor(year):share_livestock + as.factor(year):share_nonag +
+                as.factor(year):share_forestry  |division^year +    year
+              , data = sub_dta, weights = ~emp_2012, cluster = ~fips)
+
+reg4 <- feols(change_EPOP_2017_bis ~ IMP_tariff_r + RET_tariff_r + RET_NTB_r +
+                SUB + as.factor(year):share_crop + as.factor(year):share_livestock + as.factor(year):share_nonag +
+                as.factor(year):share_forestry + year:change_EPOP_2017_2016 | division^year +    year,
+              data = sub_dta, weights = ~emp_2012, cluster = ~fips)
+
+tbl <- etable(reg1, reg2, reg3, reg4,
+              headers = c("(1)", "(2)", "(3)", "(4)"),
+              drop    = c("share_ag_mining", "share_mfg", "share_other",
+                          "division", "change_EPOP_2017_2016"),
+              digits  = 4,
+              fitstat = ~ n + r2 + ar2 + f + f.p + rmse,
+              extralines = list(
+                "-^Year FE"                        = list("Yes", "Yes", "Yes", "Yes"),
+                "-^Sector x year-month FE"               = list("No",  "Yes", "Yes", "Yes"),
+                "-^Census division x year-month FE"      = list("No",  "No",  "Yes", "Yes"),
+                "-^Pre-trend CZ outcome 2017"            = list("No",  "No",  "No",  "Yes")
+              ))
+
+tbl
+write_csv(as.data.frame(tbl), paste0(exp, "reg_main_NTM_controls.csv"))
+
+
 
 
 #################################################################################

@@ -127,8 +127,28 @@ test <- merged_QCEW %>% filter(estabs_match == FALSE)
 
 
 ###############################################################################
-# At commuting zones 
+# export the QCEW at the county level 
 
+names(imputed_2012_QCEW)
+length(unique(imputed_2012_QCEW$fips))
+class(imputed_2012_QCEW$fips)
+
+
+colSums(is.na(imputed_2012_QCEW))
+summary(imputed_2012_QCEW)
+length(unique(imputed_2012_QCEW$naics))
+
+# get wage per worker
+imputed_2012_QCEW <- imputed_2012_QCEW %>% 
+  mutate(wage_per_worker = if_else(emp != 0, wages_total / emp, 0))
+summary(imputed_2012_QCEW)
+
+write_csv(imputed_2012_QCEW, "/data/sikeme/TRADE/US_CHN_TradeWar_git/data/QCEW/QCEW_2012_naics6_county.csv")
+
+
+###############################################################################
+# At commuting zones 
+###############################################################################
 
 czone <- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/data/crosswalk_CZ_county/cw_cty_czone_2012.csv")
 colSums(is.na(czone))
@@ -158,7 +178,9 @@ colSums(is.na(imputed_2012_QCEW_2))
 imputed_2012_QCEW_CZ <- imputed_2012_QCEW_2 %>%  group_by(naics, czone_2012) %>% 
   summarise(estabs = sum(estabs, na.rm = TRUE),
             emp = sum(emp, na.rm = TRUE),
-            wages_total = sum(wages_total, na.rm = TRUE))
+            wages_total = sum(wages_total, na.rm = TRUE),
+            wage_per_worker = if_else(emp != 0, wages_total / emp, 0))
+summary(imputed_2012_QCEW_CZ)
 write_csv(imputed_2012_QCEW_CZ, "/data/sikeme/TRADE/US_CHN_TradeWar_git/data/QCEW/QCEW_2012_naics6_CZ.csv")
 
 # ###############################################################################

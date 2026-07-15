@@ -192,12 +192,12 @@ unique(merged_hs4$year)
 
 ggplot(merged_hs4,aes(x = share_value_SOE, y = diff_ln_AVE_FE_wmean_w_mean)) +
   geom_point( alpha = 0.6) +
-  facet_wrap(~ baseline_year) +
+  # facet_wrap(~ baseline_year) +
   geom_smooth(method = "loess", se = FALSE, color = "blue") +
   labs(title = "Change in AVE vs. SOE share",  x = "SOE share in 2010",  y = "Change in AVE (FE demean approach)"  ) +
   theme_minimal()
 
-ggplot(merged_hs4,aes(x = share_value_SOE, y = diff_ln_AVE_FE_w_mean)) +
+ggplot(merged_hs4,aes(x = share_value_SOE, y = diff_ln_AVE_FE_w_mean)) s+
   geom_point( alpha = 0.6) +
   facet_wrap(~ baseline_year) +
   geom_smooth(method = "loess", se = FALSE, color = "blue") +

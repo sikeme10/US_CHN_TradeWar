@@ -159,6 +159,7 @@ dta <- dta |>
   ))
 length(unique(dta$fips))
 
+write_csv(dta, "Pop/county_population_clean_2015_2020.csv")
 
 czone <- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/data/crosswalk_CZ_county/cw_cty_czone_2012.csv")
 names(czone)

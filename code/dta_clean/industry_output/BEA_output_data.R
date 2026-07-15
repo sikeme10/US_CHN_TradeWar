@@ -63,7 +63,6 @@ names(description)
 
 names(HS_NAICS)
 
-
 HS_NAICS <- unique(HS_NAICS[, c("naics", "naics_description")])
 length(unique(HS_NAICS$naics))
 
@@ -166,9 +165,10 @@ result1 <- result1 %>% select(industry,industry_code, naics, naics_description )
 
 write_csv(result1, "data/Census_output/output_level_analysis/NAICS_ouput_industry_maps.csv")
 
+
+
 ################################################################################
 # check how match to output data 
-
 
 ################################################################################
 unique(description$industry)
@@ -217,11 +217,53 @@ output_2024 <- output_2024 %>%
 output <- rbind(output_2016, output_2024)
 write_csv(output, "data/Census_output/output_level_analysis/output_industry_1997_2024.csv")
 
+
+##################################################################################
+# match to get NAICS code 
+
+names(output)
+length(unique(output$industry))
+
+names(result1)
+length(unique(result1$industry))
+
+length(unique)
+
 ##################################################################################
 
+# get change in output data 
 
 
 
+output <- read_csv("data/Census_output/output_level_analysis/output_industry_1997_2024.csv")
+names(output)
+
+output <- output |>
+  group_by(industry) |>
+  mutate(
+    output_2017 = gross_output_USD[year == 2017],
+    ln_output_USD = log(gross_output_USD),
+    ln_output_2017 = log(output_2017), 
+    change_output = gross_output_USD - output_2017,
+    ln_change_output = ln_output_USD - ln_output_2017) |>
+  ungroup()  
+
+
+# create a trend where we have change in output between 2016 and 2017
+output <- output |>
+  group_by(industry) |>
+  mutate(
+    change_2016_2017 = gross_output_USD[year == 2016] - gross_output_USD[year == 2017],
+    ln_change_2016_2017 = ln_output_USD[year == 2016] - ln_output_USD[year == 2017],
+    
+  ) |>
+  ungroup()
+
+
+
+output1 <- output %>% filter(year > 2015)
+
+write_csv(output1, "data/Census_output/output_level_analysis/chaange_output_industry_2016_2024.csv")
 
 
 

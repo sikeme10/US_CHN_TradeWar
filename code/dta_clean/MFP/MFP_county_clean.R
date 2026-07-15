@@ -77,57 +77,39 @@ names(fsa_all_mfp)
 fsa_all_mfp_year <- fsa_all_mfp %>% group_by(fips,state_fips ,county_fips, year) %>%
   summarise(MFP_USD = sum(`Disbursement Amount`, na.rm = TRUE))
 length(unique(fsa_all_mfp_year$fips))
-################################################################################
+names(fsa_all_mfp_year)
 
-czone <- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/data/crosswalk_CZ_county/cw_cty_czone_2012.csv")
-names(czone)
-length(unique(czone$cty_fips_2012))
+write_csv(fsa_all_mfp_year,"/data/sikeme/TRADE/US_CHN_TradeWar_git/data/MFP/MFP_county_year.csv" )
 
-class(fsa_all_mfp_year$fips)
-class(czone$cty_fips_2012)
-
-fsa_all_mfp_year$fips <- as.numeric(fsa_all_mfp_year$fips)
-summary(fsa_all_mfp_year)
-summary(czone)
-czone <- czone %>% select(cty_fips_2012, czone_2012)
-
-#################################################################################
-# merge the two 
-fsa_all_mfp_year1 <- left_join(fsa_all_mfp_year, czone, by = c("fips" = "cty_fips_2012"))
-
-# aggregate at CZ and year level
-names(fsa_all_mfp_year1)
-
-MFP_year_CZ <- fsa_all_mfp_year1 %>% group_by(year, czone_2012) %>%
-  summarise(MFP_USD = sum(MFP_USD, na.rm = TRUE))
-
-
-write_csv(MFP_year_CZ,"/data/sikeme/TRADE/US_CHN_TradeWar_git/data/MFP/MFP_CZ_year.csv" )
 
 #################################################################################
 
-MFP_year_CZ <- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/data/MFP/MFP_CZ_year.csv")
-names(MFP_year_CZ)
-dta_pop <- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/data/Pop/cz_population_2015_2020.csv" )
+MFP_year_county <- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/data/MFP/MFP_county_year.csv")
+names(MFP_year_county)
+MFP_year_county <- MFP_year_county %>% select(fips,year, MFP_USD )
+dta_pop <- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/data/Pop/county_population_clean_2015_2020.csv" )
 names(dta_pop)
+dta_pop <- dta_pop %>% select(fips,year, total_pop,  working_age_pop)
 
+class(MFP_year_county$fips)
+class(dta_pop$fips)
 
 # use data from 2017
 dta_pop <- dta_pop %>% filter(year == 2017) %>% select(-year)
 
 #  balance MFP data
-# Build skeleton from 2017 czones only
-distinct_CZ <- dta_pop %>% distinct(czone_2012)
+# Build skeleton from 2017 countyones only
+distinct_county <- dta_pop %>% distinct(fips)
 
 # Get all distinct years from MFP data
-distinct_years <- MFP_year_CZ %>% distinct(year)
+distinct_years <- MFP_year_county %>% distinct(year)
 
 # Create balanced panel skeleton: all 2017 czones x all MFP years
-panel_skeleton <- distinct_CZ %>%  cross_join(distinct_years)
+panel_skeleton <- distinct_county %>%  cross_join(distinct_years)
 
 # Join MFP onto balanced skeleton, fill missing with 0
 MFP_balanced <- panel_skeleton %>%
-  left_join(MFP_year_CZ, by = c("year", "czone_2012")) %>%
+  left_join(MFP_year_county, by = c("year", "fips")) %>%
   mutate(MFP_USD = replace_na(MFP_USD, 0))
 table(MFP_balanced$year)
   
@@ -139,9 +121,6 @@ MFP_balanced <- MFP_balanced %>% mutate(SUB = MFP_USD / working_age_pop)
 summary(MFP_balanced)
 
 
-write_csv(MFP_balanced,"/data/sikeme/TRADE/US_CHN_TradeWar_git/data/MFP/SUB.csv" )
+write_csv(MFP_balanced,"/data/sikeme/TRADE/US_CHN_TradeWar_git/data/MFP/SUB_county.csv" )
 
 test21 <-read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/data/MFP/SUB.csv" )
-
-
-
