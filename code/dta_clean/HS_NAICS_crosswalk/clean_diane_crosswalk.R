@@ -44,11 +44,57 @@ dta1 <-dta %>% rename(HS6 = ProductCode_H4)
 dta1$HS2 <- as.character(substr(dta1$HS6, 1, 2))
 
 
-#####################
+################################################################################
+# NAICS from 2002 to NAICS 2012
+################################################################################
+# current naics codes are from 2002, so we change it to NAICS 2012 (output revision NAICS)
+remotes::install_github("insongkim/concordance")
+library(concordance)
+
+library(concordance)
+library(dplyr)
+library(tidyr)
+class(dta1$naics6)
+unique((nchar(dta1$naics6)))
+length(unique(dta1$naics6))
+
+
+dta1 <- dta1 %>% mutate(naics6 = as.character(naics6))
+
+codes <- dta1 %>%
+  filter(!is.na(naics6), !naics6 %in% c("910000", "920000", "990000")) %>%
+  distinct(naics6) %>%
+  pull(naics6)
+
+res <- concord_naics(sourcevar   = codes,
+                     origin      = "NAICS2002",
+                     destination = "NAICS2012",
+                     dest.digit  = 6,
+                     all         = FALSE)
+
+xwalk <- tibble(naics6 = codes, naics6_2012 = as.character(res))
+
+# write_csv(xwalk, "crosswalk/HS6_NAICS_Diane/concordance_naics_2012.csv")
+
+
+dta1 <- dta1 %>% left_join(xwalk, by = "naics6")
+# check the ones that are NA
+
+NAs <- dta1 %>% filter(is.na(naics6_2012))
+unique(NAs$naics6)
+# rename naics6 so that it is correctly identified in future analysis
+dta1 <-  dta1 %>% select(-naics6) %>% rename(naics6 = naics6_2012)
+
+################################################################################
 names(dta)
 
 dta1 <- dta1 %>% select(HS2 , HS6 , naics2,naics3,naics4, naics6, j, crop) %>% rename(
   naics6_D = naics6 , naics2_D = naics2, naics3_D = naics3 , naics4_D = naics4)
+
+
+
+## 
+# get 2012 NAICS code 
 
 write_csv(dta1, "crosswalk/HS6_NAICS_Diane/NAICS_HS_2012.csv")
 

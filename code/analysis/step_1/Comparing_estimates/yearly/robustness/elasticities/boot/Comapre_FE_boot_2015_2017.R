@@ -147,7 +147,9 @@ colSums(is.na(merge_US_hs4))
 summary(merge_US_hs4)
 
 write_csv(merge_US_hs4, paste0(exp, "US_ln_NTMs_base_2015_2017_hs4_FE_boot.csv"))
+# write_csv(merge_US_hs4, paste0(exp, "US_ln_NTMs_base_2015_2017_hs4_FE_boot_0.05.csv"))
 
+test <- read_csv(paste0(exp, "US_ln_NTMs_base_2015_2017_hs4_FE_boot.csv"))
 merge_US_hs4_all <- merge_US_hs4
 
 merge_US_hs4 <- merge_US_hs4 %>% filter(year %in% c(2018:2019))

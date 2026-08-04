@@ -15,7 +15,6 @@ library(countrycode)
 library(tidyverse)
 library(vroom)
 library(countrycode)
-library(Hmisc)
 library(haven)
 library(readxl)
 
@@ -49,34 +48,34 @@ test <- HS_NAICS %>%  group_by(naics) %>%
   summarise(n_subsector = n_distinct(subsector),
             subsectors = paste(unique(subsector), collapse = ", ")  ) %>%
   filter(n_subsector > 1)
-# if non ag and crop/livestock put it in crop and livestock
-HS_NAICS <- HS_NAICS %>%  group_by(naics) %>%
-  mutate(
-    subsector = case_when(
-      # forestry + crop + nonag → crop (put this first: most specific)
-      all(c("forestry", "crop", "nonag") %in% subsector) ~ "crop",
-      
-      # nonag + livestock → livestock
-      any(subsector == "livestock") & any(subsector == "nonag") ~ "livestock",
-      
-      # nonag + crop → crop
-      any(subsector == "crop") & any(subsector == "nonag") ~ "crop",
-      
-      # nonag + forestry → nonag
-      any(subsector == "forestry") & any(subsector == "nonag") ~ "nonag",
-      
-      # otherwise keep original value
-      TRUE ~ subsector    )  ) %>%  ungroup()
-test <- HS_NAICS %>%  group_by(naics) %>%
-  summarise(n_subsector = n_distinct(subsector),
-            subsectors = paste(unique(subsector), collapse = ", ")  ) %>%
-  filter(n_subsector > 1)
-table(HS_NAICS$subsector)
-length(unique(HS_NAICS$naics))
-# manually adjust some other 
-HS_NAICS <- HS_NAICS %>%
-  mutate( subsector = case_when(naics == 311225 ~ "crop", naics == 311119 ~ "livestock",TRUE ~ subsector)  )
-
+# # if non ag and crop/livestock put it in crop and livestock
+# HS_NAICS <- HS_NAICS %>%  group_by(naics) %>%
+#   mutate(
+#     subsector = case_when(
+#       # forestry + crop + nonag → crop (put this first: most specific)
+#       all(c("forestry", "crop", "nonag") %in% subsector) ~ "crop",
+#       
+#       # nonag + livestock → livestock
+#       any(subsector == "livestock") & any(subsector == "nonag") ~ "livestock",
+#       
+#       # nonag + crop → crop
+#       any(subsector == "crop") & any(subsector == "nonag") ~ "crop",
+#       
+#       # nonag + forestry → nonag
+#       any(subsector == "forestry") & any(subsector == "nonag") ~ "nonag",
+#       
+#       # otherwise keep original value
+#       TRUE ~ subsector    )  ) %>%  ungroup()
+# test <- HS_NAICS %>%  group_by(naics) %>%
+#   summarise(n_subsector = n_distinct(subsector),
+#             subsectors = paste(unique(subsector), collapse = ", ")  ) %>%
+#   filter(n_subsector > 1)
+# table(HS_NAICS$subsector)
+# length(unique(HS_NAICS$naics))
+# # manually adjust some other 
+# HS_NAICS <- HS_NAICS %>%
+#   mutate( subsector = case_when(naics == 311225 ~ "crop", naics == 311119 ~ "livestock",TRUE ~ subsector)  )
+# 
 
 
 sectors <- HS_NAICS %>%  group_by(naics, subsector) %>%
@@ -96,8 +95,9 @@ colSums(is.na(dta1))
 unique(dta1$subsector)
 
 
-# if subsector is NA then put non ag 
-dta1 <- dta1 %>% mutate(subsector = if_else(is.na(subsector), "other", subsector))
+# if subsector is NA then drop it (as tradable sectors)
+# dta1 <- dta1 %>% mutate(subsector = if_else(is.na(subsector), "other", subsector))
+dta1 <- dta1 %>% filter(!is.na(subsector))
 table(dta1$subsector)
  
 
@@ -105,7 +105,7 @@ table(dta1$subsector)
 # Compute total employment by CZ and sector
 sector_emp <- dta1 %>%  group_by(fips, subsector) %>%
   summarise(emp_sector = sum(emp, na.rm = TRUE), .groups = "drop")
-
+unique(sector_emp$subsector)
 # Compute total employment by CZ
 total_emp <- dta1 %>%  group_by(fips) %>%
   summarise(emp_total = sum(emp, na.rm = TRUE), .groups = "drop")
@@ -121,10 +121,10 @@ sector_shares <- sector_emp %>%  left_join(total_emp, by = "fips") %>%
          share_livestock = livestock,
          share_forestry = forestry,
          share_nonag = nonag,
-         share_other = other)
+         share_mining = mining)
 
 # Quick check: shares should sum to 1
-sector_shares %>%  mutate(total = share_crop + share_livestock + share_forestry +share_nonag+  share_other) %>%
+sector_shares %>%  mutate(total = share_crop + share_livestock + share_forestry +share_nonag+  share_mining) %>%
   summary()
 
 names(sector_shares)

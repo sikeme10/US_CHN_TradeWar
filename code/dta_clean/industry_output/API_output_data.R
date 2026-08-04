@@ -18,6 +18,8 @@ api_key <- "32514956a9d5e79bc7d1bb3437726ff7627c7d22"
 # Construct the API URL to retrieve all data, including NAICS code descriptions
 url <- paste0("https://api.census.gov/data/2012/ecnbasic?get=NAICS2012,NAICS2012_TTL,RCPTOT&for=US:*&key=", api_key)
 
+
+
 # Make the API request
 response <- GET(url)
 

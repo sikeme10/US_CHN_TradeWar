@@ -17,7 +17,7 @@ library(countrycode)
 library(tidyverse)
 library(vroom)
 library(countrycode)
-library(Hmisc)
+# library(Hmisc)
 library(haven)
 library(sfaR)
 library(frontier)
@@ -29,6 +29,7 @@ setwd("/data/sikeme/TRADE/US_CHN_TradeWar_git")
 dir_dta <-  "/data/sikeme/TRADE/US_CHN_TradeWar_git/output/Compare_values/yearly/robust/elast/"
 
 exp <-  "/data/sikeme/TRADE/US_CHN_TradeWar_git/output/IVs/regression/elast/"
+sectors_hs4 <- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/data/crosswalk/clean_HS4_sub_sector_edit.csv")
 
 ################################################################################
 # 1) Load data 
@@ -60,17 +61,22 @@ SOE <- SOE %>% select(-Year)
 # create a theme for ggplot 
 theme_trade <- theme_minimal(base_size = 14, base_family = "Times New Roman") +
   theme(
-    panel.spacing.x = unit(1.2, "lines"),
-    plot.title = element_text(size = 11, hjust = 0.5),
+    panel.spacing.x  = unit(1.2, "lines"),
+    plot.title       = element_blank(),
     panel.background = element_rect(fill = "white", color = NA),
     plot.background  = element_rect(fill = "white", color = NA),
-    axis.text.x = element_text(size = 9),
-    axis.text.y = element_text(size = 9),
-    axis.title.x = element_text(size = 11),
-    axis.title.y = element_text(size = 11),
-    legend.text  = element_text(size = 10),
-    legend.title = element_text(size = 10)
+    panel.border     = element_rect(color = "black", fill = NA, linewidth = 0.6),
+    strip.background = element_rect(fill = "grey92", color = "black", linewidth = 0.6),
+    strip.text       = element_text(size = 12, face = "bold", color = "black"),
+    axis.text.x  = element_text(size = 11),
+    axis.text.y  = element_text(size = 11),
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    legend.position = "top",
+    legend.text  = element_text(size = 12),
+    legend.title = element_blank()
   )
+
 ################################################################################
 # aggregate tariff data at hs4 level to include in the regression
 ################################################################################
@@ -132,8 +138,17 @@ test <- dta %>% filter(is.na(dta$diff_log_tariff_2015 ))
 
 # put 0s for NA in change in tariff (merging creates NAs)
 dta <- dta %>% mutate(diff_log_tariff_2015  = coalesce(diff_log_tariff_2015, 0))
-  
-  
+
+# merge with sector shares:
+names(dta)
+table(dta$year)
+names(sectors_hs4)
+sectors_hs4$hs4 <- as.numeric(sectors_hs4$hs4)
+
+
+dta <- left_join(dta, sectors_hs4)
+
+
 names(dta)
 ################################################################################
 # aggregate at HS 4 level 
@@ -154,13 +169,13 @@ SOE_hs4 <- SOE_hs4 %>% mutate(share_value_SOE = Trade_value_USD_SOE / tot_Trade_
 
 test <- SOE_hs4 %>% filter(share_value_SOE ==0)
 
-plot <- ggplot(SOE_hs4)+
+p <- ggplot(SOE_hs4)+
   geom_histogram(aes(x=share_value_SOE), bins = 30, color = "black" ,fill = "blue")+
   labs(title = "Histogram of the import share by SOE across HS4 industries \n for Chinese imports from the US in 2010",
-       x = "SOE share",    y = "Count"  ) +
+       x = "Import share by SOE",    y = "Count"  ) +
   theme_trade
-plot
-
+p
+ggsave(paste0(exp, "SOE_share.png"), plot = p, width = 8, height = 6, dpi = 300)
 
 ################################################################################
 
@@ -190,50 +205,23 @@ names(merged_hs4)
 unique(merged_hs4$year)
 # plot 
 
-ggplot(merged_hs4,aes(x = share_value_SOE, y = diff_ln_AVE_FE_wmean_w_mean)) +
-  geom_point( alpha = 0.6) +
-  # facet_wrap(~ baseline_year) +
-  geom_smooth(method = "loess", se = FALSE, color = "blue") +
-  labs(title = "Change in AVE vs. SOE share",  x = "SOE share in 2010",  y = "Change in AVE (FE demean approach)"  ) +
-  theme_minimal()
+merged_hs4_filtered <- merged_hs4 %>%  filter(subsector %in% c("crop", "livestock", "nonag") & baseline_year == 2017)
 
-ggplot(merged_hs4,aes(x = share_value_SOE, y = diff_ln_AVE_FE_w_mean)) s+
-  geom_point( alpha = 0.6) +
-  facet_wrap(~ baseline_year) +
-  geom_smooth(method = "loess", se = FALSE, color = "blue") +
-  labs(title = "Change in AVE vs. SOE share",  x = "SOE share in 2010",  y = "Change in AVE (FE approach)"  ) +
-  theme_minimal()
-
-ggplot(merged_hs4,aes(x = share_value_SOE, y = diff_ln_AVE_FE_bench_w_mean)) +
-  geom_point( alpha = 0.6) +
-  facet_wrap(~ baseline_year) +
-  geom_smooth(method = "loess", se = FALSE, color = "blue") +
-  labs(title = "Change in AVE vs. SOE share",  x = "SOE share in 2010",  y = "Change in AVE (FE bench approach)"  ) +
-  theme_minimal()
-
-
-ggplot(subset(merged_hs4, sector == "Ag"), 
-       aes(x = share_value_SOE, y = diff_ln_AVE_FE_bench_w_mean, color = factor(hs_section))) +
-  geom_point(alpha = 0.6) +
-  facet_wrap(~ baseline_year) +
-  geom_smooth(method = "loess", se = FALSE, color = "blue") +
-  labs(    title  = "Change in AVE vs. SOE share",
-    x      = "SOE share in 2010",
-    y      = "Change in AVE (FE bench approach)",
-    color  = "HS2 sector"  ) +
-  theme_minimal()
-
-
-ggplot(subset(merged_hs4, sector == "Manu"), 
-       aes(x = share_value_SOE, y = diff_ln_AVE_FE_bench_w_mean, color = factor(hs_section))) +
-  geom_point(alpha = 0.6) +
-  facet_wrap(~ baseline_year) +
-  geom_smooth(method = "loess", se = FALSE, color = "blue") +
-  labs(    title  = "Change in AVE vs. SOE share",
-           x      = "SOE share in 2010",
-           y      = "Change in AVE (FE bench approach)",
-           color  = "HS2 sector"  ) +
-  theme_minimal()
+p <- ggplot(merged_hs4_filtered, aes(x = share_value_SOE, y = diff_ln_AVE_FE_wmean_w_mean, color = subsector)) +
+  geom_point(alpha = 0.4, size = 0.8) +
+  # geom_smooth(method = "lm", se = FALSE) +
+  geom_smooth(method = "loess", se = FALSE) +
+  scale_color_manual(
+    values = c("crop" = "#1b9e77", "livestock" = "#d95f02", "nonag" = "#7570b3"),
+    labels = c("crop" = "Crop", "livestock" = "Livestock", "nonag" = "Non-ag")  ) +
+  labs(
+    title = "Change in AVE vs. SOE share, by subsector",
+    x = "SOE share in 2010",
+    y = "\u0394 ln(1+AVE) (demean approach)",
+    color = "Subsector"  ) +
+  theme_trade
+p
+ggsave(paste0(exp, "SOE_share.png"), plot = p, width = 8, height = 6, dpi = 300)
 
 
 ################################################################################
@@ -242,26 +230,10 @@ ggplot(subset(merged_hs4, sector == "Manu"),
 library(fixest)
 length(unique(merged_hs4$hs4))
 names(merged_hs4)
-table(merged_hs4$sector)
+table(merged_hs4$year)
 test <- merged_hs4 %>% filter(sector == "Other")
 
-# Full sample
-FE_2015 <- feols(diff_ln_AVE_FE_w_mean ~ share_value_SOE + diff_log_tariff_2015,
-  data = subset(merged_hs4, baseline_year == 2015))
-
-FE_bench_2015 <- feols(diff_ln_AVE_FE_bench_w_mean ~ share_value_SOE + diff_log_tariff_2015,
-  data = subset(merged_hs4, baseline_year == 2015))
-
-FE_demean_2015 <- feols(diff_ln_AVE_FE_wmean_w_mean ~ share_value_SOE + diff_log_tariff_2015,
-                data = subset(merged_hs4, baseline_year == 2015))
-
-# Table
-etable(FE_2015, FE_bench_2015, FE_demean_2015,
-       headers = c("2015 FE", "2015 FE bench","2015 FE demean"),
-       digits = 4,
-       fitstat = ~ n + r2 + ar2 + f + f.p + rmse)
-
-
+# Full sample: By distribution
 FE_2017 <- feols(diff_ln_AVE_FE_w_mean ~ share_value_SOE + diff_log_tariff_2015,
                  data = subset(merged_hs4, baseline_year == 2017))
 
@@ -280,11 +252,7 @@ tbl <- etable(FE_2017, FE_bench_2017, FE_demean_2017,
        fitstat = ~ n + r2 + ar2 + f + f.p + rmse)
 tbl
 # Then write to CSV (easy to paste into Excel)
-write.csv(tbl, paste0(exp, "SOE_NTM_2017.csv"), row.names = FALSE)
-
-
-
-
+write.csv(tbl, paste0(exp, "SOE_NTM_2017_FE_models_with_tar.csv"), row.names = FALSE)
 
 FE_2017 <- feols(diff_ln_AVE_FE_w_mean ~ share_value_SOE,
                  data = subset(merged_hs4, baseline_year == 2017))
@@ -295,8 +263,6 @@ FE_bench_2017 <- feols(diff_ln_AVE_FE_bench_w_mean ~ share_value_SOE ,
 FE_demean_2017 <- feols(diff_ln_AVE_FE_wmean_w_mean ~ share_value_SOE ,
                         data = subset(merged_hs4, baseline_year == 2017))
 
-
-
 # Table
 tbl <- etable(FE_2017, FE_bench_2017, FE_demean_2017,
               headers = c("2017 FE", "2017 FE bench","2017 FE demean"),
@@ -304,46 +270,32 @@ tbl <- etable(FE_2017, FE_bench_2017, FE_demean_2017,
               fitstat = ~ n + r2 + ar2 + f + f.p + rmse)
 tbl
 # Then write to CSV (easy to paste into Excel)
-write.csv(tbl, paste0(exp, "SOE_NTM_2017.csv"), row.names = FALSE)
+write.csv(tbl, paste0(exp, "SOE_NTM_2017_FE_models.csv"), row.names = FALSE)
 
 
-
-FE_2017 <- feols(diff_ln_AVE_FE_w_mean ~ share_value_SOE,
-                 data = subset(merged_hs4, baseline_year == 2017))
-
-FE_bench_2017 <- feols(diff_ln_AVE_FE_bench_w_mean ~ share_value_SOE ,
-                       data = subset(merged_hs4, baseline_year == 2017))
-
-FE_demean_2017 <- feols(diff_ln_AVE_FE_wmean_w_mean ~ share_value_SOE ,
-                        data = subset(merged_hs4, baseline_year == 2017))
+# By subsector 
 
 
-
-# Table
-tbl <- etable(FE_2017, FE_bench_2017, FE_demean_2017,
-              headers = c("2017 FE", "2017 FE bench","2017 FE demean"),
-              digits = 4,
-              fitstat = ~ n + r2 + ar2 + f + f.p + rmse)
-tbl
-# Then write to CSV (easy to paste into Excel)
-write.csv(tbl, paste0(exp, "SOE_NTM_2017.csv"), row.names = FALSE)
 
 
 
 ##############################################################################
+# demean model
+##############################################################################
+merged_hs4_filtered <- merged_hs4 %>%  filter(subsector %in% c("crop", "livestock", "nonag"))
 
 AVE <- feols(diff_ln_AVE_FE_wmean_w_mean ~ share_value_SOE,
-                  data = subset(merged_hs4, baseline_year == 2017 & year %in% c(2018:2019)))
+                  data = subset(merged_hs4_filtered, baseline_year == 2017 & year %in% c(2018:2019)))
 AVE_2017 <- feols(diff_ln_AVE_FE_wmean_w_mean ~ as.factor(year) + share_value_SOE,
-                  data = subset(merged_hs4, baseline_year == 2017 & year %in% c(2018:2019)))
+                  data = subset(merged_hs4_filtered, baseline_year == 2017 & year %in% c(2018:2019)))
 AVE_2017_tar <- feols(diff_ln_AVE_FE_wmean_w_mean ~ as.factor(year) + diff_log_tariff_2017 + share_value_SOE,
-                      data = subset(merged_hs4, baseline_year == 2017 & year %in% c(2018:2019)))
-AVE_2017_sector <- feols(diff_ln_AVE_FE_wmean_w_mean ~ as.factor(year) + as.factor(sector) +
+                      data = subset(merged_hs4_filtered, baseline_year == 2017 & year %in% c(2018:2019)))
+AVE_2017_sector <- feols(diff_ln_AVE_FE_wmean_w_mean ~ as.factor(year) + as.factor(subsector) +
                            diff_log_tariff_2017 + share_value_SOE,
-                         data = subset(merged_hs4, baseline_year == 2017 & year %in% c(2018:2019)))
+                         data = subset(merged_hs4_filtered, baseline_year == 2017 & year %in% c(2018:2019)))
 AVE_2017_sector_interact <- feols(diff_ln_AVE_FE_wmean_w_mean ~  as.factor(year) +
-                                    diff_log_tariff_2017 + as.factor(sector) * share_value_SOE,,
-                                  data = subset(merged_hs4, baseline_year == 2017 & year %in% c(2018:2019)))
+                                    diff_log_tariff_2017 + as.factor(subsector) * share_value_SOE,,
+                                  data = subset(merged_hs4_filtered, baseline_year == 2017 & year %in% c(2018:2019)))
 
 # Table
 tbl <- etable(AVE, AVE_2017, AVE_2017_tar, AVE_2017_sector, AVE_2017_sector_interact,
@@ -356,71 +308,50 @@ write.csv(tbl, paste0(exp, "SOE_NTM_w_2017.csv"), row.names = FALSE)
 
 # with cluster
 AVE <- feols(diff_ln_AVE_FE_wmean_w_mean ~ share_value_SOE,
-             data = subset(merged_hs4, baseline_year == 2017 & year %in% c(2018:2019)), cluster = ~hs4)
+             data = subset(merged_hs4_filtered, baseline_year == 2017 & year %in% c(2018:2019)), cluster = ~hs4)
 AVE_2017 <- feols(diff_ln_AVE_FE_wmean_w_mean ~ as.factor(year) + share_value_SOE,
-                  data = subset(merged_hs4, baseline_year == 2017 & year %in% c(2018:2019)), cluster = ~hs4)
-AVE_2017_tar <- feols(diff_ln_AVE_FE_wmean_w_mean ~ as.factor(year) + diff_log_tariff_2017 + share_value_SOE,
-                      data = subset(merged_hs4, baseline_year == 2017 & year %in% c(2018:2019)), cluster = ~hs4)
-AVE_2017_sector <- feols(diff_ln_AVE_FE_wmean_w_mean ~ as.factor(year) + as.factor(sector) +
-                           diff_log_tariff_2017 + share_value_SOE,
-                         data = subset(merged_hs4, baseline_year == 2017 & year %in% c(2018:2019)), cluster = ~hs4)
-AVE_2017_sector_interact <- feols(diff_ln_AVE_FE_wmean_w_mean ~ as.factor(year) +
-                                    diff_log_tariff_2017 + as.factor(sector) * share_value_SOE,
-                                  data = subset(merged_hs4, baseline_year == 2017 & year %in% c(2018:2019)), cluster = ~hs4)
+                  data = subset(merged_hs4_filtered, baseline_year == 2017 & year %in% c(2018:2019)), cluster = ~hs4)
+AVE_2017_tar <- feols(diff_ln_AVE_FE_wmean_w_mean ~ diff_log_tariff_2017 + share_value_SOE,
+                      data = subset(merged_hs4_filtered, baseline_year == 2017 & year %in% c(2018:2019)), cluster = ~hs4)
+AVE_2017_sector <- feols(diff_ln_AVE_FE_wmean_w_mean ~ as.factor(subsector) + diff_log_tariff_2017 + share_value_SOE,
+                         data = subset(merged_hs4_filtered, baseline_year == 2017 & year %in% c(2018:2019)), cluster = ~hs4)
+AVE_2017_sector_interact <- feols(diff_ln_AVE_FE_wmean_w_mean ~ diff_log_tariff_2017 + as.factor(subsector) * share_value_SOE,
+                                  data = subset(merged_hs4_filtered, baseline_year == 2017 & year %in% c(2018:2019)), cluster = ~hs4)
 # Table
 tbl <- etable(AVE, AVE_2017, AVE_2017_tar, AVE_2017_sector, AVE_2017_sector_interact,
-              headers = c("AVE", "AVE FE", "with tariff", "sector", "interact"),
+              headers = c("AVE", "AVE FE", "with tariff", "subsector", "interact"),
               digits = 4,
               fitstat = ~ n + r2 + ar2 + f + f.p + rmse)
 tbl
 write.csv(tbl, paste0(exp, "SOE_NTM_w_2017_cluster.csv"), row.names = FALSE)
 
+###############################################################################
+# At subsector level
+###############################################################################
+subsectors <- c("crop", "livestock", "nonag")
 
-AVE <- feols(diff_ln_AVE_FE_wmean_w_mean ~ share_value_SOE,
-             data = subset(merged_hs4, baseline_year == 2017 & year %in% c(2018:2019)), cluster = ~hs4)
-AVE_2017 <- feols(diff_ln_AVE_FE_wmean_w_mean ~ as.factor(year) + share_value_SOE,
-                  data = subset(merged_hs4, baseline_year == 2017 & year %in% c(2018:2019)), cluster = ~hs4)
-AVE_2017_tar <- feols(diff_ln_AVE_FE_wmean_w_mean ~ as.factor(year) + diff_log_tariff_2017 + share_value_SOE,
-                      data = subset(merged_hs4, baseline_year == 2017 & year %in% c(2018:2019)), cluster = ~hs4)
-AVE_2017_sector <- feols(diff_ln_AVE_FE_wmean_w_mean ~ as.factor(year) + as.factor(sector) +
-                           diff_log_tariff_2017 + share_value_SOE,
-                         data = subset(merged_hs4, baseline_year == 2017 & year %in% c(2018:2019)), cluster = ~hs4)
-AVE_2017_sector_interact <- feols(diff_ln_AVE_FE_wmean_w_mean ~ as.factor(year) +
-                                    diff_log_tariff_2017 + as.factor(sector) * share_value_SOE,
-                                  data = subset(merged_hs4, baseline_year == 2017 & year %in% c(2018:2019)), cluster = ~hs4)
-# Table
-tbl <- etable(AVE, AVE_2017, AVE_2017_tar, AVE_2017_sector, AVE_2017_sector_interact,
-              headers = c("AVE", "AVE FE", "with tariff", "sector", "interact"),
-              digits = 4,
-              fitstat = ~ n + r2 + ar2 + f + f.p + rmse)
-tbl
+# Without cluster
+models_nocluster <- lapply(subsectors, function(s) {
+  feols(diff_ln_AVE_FE_wmean_w_mean ~ diff_log_tariff_2017 + share_value_SOE,
+        data = subset(merged_hs4_filtered, baseline_year == 2017 & year %in% c(2018:2019) & subsector == s))
+})
+names(models_nocluster) <- c("Crop (no cl.)", "Livestock (no cl.)", "Non-ag (no cl.)")
 
+# With cluster
+models_cluster <- lapply(subsectors, function(s) {
+  feols(diff_ln_AVE_FE_wmean_w_mean ~ diff_log_tariff_2017 + share_value_SOE,
+        data = subset(merged_hs4_filtered, baseline_year == 2017 & year %in% c(2018:2019) & subsector == s),
+        cluster = ~hs4)
+})
+names(models_cluster) <- c("Crop (cl. hs4)", "Livestock (cl. hs4)", "Non-ag (cl. hs4)")
 
+# Combine into one table, alternating or grouped
+tbl_subsector <- etable(models_nocluster, models_cluster,
+                        digits = 4,
+                        fitstat = ~ n + r2 + ar2 + f + f.p + rmse)
+tbl_subsector
 
-
-# with windsorized data
-AVE <- feols(diff_ln_AVE_FE_wmean_mean ~ share_value_SOE,
-             data = subset(merged_hs4, baseline_year == 2017 & year %in% c(2018:2019)))
-AVE_2017 <- feols(diff_ln_AVE_FE_wmean_w_mean ~ as.factor(year) + share_value_SOE,
-                  data = subset(merged_hs4, baseline_year == 2017 & year %in% c(2018:2019)))
-AVE_2017_tar <- feols(diff_ln_AVE_FE_wmean_w_mean ~ as.factor(year) + diff_log_tariff_2017 + share_value_SOE,
-                      data = subset(merged_hs4, baseline_year == 2017 & year %in% c(2018:2019)))
-AVE_2017_sector <- feols(diff_ln_AVE_FE_wmean_w_mean ~ as.factor(year) + as.factor(sector) +
-                           diff_log_tariff_2017 + share_value_SOE,
-                         data = subset(merged_hs4, baseline_year == 2017 & year %in% c(2018:2019)))
-AVE_2017_sector_interact <- feols(diff_ln_AVE_FE_wmean_w_mean ~ as.factor(year) +
-                                    diff_log_tariff_2017 + as.factor(sector) * share_value_SOE,
-                                  data = subset(merged_hs4, baseline_year == 2017 & year %in% c(2018:2019)))
-
-# Table
-tbl_w <- etable(AVE, AVE_2017, AVE_2017_tar, AVE_2017_sector, AVE_2017_sector_interact,
-              headers = c("AVE",  "AVE FE", "with tariff", "sector", "interact"),
-              digits = 4,
-              fitstat = ~ n + r2 + ar2 + f + f.p + rmse)
-tbl_w
-# Then write to CSV (easy to paste into Excel)
-write.csv(tbl_w, paste0(exp, "SOE_NTM_2017_w.csv"), row.names = FALSE)
-
+write.csv(tbl_subsector, paste0(exp, "SOE_NTM_w_2017_subsector.csv"), row.names = FALSE)
 
 
 
@@ -530,27 +461,53 @@ write_csv(df_model, "/data/sikeme/TRADE/US_CHN_TradeWar_git/output/IVs/predicted
 
 }
 
+
+
 ##################################################################################
 # pretrend checks SOE shares 
 ##################################################################################
 names(merged_hs4_all)
 table(merged_hs4_all$year)
-merged_hs4_all <- merged_hs4_all %>% filter(year %in% c(2016:2019))
 
-# Full sample
-FE_2015_SOE_notar_demean <- feols(diff_ln_AVE_FE_wmean_w_mean ~ as.factor(year)*share_value_SOE,
-                                  data = subset(merged_hs4_all, baseline_year == 2015))
-FE_2015_SOE_tar_demean   <- feols(diff_ln_AVE_FE_wmean_w_mean ~ as.factor(year)*share_value_SOE + diff_log_tariff_2015,
-                                  data = subset(merged_hs4_all, baseline_year == 2015))
-FE_2015_SOE_tarX_demean  <- feols(diff_ln_AVE_FE_wmean_w_mean ~ as.factor(year)*share_value_SOE + diff_log_tariff_2015,
-                                  data = subset(merged_hs4_all, baseline_year == 2015))
+# pretrend check on windsorzed
+d <- subset(merged_hs4_all, baseline_year == 2015)
 
-# Table
-tbl <- etable(FE_2015_SOE_notar_demean, FE_2015_SOE_tar_demean, FE_2015_SOE_tarX_demean,
-              headers = c("No Tar",   "Tar", "Tar×Year Demean"),
-              digits = 4,
-              fitstat = ~ n + r2 + ar2 + f + f.p + rmse)
-tbl
+# (1) what you wrote: no year FE, no SOE main effect
+m1 <- feols(diff_ln_AVE_FE_wmean_w_mean ~ i(year, share_value_SOE, ref = 2016),
+            data = d, cluster = ~hs4)
+
+# (2) year FE added, still no main effect: gradient in each year vs 2015 base
+m2 <- feols(diff_ln_AVE_FE_wmean_w_mean ~ i(year, share_value_SOE) | year,
+            data = d, cluster = ~hs4)
+
+# (3) your Table 2 structure: year dummies + SOE main effect + interactions
+m3 <- feols(diff_ln_AVE_FE_wmean_w_mean ~ share_value_SOE +
+              i(year, share_value_SOE, ref = 2016) | year,
+            data = d, cluster = ~hs4)
+
+etable(m1, m2, m3, digits = 4, fitstat = ~ n + r2)
+
+
+
+# pretrend check on windsorzed
+d <- subset(merged_hs4_all, baseline_year == 2015)
+
+# (1) what you wrote: no year FE, no SOE main effect
+m1 <- feols(diff_ln_AVE_FE_wmean_mean ~ i(year, share_value_SOE, ref = 2016),
+            data = d, cluster = ~hs4)
+
+# (2) year FE added, still no main effect: gradient in each year vs 2015 base
+m2 <- feols(diff_ln_AVE_FE_wmean_mean ~ i(year, share_value_SOE) + as.factor(year),
+            data = d, cluster = ~hs4)
+
+# (3) your Table 2 structure: year dummies + SOE main effect + interactions
+m3 <- feols(diff_ln_AVE_FE_wmean_mean ~ share_value_SOE +
+              i(year, share_value_SOE, ref = 2016) + as.factor(year),
+            data = d, cluster = ~hs4)
+
+tbl_w <- etable(m1, m2, m3, digits = 4, fitstat = ~ n + r2)
+tbl_w
+write_csv(as.data.frame(tbl_w), paste0(exp, "NTBs_SOE_pretrend.csv"))
 
 
 
@@ -579,65 +536,117 @@ tbl_w <- etable(FE_2015_SOE_notar_demean, FE_2015_SOE_tar_demean, FE_2015_SOE_ta
 tbl_w
 write_csv(as.data.frame(tbl_w), paste0(exp, "NTBs_SOE_pretrend.csv"))
 
+#####################################
+
+# event study
+
+library(broom)
+library(broom)
+library(dplyr)
+library(ggplot2)
+
+merged_hs4_all_2015 <- merged_hs4_all %>% # filter(subsector == "crop") %>%
+  filter(baseline_year == 2015) %>%    mutate(rel_year = year - 2017)
+
+# --- Choose your outcome variable here ---
+outcome_var <- "diff_ln_AVE_FE_wmean_w_mean"
+
+
+# --- Eight models total ---
+es_model_noFE <- feols(as.formula(paste(outcome_var, "~ i(rel_year, share_value_SOE, ref = -1)")),
+                       data = merged_hs4_all_2015)
+
+es_model_yearFE <- feols(as.formula(paste(outcome_var, "~ i(rel_year, share_value_SOE, ref = -1) | year")),
+                         data = merged_hs4_all_2015)
+
+es_model_hs4FE <- feols(as.formula(paste(outcome_var, "~ i(rel_year, share_value_SOE, ref = -1) | hs4")),
+                        data = merged_hs4_all_2015)
+
+es_model_yearhs4FE <- feols(as.formula(paste(outcome_var, "~ i(rel_year, share_value_SOE, ref = -1) | year + hs4")),
+                            data = merged_hs4_all_2015)
+
+es_model_tar <- feols(as.formula(paste(outcome_var, "~ i(rel_year, share_value_SOE, ref = -1) + diff_log_tariff_2015")),
+                      data = merged_hs4_all_2015)
+
+es_model_tar_yearFE <- feols(as.formula(paste(outcome_var, "~ i(rel_year, share_value_SOE, ref = -1) + diff_log_tariff_2015 | year")),
+                             data = merged_hs4_all_2015)
+
+es_model_tar_hs4FE <- feols(as.formula(paste(outcome_var, "~ i(rel_year, share_value_SOE, ref = -1) + diff_log_tariff_2015 | hs4")),
+                            data = merged_hs4_all_2015)
+
+es_model_tar_yearhs4FE <- feols(as.formula(paste(outcome_var, "~ i(rel_year, share_value_SOE, ref = -1) + diff_log_tariff_2015 | year + hs4")),
+                                data = merged_hs4_all_2015)
+
+# --- Helper: tag both the FE spec and the tariff facet ---
+tidy_es <- function(model, fe_label, tariff_label) {
+  out <- tidy(model, conf.int = TRUE) %>%
+    filter(grepl("rel_year", term)) %>%
+    mutate(rel_year = as.numeric(sub(".*rel_year::(-?[0-9]+):.*", "\\1", term)))
+  
+  out <- bind_rows(  out,
+    data.frame(rel_year = -1, estimate = 0, conf.low = 0, conf.high = 0)  )
+  out$fe_spec <- fe_label
+  out$tariff_facet <- tariff_label
+  out
+}
+
+es_all <- bind_rows(
+  tidy_es(es_model_noFE, "No FE", "Without tariff control"),
+  tidy_es(es_model_yearFE, "Year FE", "Without tariff control"),
+  tidy_es(es_model_hs4FE, "HS4 FE", "Without tariff control"),
+  tidy_es(es_model_yearhs4FE, "Year + HS4 FE", "Without tariff control"),
+  tidy_es(es_model_tar, "No FE", "With tariff control"),
+  tidy_es(es_model_tar_yearFE, "Year FE", "With tariff control"),
+  tidy_es(es_model_tar_hs4FE, "HS4 FE", "With tariff control"),
+  tidy_es(es_model_tar_yearhs4FE, "Year + HS4 FE", "With tariff control"))
+
+es_all$fe_spec <- factor(es_all$fe_spec, levels = c("No FE", "Year FE", "HS4 FE", "Year + HS4 FE"))
+es_all$tariff_facet <- factor(es_all$tariff_facet, levels = c("Without tariff control", "With tariff control"))
+
+# --- Plot: facet by tariff control, color by FE spec ---
+p <- ggplot(es_all, aes(x = rel_year, y = estimate, color = fe_spec)) +
+  geom_point(position = position_dodge(width = 0.3)) +
+  geom_line(position = position_dodge(width = 0.3)) +
+  geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width = 0.15,
+                position = position_dodge(width = 0.3)) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "gray40") +
+  geom_vline(xintercept = -1, linetype = "dotted", color = "gray60") +
+  facet_wrap(~ tariff_facet) +
+  labs(title = paste("Event study:", outcome_var),
+       x = "Years relative to 2017", y = "Coefficient", color = "Specification") +
+  theme_trade
+p
+ggsave(paste0(exp, "event_study_SOE_pretrend.png"), plot = p, width = 8, height = 6, dpi = 300)
 
 
 
 
 
-# event study analysis 
-names(merged_hs4_all)
-unique(merged_hs4_all$year)
-merged_hs4_all_2015 <- merged_hs4_all %>% filter(baseline_year == 2015 )
-merged_hs4_all_2015 <- merged_hs4_all_2015 %>%  mutate(rel_year = year - 2018)
-es_model1 <- feols(diff_ln_AVE_FE_wmean_w_mean ~ i(rel_year, share_value_SOE, ref = -1) |
-                     year+ hs4, data = merged_hs4_all_2015)
 
-
-# Plot 1
-iplot(es_model1, xlab     = "Years relative to 2016",
-      ylab     = "Coefficient (effect of SOE import share)",
-      main     = "Without tariff control",  col      = "steelblue",
-      pt.join  = TRUE,    ci_level = 0.95)
-abline(h = 0, lty = 2, col = "gray40")
-p1 <- recordPlot()
-
-# Plot 2
-es_model2 <- feols(diff_ln_AVE_FE_wmean_w_mean ~ i(rel_year, share_value_SOE, ref = -1) |
-                    year,  data    = merged_hs4_all_2015,  cluster = ~hs4)
-iplot(es_model2,
-      xlab     = "Years relative to 2016",  ylab     = "Coefficient (effect of SOE import share)",
-      main     = "With tariff control",   col      = "steelblue",    pt.join  = TRUE,
-      ci_level = 0.95)
-abline(h = 0, lty = 2, col = "gray40")
-p2 <- recordPlot()
-png("/data/sikeme/TRADE/US_CHN_TradeWar_git/output/IVs/summary/event_study_combined.png", width = 2400, height = 900, res = 200)
-par(mfrow = c(1, 2))
-replayPlot(p1)
-replayPlot(p2)
-dev.off()
 
 ###############################################################################
 # looking at NTB-SOE-tariffs 
 ###############################################################################
 
+merged_hs4_2017 <- merged_hs4 %>% filter( baseline_year == 2017 & subsector %in% c("crop", "livestock", "nonag"))
 
 SOE_2017 <- feols(diff_ln_AVE_FE_wmean_w_mean ~ as.factor(year) + share_value_SOE ,
-                  data = subset(merged_hs4, baseline_year == 2017))
+                  data = subset(merged_hs4_2017, baseline_year == 2017))
 SOE_bis_2017 <- feols(diff_ln_AVE_FE_wmean_w_mean ~ as.factor(year) + share_value_SOE +diff_log_tariff_2017 ,
-                  data = subset(merged_hs4, baseline_year == 2017))
+                  data = subset(merged_hs4_2017, baseline_year == 2017))
 tariff_2017 <- feols(diff_ln_AVE_FE_wmean_w_mean ~ as.factor(year) + diff_log_tariff_2017 ,
-                     data = subset(merged_hs4, baseline_year == 2017))
+                     data = subset(merged_hs4_2017, baseline_year == 2017))
 SOE_tar_2017 <- feols(diff_log_tariff_2017 ~  as.factor(year) + share_value_SOE ,
-                      data = subset(merged_hs4, baseline_year == 2017))
+                      data = subset(merged_hs4_2017, baseline_year == 2017))
 
 SOE_2017_clust <- feols(diff_ln_AVE_FE_wmean_w_mean ~ as.factor(year) + share_value_SOE ,
-                  data = subset(merged_hs4, baseline_year == 2017), cluster = ~hs4)
+                  data = subset(merged_hs4_2017, baseline_year == 2017), cluster = ~hs4)
 SOE_bis_2017_clust <- feols(diff_ln_AVE_FE_wmean_w_mean ~ as.factor(year) + share_value_SOE +diff_log_tariff_2017 ,
-                      data = subset(merged_hs4, baseline_year == 2017), cluster = ~hs4)
+                      data = subset(merged_hs4_2017, baseline_year == 2017), cluster = ~hs4)
 tariff_2017_clust <- feols(diff_ln_AVE_FE_wmean_w_mean ~ as.factor(year) + diff_log_tariff_2017 ,
-                     data = subset(merged_hs4, baseline_year == 2017), cluster = ~hs4)
+                     data = subset(merged_hs4_2017, baseline_year == 2017), cluster = ~hs4)
 SOE_tar_2017_clust <- feols(diff_log_tariff_2017 ~  as.factor(year) + share_value_SOE ,
-                      data = subset(merged_hs4, baseline_year == 2017), cluster = ~hs4)
+                      data = subset(merged_hs4_2017, baseline_year == 2017), cluster = ~hs4)
 
 # Table
 tbl <- etable(SOE_2017, SOE_bis_2017 , tariff_2017, SOE_tar_2017,
@@ -652,220 +661,20 @@ write_csv(as.data.frame(tbl), paste0(exp,"NTBs_SOE_tariff.csv"))
 
 
 
+# correlation plote between tariff and NTMs
+merged_hs4_2017 <- merged_hs4 %>% filter( baseline_year == 2017 & subsector %in% c("crop", "livestock", "nonag") )
+names(merged_hs4_2017)
+
+cor_by_subsector_year <- merged_hs4_2017 %>%
+  group_by(subsector, year) %>%
+  summarise(
+    correlation = cor(diff_ln_AVE_FE_wmean_w_mean, diff_log_tariff_2017, use = "complete.obs"),
+    n = sum(!is.na(diff_ln_AVE_FE_wmean_w_mean) & !is.na(diff_log_tariff_2017)),
+    .groups = "drop"
+  )
+
+cor_by_subsector_year
+write_csv(cor_by_subsector_year, paste0(exp,"correlation_tariff_NTM_subsector.csv"))
 
-
-SOE_2017 <- feols(diff_ln_AVE_FE_wmean_w_mean ~ as.factor(year) + as.factor(year)*share_value_SOE ,
-                  data = subset(merged_hs4, baseline_year == 2017))
-SOE_bis_2017 <- feols(diff_ln_AVE_FE_wmean_w_mean ~ as.factor(year) + as.factor(year)*share_value_SOE + as.factor(year)*diff_log_tariff_2017 ,
-                      data = subset(merged_hs4, baseline_year == 2017))
-tariff_2017 <- feols(diff_ln_AVE_FE_wmean_w_mean ~ as.factor(year) + as.factor(year)*diff_log_tariff_2017 ,
-                     data = subset(merged_hs4, baseline_year == 2017))
-SOE_tar_2017 <- feols(diff_log_tariff_2017 ~  as.factor(year) + as.factor(year)*share_value_SOE ,
-                      data = subset(merged_hs4, baseline_year == 2017))
-# Table
-tbl <- etable(SOE_2017, SOE_bis_2017 , tariff_2017, SOE_tar_2017,
-              headers = c("NTB-SOE", "NTB-SOE-tariff","NTB-tariff","tariff-SOE"),
-              digits = 4,
-              fitstat = ~ n + r2 + ar2 + f + f.p + rmse)
-tbl
-write_csv(as.data.frame(tbl), paste0(exp,"NTBs_SOE_tariff.csv"))
-
-
-SOE_2017 <- feols(diff_ln_AVE_FE_wmean_w_mean ~ as.factor(year) + share_value_SOE ,
-                  data = subset(merged_hs4, baseline_year == 2017))
-SOE_bis_2017 <- feols(diff_ln_AVE_FE_wmean_w_mean ~ as.factor(year) + share_value_SOE +diff_log_tariff_2017 ,
-                      data = subset(merged_hs4, baseline_year == 2017))
-tariff_2017 <- feols(diff_ln_AVE_FE_wmean_w_mean ~ as.factor(year) + diff_log_tariff_2017 ,
-                     data = subset(merged_hs4, baseline_year == 2017))
-SOE_tar_2017 <- feols(diff_log_tariff_2017 ~  as.factor(year) + share_value_SOE ,
-                      data = subset(merged_hs4, baseline_year == 2017))
-# Table
-tbl <- etable(SOE_2017, SOE_bis_2017 , tariff_2017, SOE_tar_2017,
-              headers = c("NTB-SOE", "NTB-SOE-tariff","NTB-tariff","tariff-SOE"),
-              digits = 4,
-              fitstat = ~ n + r2 + ar2 + f + f.p + rmse)
-tbl
-write_csv(as.data.frame(tbl), paste0(exp,"NTBs_SOE_tariff_w.csv"))
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-##################################################################################
-# Checking relation to tariffs 
-##################################################################################
-names(merged_hs4)
-
-
-# for 2015 
-FE_2015 <- feols(diff_ln_AVE_FE_w_mean ~  as.factor(year)*diff_log_tariff_2015,
-                 data = subset(merged_hs4_all, baseline_year == 2015))
-
-FE_bench_2015 <- feols(diff_ln_AVE_FE_bench_w_mean ~ as.factor(year)*diff_log_tariff_2015,
-                       data = subset(merged_hs4_all, baseline_year == 2015))
-
-FE_demean_2015 <- feols(diff_ln_AVE_FE_wmean_w_mean ~ as.factor(year)*diff_log_tariff_2015,
-                        data = subset(merged_hs4_all, baseline_year == 2015))
-
-FE_log_2015 <- feols(diff_ln_AVE_FE_log_w_mean ~  as.factor(year)*diff_log_tariff_2015,
-                 data = subset(merged_hs4_all, baseline_year == 2015))
-
-FE_bench_log_2015 <- feols(diff_ln_AVE_FE_log_bench_w_mean ~ as.factor(year)*diff_log_tariff_2015,
-                       data = subset(merged_hs4_all, baseline_year == 2015))
-
-FE_demean_log_2015 <- feols(diff_ln_AVE_FE_log_wmean_w_mean ~ as.factor(year)*diff_log_tariff_2015,
-                        data = subset(merged_hs4_all, baseline_year == 2015))
-
-
-etable(FE_2015, FE_bench_2015, FE_demean_2015,
-       headers = c("2015 FE", "2015 FE bench","2015 FE demean"),
-       digits = 4,
-       fitstat = ~ n + r2 + ar2 + f + f.p + rmse)
-
-etable(FE_log_2015, FE_bench_log_2015, FE_demean_log_2015,
-       headers = c("2015 FE", "2015 FE bench","2015 FE demean"),
-       digits = 4,
-       fitstat = ~ n + r2 + ar2 + f + f.p + rmse)
-
-
-
-# for 2017 
-FE_2017 <- feols(diff_ln_AVE_FE_w_mean ~ diff_log_tariff_2017,
-                 data = subset(merged_hs4, baseline_year == 2017))
-
-FE_bench_2017 <- feols(diff_ln_AVE_FE_bench_w_mean ~ diff_log_tariff_2017,
-                       data = subset(merged_hs4, baseline_year == 2017))
-
-FE_demean_2017 <- feols(diff_ln_AVE_FE_wmean_w_mean ~ diff_log_tariff_2017,
-                        data = subset(merged_hs4, baseline_year == 2017))
-
-FE_log_2017 <- feols(diff_ln_AVE_FE_log_w_mean ~  diff_log_tariff_2017,
-                     data = subset(merged_hs4, baseline_year == 2017))
-
-FE_bench_log_2017 <- feols(diff_ln_AVE_FE_log_bench_w_mean ~ diff_log_tariff_2017,
-                           data = subset(merged_hs4, baseline_year == 2017))
-
-FE_demean_log_2017 <- feols(diff_ln_AVE_FE_log_wmean_w_mean ~ diff_log_tariff_2017,
-                            data = subset(merged_hs4, baseline_year == 2017))
-
-
-tbl <- etable(FE_2017, FE_bench_2017, FE_demean_2017,
-       FE_log_2017, FE_bench_log_2017, FE_demean_log_2017,
-       headers = c("2017 FE", "2017 FE bench", "2017 FE demean",
-                   "2017 FE log", "2017 FE bench log", "2017 FE demean log"),
-       digits = 4,
-       fitstat = ~ n + r2 + ar2 + f + f.p + rmse)
-write_csv(as.data.frame(tbl), paste0(exp,"NTBs_tariff_specific.csv"))
-
-
-
-################################################################################
-# relationship: tariff Vs NTBs
-################################################################################
-FE_2015 <- feols(diff_ln_AVE_FE_wmean_w_mean ~ diff_log_tariff_2015,
-                        data = subset(merged_hs4_all, baseline_year == 2015))
-
-FE_2017 <- feols(diff_ln_AVE_FE_wmean_w_mean ~ diff_log_tariff_2017,
-                        data = subset(merged_hs4, baseline_year == 2017))
-
-
-FE_sector_2015 <- feols(diff_ln_AVE_FE_wmean_w_mean ~ sector*diff_log_tariff_2015,
-                        data = subset(merged_hs4_all, baseline_year == 2015))
-
-FE_sector_2017 <- feols(diff_ln_AVE_FE_wmean_w_mean ~ sector*diff_log_tariff_2017,
-                        data = subset(merged_hs4, baseline_year == 2017))
-
-
-FE_year_2015 <- feols(diff_ln_AVE_FE_wmean_w_mean ~ as.factor(year)*diff_log_tariff_2015,
-                        data = subset(merged_hs4_all, baseline_year == 2015))
-
-FE_year_2017 <- feols(diff_ln_AVE_FE_wmean_w_mean ~ as.factor(year)*diff_log_tariff_2017,
-                        data = subset(merged_hs4, baseline_year == 2017))
-
-
-
-tbl <- etable(FE_2015, FE_2017, FE_sector_2015, FE_sector_2017, FE_year_2015, FE_year_2017,
-       headers = c("2015 Base", "2017 Base", 
-                   "2015 Sector", "2017 Sector", 
-                   "2015 Year", "2017 Year"),
-       digits = 4,
-       fitstat = ~ n + r2 + ar2 + f + f.p + rmse)
-write_csv(as.data.frame(tbl), paste0(exp,"NTBs_tariff.csv"))
-
-
-
-##############################################################################
-
-# for 2015 
-FE_2015 <- feols(diff_ln_AVE_FE_w_mean ~  as.factor(year)*diff_log_tariff_2015,
-                 data = subset(merged_hs4_all, baseline_year == 2015))
-
-FE_bench_2015 <- feols(diff_ln_AVE_FE_bench_w_mean ~ as.factor(year)*diff_log_tariff_2015,
-                       data = subset(merged_hs4_all, baseline_year == 2015))
-
-FE_demean_2015 <- feols(diff_ln_AVE_FE_wmean_w_mean ~ as.factor(year)*diff_log_tariff_2015,
-                        data = subset(merged_hs4_all, baseline_year == 2015))
-
-FE_log_2015 <- feols(diff_ln_AVE_FE_log_w_mean ~  as.factor(year)*diff_log_tariff_2015,
-                     data = subset(merged_hs4_all, baseline_year == 2015))
-
-FE_bench_log_2015 <- feols(diff_ln_AVE_FE_log_bench_w_mean ~ as.factor(year)*diff_log_tariff_2015,
-                           data = subset(merged_hs4_all, baseline_year == 2015))
-
-FE_demean_log_2015 <- feols(diff_ln_AVE_FE_log_wmean_w_mean ~ as.factor(year)*diff_log_tariff_2015,
-                            data = subset(merged_hs4_all, baseline_year == 2015))
-
-
-etable(FE_2015, FE_bench_2015, FE_demean_2015,
-       headers = c("2015 FE", "2015 FE bench","2015 FE demean"),
-       digits = 4,
-       fitstat = ~ n + r2 + ar2 + f + f.p + rmse)
-
-etable(FE_log_2015, FE_bench_log_2015, FE_demean_log_2015,
-       headers = c("2015 FE", "2015 FE bench","2015 FE demean"),
-       digits = 4,
-       fitstat = ~ n + r2 + ar2 + f + f.p + rmse)
-
-
-
-# for 2017 
-FE_2017 <- feols(diff_ln_AVE_FE_w_mean ~  as.factor(year)*diff_log_tariff_2017,
-                 data = subset(merged_hs4, baseline_year == 2017))
-
-FE_bench_2017 <- feols(diff_ln_AVE_FE_bench_w_mean ~ as.factor(year)*diff_log_tariff_2017,
-                       data = subset(merged_hs4, baseline_year == 2017))
-
-FE_demean_2017 <- feols(diff_ln_AVE_FE_wmean_w_mean ~ as.factor(year)*diff_log_tariff_2017,
-                        data = subset(merged_hs4, baseline_year == 2017))
-
-FE_log_2017 <- feols(diff_ln_AVE_FE_log_w_mean ~  as.factor(year)*diff_log_tariff_2017,
-                     data = subset(merged_hs4, baseline_year == 2017))
-
-FE_bench_log_2017 <- feols(diff_ln_AVE_FE_log_bench_w_mean ~ as.factor(year)*diff_log_tariff_2017,
-                           data = subset(merged_hs4, baseline_year == 2017))
-
-FE_demean_log_2017 <- feols(diff_ln_AVE_FE_log_wmean_w_mean ~ as.factor(year)*diff_log_tariff_2017,
-                            data = subset(merged_hs4, baseline_year == 2017))
-
-
-etable(FE_2017, FE_bench_2017, FE_demean_2017,
-       headers = c("2017 FE", "2017 FE bench","2017 FE demean"),
-       digits = 4,
-       fitstat = ~ n + r2 + ar2 + f + f.p + rmse)
-
-etable(FE_log_2017, FE_bench_log_2017, FE_demean_log_2017,
-       headers = c("2017 FE", "2017 FE bench","2017 FE demean"),
-       digits = 4,
-       fitstat = ~ n + r2 + ar2 + f + f.p + rmse)
 
 

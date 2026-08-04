@@ -36,7 +36,7 @@ HS_product <- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/data/HS_codes/HS_
 
 names(dta_schott)
 names(HS_product)
-
+unique(dta_schott$naics)
 ######################################################################################
 # drop naics where have "X"
 dta_schott$naics <- as.numeric(dta_schott$naics)
@@ -51,7 +51,43 @@ length(unique(dta_schott$HS6))
 length(unique(output_NAICS6$NAICS6_2012))
 length(unique(HS_product$HS_2012_Product_Code))
 
+######################################################################################
+# get NAICS code at 2012 revision
+######################################################################################
+library(concordance)
+library(dplyr)
+library(tidyr)
 
+dta_schott <- dta_schott %>% mutate(naics = as.character(naics))
+
+nonnaics <- c("910000", "920000", "980000", "990000")
+passthru <- c("311314", "315110", "336310")   # post-2002 codes, already 2012-valid
+
+codes <- dta_schott %>%
+  filter(!is.na(naics), !naics %in% c(nonnaics, passthru)) %>%
+  distinct(naics) %>%
+  pull(naics)
+
+res <- concord_naics(sourcevar   = codes,
+                     origin      = "NAICS2002",
+                     destination = "NAICS2012",
+                     dest.digit  = 6,
+                     all         = FALSE)
+
+xwalk <- bind_rows(
+  tibble(naics = codes,    naics_2012 = as.character(res), src = "concorded"),
+  tibble(naics = passthru, naics_2012 = passthru,          src = "already_2012"),
+  tibble(naics = nonnaics, naics_2012 = NA_character_,     src = "not_naics")
+)
+
+dta_schott <- dta_schott %>% left_join(xwalk, by = "naics")
+names(dta_schott)
+length(unique(dta_schott$naics))
+length(unique(dta_schott$naics_2012))
+# rename naics code 
+dta_schott <- dta_schott %>% select(-naics) %>% rename(naics = naics_2012)
+
+######################################################################################
 
 # 1) check product codes first:
 
@@ -120,6 +156,8 @@ colSums(is.na(merge))
 Product_codes1 <- HS_product %>% select(HS_2012_Product_Code, HS_2012_Product_Description) %>%
   rename(HS6 = HS_2012_Product_Code)
 length(unique(Product_codes1$HS6))
+Product_codes1 <- Product_codes1 %>% distinct()
+Product_codes1 <- Product_codes1 %>% filter(!is.na(HS6))
 
 
 merge1 <- full_join(merge, Product_codes1, by = "HS6")
@@ -133,28 +171,37 @@ merge1 <- merge1 %>% filter(!is.na(HS6))
 # make naics code in numeric
 length(unique(merge1$naics))
 unique(nchar(merge1$naics))
-
+class(merge1$HS6)
+unique(nchar(merge1$HS6))
 
 library(concordance)
 merge1 <- merge1 %>%
   mutate(naics1 = ifelse(is.na(naics),
                          sapply(HS6, function(x) {
-                           result <- concord_hs_naics(x, origin = "HS4", destination = "NAICS", dest.digit = 6, all = FALSE)
+                           result <- concord_hs_naics(x, origin = "HS4", destination = "NAICS2012", dest.digit = 6, all = FALSE)
                            result[[1]]
                          }),
                          naics))
 colSums(is.na(merge1))
 length(unique(merge1$naics1))
+test_NA <- merge1 %>% filter(!is.na(naics1) & is.na(naics))
 
 merge2 <- merge1 %>% select(HS6, naics1) %>% rename(naics = naics1)
-length(unique(merge1$naics1))
-length(unique(merge1$HS6))
+length(unique(merge2$naics))
+length(unique(merge2$HS6))
 
+# get again only NAICS in output data 
+merge2 <- merge2 %>% filter(naics %in%  unique(output_NAICS6$NAICS6_2012))
 
 merge3 <- distinct(merge2)
 length(unique(merge3$naics))
 length(unique(merge3$HS6))
 colSums(is.na(merge3))
+
+################################################################################
+
+
+################################################################################
 
 
 

@@ -1,0 +1,113 @@
+---
+title: "Regression_county_elast"
+output: html_document
+---
+
+
+<style>
+.main-container {
+  max-width: 1800px !important;
+}
+
+.vscroll-plot {
+    height: 600px;
+    overflow-y: scroll;
+    overflow-x: scroll;
+}
+
+.TableDiv {
+    height: 600px;
+    overflow-y: scroll;
+    overflow-x: scroll;
+}
+</style>
+
+```{r, include=FALSE}
+
+rm(list=ls())
+library(readr)
+library(tidyr)
+library(dplyr)
+library(data.table)
+library(stringi)
+library(fixest)
+library(countrycode)
+library(tidyverse)
+library(vroom)
+library(readr)
+library(dplyr)
+library(sf)
+library(tigris)
+library(ggplot2)
+library(viridis)
+
+################################################################################
+# LOad data 
+dta <- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/data/Pop_reg_dta/merge_elast_subsector_county.csv")
+names(dta)
+table(dta$year)
+exp <- "/data/sikeme/TRADE/US_CHN_TradeWar_git/output/step_2/regression/elast/county/epop/"
+################################################################################
+
+sub_dta <- dta %>% filter(year %in% c(2016:2019))
+names(sub_dta)
+
+```
+
+
+
+In each of the regression we look at the time period from 2018 to 2019. 
+The controls are change in outcome variable in a prepriod (chenge in the outcome fromm 2016 to 2017). 
+
+
+# Employment to population ratio  {.tabset}
+```{r}
+reg1 <- feols(change_EPOP_2017_bis ~ IMP_tariff_r + RET_tariff_r + RET_NTB_IV_r |
+                year, data = sub_dta, weights = ~emp_2012, cluster ~fips)
+
+reg2 <- feols(change_EPOP_2017_bis ~ IMP_tariff_r + RET_tariff_r + RET_NTB_IV_r +
+                SUB + as.factor(year):share_crop + as.factor(year):share_livestock + as.factor(year):share_nonag +
+                as.factor(year):share_forestry   |
+                year, data = sub_dta, weights = ~emp_2012, cluster ~fips)
+
+reg3 <- feols(change_EPOP_2017_bis ~ IMP_tariff_r + RET_tariff_r + RET_NTB_IV_r +
+                SUB + as.factor(year):share_crop + as.factor(year):share_livestock + as.factor(year):share_nonag +
+                as.factor(year):share_forestry +
+                as.factor(division):as.factor(year) |
+                year, data = sub_dta, weights = ~emp_2012, cluster ~fips)
+
+reg4 <- feols(change_EPOP_2017_bis ~ IMP_tariff_r + RET_tariff_r + RET_NTB_IV_r +
+                SUB + as.factor(year):share_crop + as.factor(year):share_livestock + as.factor(year):share_nonag +
+                as.factor(year):share_forestry +
+                as.factor(division):as.factor(year) + year:change_EPOP_2017_2016 |
+                year, data = sub_dta, weights = ~emp_2012,  cluster ~fips)
+
+tbl <- etable(reg1, reg2, reg3, reg4,
+              headers = c("(1)", "(2)", "(3)", "(4)"),
+              drop    = c("share_ag_mining", "share_mfg", "share_other",
+                          "division", "change_EPOP_2017_2016"),
+              digits  = 4,
+              fitstat = ~ n + r2 + ar2 + f + f.p + rmse,
+              extralines = list(
+                "-^Year FE"                        = list("Yes", "Yes", "Yes", "Yes"),
+                "-^Sector x year-month FE"               = list("No",  "Yes", "Yes", "Yes"),
+                "-^Census division x year-month FE"      = list("No",  "No",  "Yes", "Yes"),
+                "-^Pre-trend CZ outcome 2017"            = list("No",  "No",  "No",  "Yes")
+              ))
+tbl
+```
+
+
+# Wage  {.tabset}
+
+
+
+# Employment  {.tabset}
+
+
+
+# H2A employment  {.tabset}
+
+
+
+

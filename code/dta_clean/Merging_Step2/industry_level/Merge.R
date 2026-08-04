@@ -55,40 +55,40 @@ colSums(is.na(HS_NAICS))
 HS_NAICS <- HS_NAICS %>% select(naics, subsector, ag_subsector, naics_description)
 HS_NAICS <- HS_NAICS %>% distinct() %>% filter(!is.na(naics))
 
-# check if duplicates:
-test <- HS_NAICS %>%  filter(duplicated(naics) | duplicated(naics, fromLast = TRUE))
-test <- HS_NAICS %>%  group_by(naics) %>%
-  summarise(n_subsector = n_distinct(subsector),
-            subsectors = paste(unique(subsector), collapse = ", ")  ) %>%
-  filter(n_subsector > 1)
-# if non ag and crop/livestock put it in crop and livestock
-HS_NAICS <- HS_NAICS %>%  group_by(naics) %>%
-  mutate(
-    subsector = case_when(
-      # forestry + crop + nonag → crop (put this first: most specific)
-      all(c("forestry", "crop", "nonag") %in% subsector) ~ "crop",
-      
-      # nonag + livestock → livestock
-      any(subsector == "livestock") & any(subsector == "nonag") ~ "livestock",
-      
-      # nonag + crop → crop
-      any(subsector == "crop") & any(subsector == "nonag") ~ "crop",
-      
-      # nonag + forestry → nonag
-      any(subsector == "forestry") & any(subsector == "nonag") ~ "nonag",
-      
-      # otherwise keep original value
-      TRUE ~ subsector    )  ) %>%  ungroup()
-test <- HS_NAICS %>%  group_by(naics) %>%
-  summarise(n_subsector = n_distinct(subsector),
-            subsectors = paste(unique(subsector), collapse = ", ")  ) %>%
-  filter(n_subsector > 1)
-table(HS_NAICS$subsector)
-length(unique(HS_NAICS$naics))
-# manually adjust some other 
-HS_NAICS <- HS_NAICS %>%
-  mutate( subsector = case_when(naics == 311225 ~ "crop", naics == 311119 ~ "livestock",TRUE ~ subsector)  )
-
+# # check if duplicates:
+# test <- HS_NAICS %>%  filter(duplicated(naics) | duplicated(naics, fromLast = TRUE))
+# test <- HS_NAICS %>%  group_by(naics) %>%
+#   summarise(n_subsector = n_distinct(subsector),
+#             subsectors = paste(unique(subsector), collapse = ", ")  ) %>%
+#   filter(n_subsector > 1)
+# # if non ag and crop/livestock put it in crop and livestock
+# HS_NAICS <- HS_NAICS %>%  group_by(naics) %>%
+#   mutate(
+#     subsector = case_when(
+#       # forestry + crop + nonag → crop (put this first: most specific)
+#       all(c("forestry", "crop", "nonag") %in% subsector) ~ "crop",
+#       
+#       # nonag + livestock → livestock
+#       any(subsector == "livestock") & any(subsector == "nonag") ~ "livestock",
+#       
+#       # nonag + crop → crop
+#       any(subsector == "crop") & any(subsector == "nonag") ~ "crop",
+#       
+#       # nonag + forestry → nonag
+#       any(subsector == "forestry") & any(subsector == "nonag") ~ "nonag",
+#       
+#       # otherwise keep original value
+#       TRUE ~ subsector    )  ) %>%  ungroup()
+# test <- HS_NAICS %>%  group_by(naics) %>%
+#   summarise(n_subsector = n_distinct(subsector),
+#             subsectors = paste(unique(subsector), collapse = ", ")  ) %>%
+#   filter(n_subsector > 1)
+# table(HS_NAICS$subsector)
+# length(unique(HS_NAICS$naics))
+# # manually adjust some other 
+# HS_NAICS <- HS_NAICS %>%
+#   mutate( subsector = case_when(naics == 311225 ~ "crop", naics == 311119 ~ "livestock",TRUE ~ subsector)  )
+# 
 
 
 sectors <- HS_NAICS %>%  group_by(naics, subsector) %>%

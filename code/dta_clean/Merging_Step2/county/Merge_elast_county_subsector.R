@@ -46,8 +46,11 @@ census_div <- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/data/crosswalk_CZ
 sector_shares <- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/data/QCEW/subsector_share_county_2012.csv")
 names(sector_shares)
 names(census_div)
-################################################################################
 
+
+################################################################################
+# check sectors 
+unique(EPOP$subsector)
 
 unique(SUB$year)
 unique(IMP$year)
@@ -115,7 +118,7 @@ colSums(is.na(merge))
 # merge with census division and sectoral employment
 merge <- left_join(merge, census_div)
 merge <- left_join(merge, sector_shares)
-
+table(merge$year)
 
 ################################################################################
 # export total

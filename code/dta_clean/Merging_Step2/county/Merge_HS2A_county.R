@@ -23,6 +23,7 @@ library(ggplot2)
 library(viridis)
 
 ################################################################################
+setwd("/data/sikeme/TRADE/US_CHN_TradeWar_git/data/")
 
 
 SUB <- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/data/MFP/SUB_county.csv")
@@ -39,6 +40,9 @@ RET_tot_industry <- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/data/create
 
 EPOP <- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/data/QCEW/EPOP_county_2015_2019.csv")
 names(EPOP)
+h2A <- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/data/h2a/clean_diane_h2a_dta.csv")
+
+
 
 Labor <- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/data/QCEW/QCEW_2012_weights_county.csv")
 
@@ -54,117 +58,149 @@ unique(IMP$year)
 unique(RET$year)
 unique(EPOP$year)
 unique(Labor$year)
+unique(h2A$year)
+
 
 
 # filter year of interest 
 IMP <-IMP %>% filter(year %in% c(2018:2019))
 IMP <-IMP %>% select(-IMP_tariff_2015_r) %>% rename(IMP_tariff_r = IMP_tariff_2017_r)
 
+# filte year in h2A 
+h2A <- h2A %>% filter(year %in% c(2015:2019))
+table(h2A$year)
+
 summary(EPOP)
 # put EPOP in percentage
 EPOP$EPOP <- EPOP$EPOP*100
 EPOP$EPOP_work <- EPOP$EPOP_work*100
-################################################################################
-# create an EPOP for 2017, and 2015
-
-EPOP_2017 <- EPOP %>% filter(year == 2017) %>% select(fips,EPOP, employment, wage_total,wage_per_worker  ) %>%
-  rename(EPOP_2017 =EPOP,
-         employment_2017 = employment,
-         wage_total_2017 = wage_total,
-         wage_per_worker_2017 = wage_per_worker)
-EPOP_2015 <- EPOP %>% filter(year == 2015) %>% select(fips,EPOP,employment,wage_total,wage_per_worker  ) %>%
-  rename(EPOP_2015 =EPOP,
-         employment_2015 = employment,
-         wage_total_2015 = wage_total,
-         wage_per_worker_2015 = wage_per_worker )
-
-
-EPOP <- left_join(EPOP,EPOP_2017 )
-EPOP <- left_join(EPOP,EPOP_2015 )
-
-
-
-# helper: log that returns NA for non-positive (0 or negative) values
-safe_log <- function(x) if_else(x > 0, log(x), NA_real_)
-
-EPOP1 <- EPOP %>%
-  # 1) log-transform first, with 0s/negatives -> NA
-  mutate(
-    log_employment            = safe_log(employment),
-    log_employment_2017       = safe_log(employment_2017),
-    log_employment_2015       = safe_log(employment_2015),
-    log_wage_total            = safe_log(wage_total),
-    log_wage_total_2017       = safe_log(wage_total_2017),
-    log_wage_total_2015       = safe_log(wage_total_2015),
-    log_wage_per_worker       = safe_log(wage_per_worker),
-    log_wage_per_worker_2017  = safe_log(wage_per_worker_2017),
-    log_wage_per_worker_2015  = safe_log(wage_per_worker_2015)
-  ) %>%
-  # 2) changes
-  mutate(
-    # EPOP changes in levels (as before)
-    change_EPOP_2017      = if_else(year > 2017, EPOP - EPOP_2017, NA_real_),
-    change_EPOP_2015      = if_else(year > 2015, EPOP - EPOP_2015, NA_real_),
-    change_EPOP_2017_bis  = EPOP - EPOP_2017,
-    change_EPOP_2015_bis  = EPOP - EPOP_2015,
-    
-    # employment: change in log
-    change_log_employment_2017      = if_else(year > 2017, log_employment - log_employment_2017, NA_real_),
-    change_log_employment_2015      = if_else(year > 2015, log_employment - log_employment_2015, NA_real_),
-    change_log_employment_2017_bis  = log_employment - log_employment_2017,
-    change_log_employment_2015_bis  = log_employment - log_employment_2015,
-    
-    # wage_total: change in log
-    change_log_wage_total_2017      = if_else(year > 2017, log_wage_total - log_wage_total_2017, NA_real_),
-    change_log_wage_total_2015      = if_else(year > 2015, log_wage_total - log_wage_total_2015, NA_real_),
-    change_log_wage_total_2017_bis  = log_wage_total - log_wage_total_2017,
-    change_log_wage_total_2015_bis  = log_wage_total - log_wage_total_2015,
-    
-    # wage_per_worker: change in log
-    change_log_wage_per_worker_2017      = if_else(year > 2017, log_wage_per_worker - log_wage_per_worker_2017, NA_real_),
-    change_log_wage_per_worker_2015      = if_else(year > 2015, log_wage_per_worker - log_wage_per_worker_2015, NA_real_),
-    change_log_wage_per_worker_2017_bis  = log_wage_per_worker - log_wage_per_worker_2017,
-    change_log_wage_per_worker_2015_bis  = log_wage_per_worker - log_wage_per_worker_2015  )
-summary(EPOP1)
-colSums(is.na(EPOP1))
-
-# assumes safe_log() from the previous step is already defined:
-# safe_log <- function(x) if_else(x > 0, log(x), NA_real_)
-
-EPOP_2016 <- EPOP %>%
-  filter(year == 2016) %>%
-  mutate(
-    # EPOP in levels (as you wrote it)
-    change_EPOP_2017_2016 = EPOP_2017 - EPOP,
-    
-    # the other three as log changes (2016 -> 2017)
-    change_log_employment_2017_2016      = safe_log(employment_2017)      - safe_log(employment),
-    change_log_wage_total_2017_2016      = safe_log(wage_total_2017)      - safe_log(wage_total),
-    change_log_wage_per_worker_2017_2016 = safe_log(wage_per_worker_2017) - safe_log(wage_per_worker)  ) %>%
-  select(fips,
-         change_EPOP_2017_2016,
-         change_log_employment_2017_2016,
-         change_log_wage_total_2017_2016,
-         change_log_wage_per_worker_2017_2016)
-
-
-
 
 ################################################################################
+length(unique(h2A$fips))
+length(unique(EPOP$fips))
+
+inter <- intersect(EPOP$fips, h2A$fips)
+
+################################################################################
+# Harmonize the variables 
 names(SUB)
 SUB <- SUB %>% select(fips,year,SUB)
 
 sapply(list(SUB = SUB, IMP = IMP, RET = RET, EPOP = EPOP), 
        function(df) class(df$fips))
 sapply(list(SUB = SUB, IMP = IMP, RET = RET, EPOP = EPOP), 
-        function(df) class(df$year))
+       function(df) class(df$year))
 
-sapply(list(SUB = SUB, IMP = IMP, RET = RET, EPOP = EPOP), 
+sapply(list(SUB = SUB, IMP = IMP, RET = RET, EPOP = EPOP, h2A = h2A), 
        function(df) length(unique(df$fips)))
 
 SUB$fips <- as.numeric(SUB$fips)
-EPOP1$fips <- as.numeric(EPOP1$fips)
-EPOP_2016$fips <- as.numeric(EPOP_2016$fips)
+EPOP$fips <- as.numeric(EPOP$fips)
+h2A$fips <- as.numeric(h2A$fips)
+
+EPOP <- left_join(EPOP, h2A)
+names(EPOP)
+
+################################################################################
+library(dplyr)
+library(tidyr)
+
+# ---- config -------------------------------------------------------------
+log_vars <- c("employment", "wage_total", "wage_per_worker",
+              "nbr_workers_certified", "nbr_workers_requested")
+lvl_vars <- c("EPOP")
+
+all_vars <- c(lvl_vars, log_vars)
+base_yrs <- c(2015, 2017)
+
+safe_log <- function(x) if_else(x > 0, log(x), NA_real_)
+
+# ---- 0. sanity checks ---------------------------------------------------
+missing_vars <- setdiff(all_vars, names(EPOP))
+if (length(missing_vars)) stop("Not in EPOP: ", paste(missing_vars, collapse = ", "))
+
+dups <- EPOP %>% count(fips, year) %>% filter(n > 1)
+if (nrow(dups)) stop("fips-year is not unique (", nrow(dups),
+                     " duplicated keys). Joining by fips will inflate rows.")
+
+# ---- 1. baseline cross-sections, all years at once ---------------------
+baselines <- EPOP %>%
+  filter(year %in% base_yrs) %>%
+  select(fips, year, all_of(all_vars)) %>%
+  pivot_wider(names_from = year, values_from = all_of(all_vars), names_sep = "_")
+
+EPOP <- left_join(EPOP, baselines, by = "fips")
+
+base_cols <- as.vector(outer(all_vars, base_yrs, paste, sep = "_"))
+missing_base <- setdiff(base_cols, names(EPOP))
+if (length(missing_base)) stop("Baseline join failed for: ",
+                               paste(missing_base, collapse = ", "))
+
+# ---- 2. logs ------------------------------------------------------------
+log_cols <- c(log_vars, as.vector(outer(log_vars, base_yrs, paste, sep = "_")))
+
+EPOP1 <- EPOP %>%
+  mutate(across(all_of(log_cols), safe_log, .names = "log_{.col}"))
+
+# ---- 3. changes vs each baseline year ----------------------------------
+chg_cols <- c(lvl_vars, paste0("log_", log_vars))
+
+add_changes <- function(df, yr) {
+  base_lookup <- setNames(
+    c(paste0(lvl_vars, "_", yr), paste0("log_", log_vars, "_", yr)),
+    chg_cols
+  )
+  for (v in chg_cols) {
+    d <- df[[v]] - df[[base_lookup[[v]]]]
+    df[[paste0("change_", v, "_", yr, "_bis")]] <- d
+    df[[paste0("change_", v, "_", yr)]]         <- if_else(df$year > yr, d, NA_real_)
+  }
+  df
+}
+
+for (yr in base_yrs) EPOP1 <- add_changes(EPOP1, yr)
+
+# ---- 4. 2016 -> 2017 changes -------------------------------------------
+e16 <- EPOP %>% filter(year == 2016)
+
+EPOP_2016 <- tibble(
+  fips = e16$fips,
+  change_EPOP_2017_2016 = e16$EPOP_2017 - e16$EPOP
+)
+
+for (v in log_vars) {
+  EPOP_2016[[paste0("change_log_", v, "_2017_2016")]] <-
+    safe_log(e16[[paste0(v, "_2017")]]) - safe_log(e16[[v]])
+}
+
+# ---- checks -------------------------------------------------------------
+summary(EPOP1)
+colSums(is.na(EPOP1))
+names(EPOP1)
+
+EPOP1 <- EPOP1 %>%
+  select(
+    fips, year, wage_total, estab, employment,
+    state_fips, county_fips,
+    total_pop, working_age_pop, EPOP, EPOP_work,
+    wage_per_worker, nbr_workers_certified, nbr_workers_requested,
+    log_employment, log_wage_total, log_wage_per_worker,
+    log_nbr_workers_certified, log_nbr_workers_requested,
+    change_EPOP_2015_bis, change_EPOP_2015,
+    change_log_employment_2015_bis, change_log_employment_2015,
+    change_log_wage_total_2015_bis, change_log_wage_total_2015,
+    change_log_wage_per_worker_2015_bis, change_log_wage_per_worker_2015,
+    change_log_nbr_workers_certified_2015_bis, change_log_nbr_workers_certified_2015,
+    change_log_nbr_workers_requested_2015_bis, change_log_nbr_workers_requested_2015,
+    change_EPOP_2017_bis, change_EPOP_2017,
+    change_log_employment_2017_bis, change_log_employment_2017,
+    change_log_wage_total_2017_bis, change_log_wage_total_2017,
+    change_log_wage_per_worker_2017_bis, change_log_wage_per_worker_2017,
+    change_log_nbr_workers_certified_2017_bis, change_log_nbr_workers_certified_2017,
+    change_log_nbr_workers_requested_2017_bis, change_log_nbr_workers_requested_2017  )    
+
+######EPOP1################################################################################
+
 
 merge <- EPOP1 %>%
   left_join(IMP,  by = c("fips", "year")) %>%
@@ -245,7 +281,7 @@ merge2 <- merge2 %>%   mutate(across(all_of(vars_to_zero), ~if_else(year < 2018,
 colSums(is.na(merge2))
 # put 0s if always NA r 0s for a specific fips code
 merge3 <- merge2 %>%    group_by(fips) %>% mutate(across(all_of(vars_to_zero),
-    ~ if_else(year < 2018 | all(is.na(.) | . == 0),   0,  .    )  )) %>%
+                                                         ~ if_else(year < 2018 | all(is.na(.) | . == 0),   0,  .    )  )) %>%
   ungroup()
 colSums(is.na(merge3))
 

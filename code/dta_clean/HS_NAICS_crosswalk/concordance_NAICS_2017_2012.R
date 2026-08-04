@@ -53,6 +53,6 @@ length(unique(naics_2012$naics))
 
 write_csv(dta, "data/crosswalk/NAICS_2017_2012/clean_2017_to_2012_NAICS.xlsx")
 
-
-
+library(readxl)
+concordance <- read_excel("data/crosswalk/NAICS_2017_2012/clean_2017_to_2012_NAICS.xlsx")
 

@@ -255,10 +255,11 @@ Merge_All <- Merge1 %>%  group_by(year, industry, industry_code) %>%
     RET_i_NTB     = 100 * sum(gamma_iju_tau_NTB, na.rm = TRUE),
     RET_i_NTB_IV  = 100 * sum(gamma_iju_tau_NTB_IV, na.rm = TRUE),
     .groups = "drop"  )
+colSums(is.na(Merge))
 summary(Merge_All)
 test <- Merge_All %>% filter(RET_i_NTB > 100)
 test <- Merge_All %>% filter(RET_i_NTB_IV > 100)
-
+Merge_All <- Merge_All %>% filter(!is.na(industry))
 ################################################################################
 # 5. Export results
 ################################################################################

@@ -18,7 +18,6 @@ library(countrycode)
 library(tidyverse)
 library(vroom)
 library(countrycode)
-library(Hmisc)
 library(haven)
 library(sfaR)
 library(frontier)
@@ -48,40 +47,40 @@ colSums(is.na(HS_NAICS))
 HS_NAICS <- HS_NAICS %>% select(naics, subsector, ag_subsector, naics_description)
 HS_NAICS <- HS_NAICS %>% distinct() %>% filter(!is.na(naics))
 
-# check if duplicates:
-test <- HS_NAICS %>%  filter(duplicated(naics) | duplicated(naics, fromLast = TRUE))
-test <- HS_NAICS %>%  group_by(naics) %>%
-  summarise(n_subsector = n_distinct(subsector),
-            subsectors = paste(unique(subsector), collapse = ", ")  ) %>%
-  filter(n_subsector > 1)
-# if non ag and crop/livestock put it in crop and livestock
-HS_NAICS <- HS_NAICS %>%  group_by(naics) %>%
-  mutate(
-    subsector = case_when(
-      # forestry + crop + nonag → crop (put this first: most specific)
-      all(c("forestry", "crop", "nonag") %in% subsector) ~ "crop",
-      
-      # nonag + livestock → livestock
-      any(subsector == "livestock") & any(subsector == "nonag") ~ "livestock",
-      
-      # nonag + crop → crop
-      any(subsector == "crop") & any(subsector == "nonag") ~ "crop",
-      
-      # nonag + forestry → nonag
-      any(subsector == "forestry") & any(subsector == "nonag") ~ "nonag",
-      
-      # otherwise keep original value
-      TRUE ~ subsector    )  ) %>%  ungroup()
-test <- HS_NAICS %>%  group_by(naics) %>%
-  summarise(n_subsector = n_distinct(subsector),
-            subsectors = paste(unique(subsector), collapse = ", ")  ) %>%
-  filter(n_subsector > 1)
-table(HS_NAICS$subsector)
-length(unique(HS_NAICS$naics))
-# manually adjust some other 
-HS_NAICS <- HS_NAICS %>%
-  mutate( subsector = case_when(naics == 311225 ~ "crop", naics == 311119 ~ "livestock",TRUE ~ subsector)  )
-
+# # check if duplicates:
+# test <- HS_NAICS %>%  filter(duplicated(naics) | duplicated(naics, fromLast = TRUE))
+# test <- HS_NAICS %>%  group_by(naics) %>%
+#   summarise(n_subsector = n_distinct(subsector),
+#             subsectors = paste(unique(subsector), collapse = ", ")  ) %>%
+#   filter(n_subsector > 1)
+# # if non ag and crop/livestock put it in crop and livestock
+# HS_NAICS <- HS_NAICS %>%  group_by(naics) %>%
+#   mutate(
+#     subsector = case_when(
+#       # forestry + crop + nonag → crop (put this first: most specific)
+#       all(c("forestry", "crop", "nonag") %in% subsector) ~ "crop",
+#       
+#       # nonag + livestock → livestock
+#       any(subsector == "livestock") & any(subsector == "nonag") ~ "livestock",
+#       
+#       # nonag + crop → crop
+#       any(subsector == "crop") & any(subsector == "nonag") ~ "crop",
+#       
+#       # nonag + forestry → nonag
+#       any(subsector == "forestry") & any(subsector == "nonag") ~ "nonag",
+#       
+#       # otherwise keep original value
+#       TRUE ~ subsector    )  ) %>%  ungroup()
+# test <- HS_NAICS %>%  group_by(naics) %>%
+#   summarise(n_subsector = n_distinct(subsector),
+#             subsectors = paste(unique(subsector), collapse = ", ")  ) %>%
+#   filter(n_subsector > 1)
+# table(HS_NAICS$subsector)
+# length(unique(HS_NAICS$naics))
+# # manually adjust some other 
+# HS_NAICS <- HS_NAICS %>%
+#   mutate( subsector = case_when(naics == 311225 ~ "crop", naics == 311119 ~ "livestock",TRUE ~ subsector)  )
+# 
 
 
 sectors <- HS_NAICS %>%  group_by(naics, subsector) %>%
@@ -92,7 +91,8 @@ length(unique(sectors$naics))
 names(sectors)
 unique(sectors$ag_subsector)
 table(sectors$subsector)
-sectors$subsector[grepl("mining", sectors$ag_subsector)] <- "mining"
+colSums(is.na(sectors))
+# sectors$subsector[grepl("mining", sectors$ag_subsector)] <- "mining"
 
 
 ###############################################################################
@@ -113,6 +113,9 @@ dta_2018 <- left_join(dta_2018, sectors )
 dta_2019 <- left_join(dta_2019, sectors )
 
 colSums(is.na(dta_2015 ))
+test <- dta_2015 %>% filter(is.na(subsector))
+length(unique(dta_2015$naics))
+
 
 dta_2015_sum <- dta_2015 %>% group_by(fips, year, subsector) %>% 
   summarise(estabs = sum( estabs, na.rm = TRUE),
@@ -124,7 +127,7 @@ dta_2015_sum <- dta_2015 %>% group_by(fips, year, subsector) %>%
 
 
 summarise_year <- function(dta) {
-  dta %>%
+  dta %>% filter(!is.na(subsector)) %>% # drop all sector not included in our analysis
     group_by(fips, year, subsector) %>%
     summarise(
       estabs              = sum(estabs,              na.rm = TRUE),
@@ -193,12 +196,15 @@ sapply(years, function(df) {
 dta <- bind_rows(dta_2015_sum, dta_2016_sum, dta_2017_sum, dta_2018_sum, dta_2019_sum)
 
 table(dta$year)
+colSums(is.na(dta))
+test <- dta %>% filter(is.na(subsector))
+
 
 # select only fips that are in Pop 
 dta1 <-  dta %>% filter(fips %in% unique(Pop$fips))
 table(dta1$year)
 tapply(dta1$fips, dta1$year, function(x) length(unique(x)))
-table(dta1$subsector)
+table(dta1$subsector, dta1$year)
 
 dta1 <- dta1 |>  mutate(subsector = ifelse(is.na(subsector), "other", subsector))
 dta1 <- dta1 |>
@@ -227,6 +233,8 @@ dta_balanced1 <- left_join(dta_balanced, Pop)
 
 # create emp_to_pop ratio
 names(dta_balanced1)
+colSums(is.na(dta_balanced1))
+table(dta_balanced1$year)
 
 dta_balanced1 <- dta_balanced1 %>% mutate(EPOP = if_else(total_pop != 0 , emp/total_pop, 0))
 summary(dta_balanced1)

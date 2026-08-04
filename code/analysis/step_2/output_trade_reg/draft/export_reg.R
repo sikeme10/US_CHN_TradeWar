@@ -36,20 +36,14 @@ getwd()
 dta <- read_csv("/data/sikeme/TRADE/US_CHN_TradeWar_git/data/output_reg/merge_export.csv")
 
 names(dta)
-
 ################################################################################
 
-# choose year of interest
+
 sub_dta <- dta %>% filter(year %in% c(2018:2019))
-
-
 # without mining 
 sub_dta$is_mining <- as.integer(grepl("mining", sub_dta$industry, ignore.case = TRUE))
 test <- sub_dta %>% filter(is_mining == TRUE)
 sub_dta <- sub_dta %>% filter(is_mining == FALSE)
-
-################################################################################
-
 
 reg1 <- feols(change_exp_ship_ratio ~   IMP_it_2017 + RET_i_tariff + RET_i_NTB_IV,
               data = sub_dta)
@@ -84,16 +78,14 @@ tbl
 
 
 
-
-
 # ---- Models without controls ----
-m1 <- feols(change_exp_ship_ratio ~ IMP_it_2017 + RET_i_tariff,
+m1 <- feols(change_exp_ship_ratio ~ 0 + IMP_it_2017 + RET_i_tariff,
             data = sub_dta)
 
-m2 <- feols(change_exp_ship_ratio ~ IMP_it_2017 + RET_i_tariff + RET_i_NTB,
+m2 <- feols(change_exp_ship_ratio ~ 0 + IMP_it_2017 + RET_i_tariff + RET_i_NTB,
             data = sub_dta)
 
-m3 <- feols(change_exp_ship_ratio ~ IMP_it_2017 + RET_i_tariff + RET_i_NTB_IV,
+m3 <- feols(change_exp_ship_ratio ~ 0 + IMP_it_2017 + RET_i_tariff + RET_i_NTB_IV,
             data = sub_dta)
 
 tbl_no_controls <- etable(
@@ -103,16 +95,86 @@ tbl_no_controls <- etable(
            RET_i_tariff = "RET tariff",
            RET_i_NTB = "RET NTM",
            RET_i_NTB_IV = "RET NTM(IV)"),
-  fitstat = ~ n + r2,  digits = 3,  digits.stats = 2,  tex = FALSE)
+  fitstat = ~ n + r2,
+  digits = 3,
+  digits.stats = 2,
+  tex = FALSE
+)
 
 tbl_no_controls
 
+# ---- Outcome trends only ----
+m1 <- feols(change_exp_ship_ratio ~ 0 + IMP_it_2017 + RET_i_tariff +
+              I(year - 2017):change_2016_2017,
+            data = sub_dta)
+m2 <- feols(change_exp_ship_ratio ~ 0 + IMP_it_2017 + RET_i_tariff + RET_i_NTB +
+              I(year - 2017):change_2016_2017,
+            data = sub_dta)
+m3 <- feols(change_exp_ship_ratio ~ 0 + IMP_it_2017 + RET_i_tariff + RET_i_NTB_IV +
+              I(year - 2017):change_2016_2017,
+            data = sub_dta)
+
+tbl_trends <- etable(
+  m1, m2, m3,
+  title = "Outcome trends only",
+  dict = c(IMP_it_2017 = "IMP", RET_i_tariff = "RET tariff",
+           RET_i_NTB = "RET NTM", RET_i_NTB_IV = "RET NTM(IV)"),
+  fitstat = ~ n + r2, digits = 3, digits.stats = 2, tex = FALSE)
+tbl_trends
+
+# ---- Sector x year FE only ----
+m4 <- feols(change_exp_ship_ratio ~ 0 + IMP_it_2017 + RET_i_tariff |
+              year^subsector,
+            data = sub_dta, cluster = ~industry)
+m5 <- feols(change_exp_ship_ratio ~ 0 + IMP_it_2017 + RET_i_tariff + RET_i_NTB |
+              year^subsector,
+            data = sub_dta, cluster = ~industry)
+m6 <- feols(change_exp_ship_ratio ~ 0 + IMP_it_2017 + RET_i_tariff + RET_i_NTB_IV |
+              year^subsector,
+            data = sub_dta, cluster = ~industry)
+
+tbl_sectorFE <- etable(
+  m4, m5, m6,
+  title = "Sector x year FE only",
+  dict = c(IMP_it_2017 = "IMP", RET_i_tariff = "RET tariff",
+           RET_i_NTB = "RET NTM", RET_i_NTB_IV = "RET NTM(IV)"),
+  fitstat = ~ n + r2, digits = 3, digits.stats = 2, tex = FALSE
+)
+tbl_sectorFE
 
 
-# ---- All controls ----
+
+
+# ---- Both controls ----
 m7 <- feols(change_exp_ship_ratio ~ 0 + IMP_it_2017 + RET_i_tariff +
               I(year - 2017):change_2016_2017 |
-              year^subsector,  data = sub_dta)
+              year^subsector+ year,
+            data = sub_dta)
+m8 <- feols(change_exp_ship_ratio ~ 0 + IMP_it_2017 + RET_i_tariff + RET_i_NTB +
+              I(year - 2017):change_2016_2017 |
+              year^subsector + year,
+            data = sub_dta)
+m9 <- feols(change_exp_ship_ratio ~ 0 + IMP_it_2017 + RET_i_tariff + RET_i_NTB_IV +
+              I(year - 2017):change_2016_2017 |
+              year^subsector + year,
+            data = sub_dta)
+
+tbl_both <- etable(
+  m7, m8, m9,
+  title = "Both controls",
+  dict = c(IMP_it_2017 = "IMP", RET_i_tariff = "RET tariff",
+           RET_i_NTB = "RET NTM", RET_i_NTB_IV = "RET NTM(IV)"),
+  fitstat = ~ n + r2, digits = 3, digits.stats = 2,tex = FALSE
+)
+tbl_both
+
+
+
+# ---- Both controls without year FE----
+m7 <- feols(change_exp_ship_ratio ~ 0 + IMP_it_2017 + RET_i_tariff +
+              I(year - 2017):change_2016_2017 |
+              year^subsector,
+            data = sub_dta)
 m8 <- feols(change_exp_ship_ratio ~ 0 + IMP_it_2017 + RET_i_tariff + RET_i_NTB +
               I(year - 2017):change_2016_2017 |
               year^subsector ,
@@ -121,37 +183,40 @@ m9 <- feols(change_exp_ship_ratio ~ 0 + IMP_it_2017 + RET_i_tariff + RET_i_NTB_I
               I(year - 2017):change_2016_2017 |
               year^subsector ,
             data = sub_dta)
+
 tbl_both <- etable(
   m7, m8, m9,
   title = "Both controls",
   dict = c(IMP_it_2017 = "IMP", RET_i_tariff = "RET tariff",
            RET_i_NTB = "RET NTM", RET_i_NTB_IV = "RET NTM(IV)"),
-  fitstat = ~ n + r2, digits = 3, digits.stats = 2,tex = FALSE)
+  fitstat = ~ n + r2, digits = 3, digits.stats = 2,tex = FALSE
+)
 tbl_both
 
-# with cluster 
-m7 <- feols(change_exp_ship_ratio ~ 0 + IMP_it_2017 + RET_i_tariff +
-              I(year - 2017):change_2016_2017 |
-              year^subsector,  data = sub_dta, cluster = ~industry)
+
+
+# ---- Both controls ----
+m6 <- feols(change_exp_ship_ratio ~ 0 + IMP_it_2017 + RET_i_tariff + RET_i_NTB,
+            data = sub_dta)
+m7 <- feols(change_exp_ship_ratio ~ 0 + IMP_it_2017 + RET_i_tariff + RET_i_NTB
+               |year,
+            data = sub_dta)
 m8 <- feols(change_exp_ship_ratio ~ 0 + IMP_it_2017 + RET_i_tariff + RET_i_NTB +
+              I(year - 2017):change_2016_2017 |year,
+            data = sub_dta)
+m9 <- feols(change_exp_ship_ratio ~ 0 + IMP_it_2017 + RET_i_tariff + RET_i_NTB +
               I(year - 2017):change_2016_2017 |
-              year^subsector , data = sub_dta, cluster = ~industry)
-m9 <- feols(change_exp_ship_ratio ~ 0 + IMP_it_2017 + RET_i_tariff + RET_i_NTB_IV +
-              I(year - 2017):change_2016_2017 |
-              year^subsector , data = sub_dta, cluster = ~industry)
+              year^subsector + year,
+            data = sub_dta)
+
 tbl_both <- etable(
-  m7, m8, m9,
+  m6, m7, m8, m9,
   title = "Both controls",
   dict = c(IMP_it_2017 = "IMP", RET_i_tariff = "RET tariff",
            RET_i_NTB = "RET NTM", RET_i_NTB_IV = "RET NTM(IV)"),
-  fitstat = ~ n + r2, digits = 3, digits.stats = 2,tex = FALSE)
+  fitstat = ~ n + r2, digits = 3, digits.stats = 2,tex = FALSE
+)
 tbl_both
-
-
-
-
-
-
 
 
 #################################################################################

@@ -186,6 +186,8 @@ test <- output_NAICS6 %>% filter(!(NAICS6_2012 %in% unique(Merge_trade1$naics) )
 
 Merge_trade_output <- left_join(Merge_trade1, output_NAICS6, by = c("naics" = "NAICS6_2012"))
 colSums(is.na(Merge_trade_output))
+test <- Merge_trade_output %>% filter(is.na(industry))
+
 
 ################################################################################
 # 3. Aggregate at NAICS 6-digit level
@@ -229,6 +231,11 @@ Merge1 <- Merge %>% group_by(year, sector,  industry ,industry_code) %>%
   summarise(rho_tau_2015  = sum(rho_tau_2015, na.rm = TRUE),
             rho_tau_2017  = sum(rho_tau_2017, na.rm = TRUE))
 summary(Merge1)
+colSums(is.na(Merge1))
+
+test <- Merge1 %>% filter(is.na(industry))
+Merge1 <- Merge1 %>% filter(!is.na(industry))
+table(Merge1$year)
 
 ###############################################################################
 # get US tot export to create gamma
@@ -254,6 +261,8 @@ US_tot_export2 <- US_tot_export1 %>% group_by(industry) %>%
 ################################################################################
 
 # output data at industry level
+HS_NAICS$HS6 <- as.numeric(HS_NAICS$HS6)
+HS_NAICS1$HS6 <- as.numeric(HS_NAICS1$HS6)
 
 HS_NAICS2 <- left_join(HS_NAICS, HS_NAICS1) %>% select(naics,naics_description, industry, industry_code, subsector)
 # deduplicated NAICS6 -> industry mapping

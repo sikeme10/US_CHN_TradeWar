@@ -91,7 +91,7 @@ output2 <- output2 %>% filter(year %in% c(2016:2020))
 write_csv(output2, "/data/sikeme/TRADE/US_CHN_TradeWar_git/data/output_reg/merge_output.csv")
 
 
-test <- read_csv("TRADE/US_CHN_TradeWar_git/data/output_reg/merge_output.csv")
+# test <- read_csv("TRADE/US_CHN_TradeWar_git/data/output_reg/merge_output.csv")
 
 
 

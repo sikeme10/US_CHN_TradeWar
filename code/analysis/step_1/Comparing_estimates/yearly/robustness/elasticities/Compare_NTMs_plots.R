@@ -22,7 +22,7 @@ library(frontier)
 ################################################################################
 # USER CHOICES (change these only)
 ################################################################################
-BASE_YEAR <- 2015
+BASE_YEAR <- 2017
 # SECTOR    <- "Ag"   # e.g. "Ag", "Manuf", etc.
 SECTOR    <- "Manu" 
 
@@ -187,17 +187,21 @@ TARIFF_VAR <- paste0("diff_log_tariff_", BASE_YEAR)
 ################################################################################
 theme_trade <- theme_minimal(base_size = 14, base_family = "Times New Roman") +
   theme(
-    panel.spacing.x = unit(1.2, "lines"),
-    plot.title = element_text(size = 12, hjust = 0.5),
+    panel.spacing.x  = unit(1.2, "lines"),
+    plot.title       = element_blank(),
     panel.background = element_rect(fill = "white", color = NA),
     plot.background  = element_rect(fill = "white", color = NA),
-    axis.text.x = element_text(size = 11),
-    axis.text.y = element_text(size = 11),
+    panel.border     = element_rect(color = "black", fill = NA, linewidth = 0.6),
+    strip.background = element_rect(fill = "grey92", color = "black", linewidth = 0.6),
+    strip.text       = element_text(size = 12, face = "bold", color = "black"),
+    axis.text.x  = element_text(size = 11),
+    axis.text.y  = element_text(size = 11),
     axis.title.x = element_text(size = 12),
     axis.title.y = element_text(size = 12),
+    legend.position = "top",
     legend.text  = element_text(size = 12),
-    legend.title = element_text(size = 12)
-  )
+    # legend.title = element_text(size = 12)  
+    legend.title = element_blank())
 
 ### PLOT THEME
 
@@ -205,18 +209,22 @@ theme_trade <- theme_minimal(base_size = 14, base_family = "Times New Roman") +
 # ---- consistent legend keys across ALL plots ----
 legend_breaks <- c("FE", "FE_demeaned", "FE_bench", "tariff", "Chen_et_al")
 
-legend_labels <- c(  "FE"          = "FE",
-                     "FE_demeaned" = "FE (demeaned)",
-                     "FE_bench"    = "FE (benchmark)",
+legend_labels <- c(  "FE"          = "NTM (FE)",
+                     "FE_demeaned" = "NTM (demeaned)",
+                     "FE_bench"    = "NTM (benchmark)",
                      "tariff"      = "Tariff",
                      "Chen_et_al"  = "Chen et al.")
 
-legend_colors <- c(  "FE"          = "blue",
-                     "FE_demeaned" = "orange",
-                     "FE_bench"    = "purple",
-                     "tariff"      = "darkgreen",
-                     "Chen_et_al"  = "red")
-
+# Revised palette: Okabe-Ito colorblind-safe set, minus the yellow swatch,
+# chosen so saturation/lightness are matched across series (no single
+# color reads as louder or "hotter" than the rest, which is what was
+# happening with the old orange). Chen et al. stays black/dashed so it
+# reads as an external benchmark rather than another estimated series.
+legend_colors <- c(  "FE"          = "#D55E00",   # blue
+                     "FE_demeaned" = "#0072B2",   # vermillion (muted, not orange/yellow)
+                     "FE_bench"    = "#009E73",   # teal green
+                     "tariff"      = "#7F7F7F",   # neutral gray
+                     "Chen_et_al"  = "#7B3294")   # black
 
 
 

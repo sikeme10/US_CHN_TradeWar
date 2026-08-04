@@ -145,6 +145,7 @@ merge_data <- merge_data %>%
                              TRUE ~ "Other"       )  )
 table(merge_data$sector)
 
+
 ###############################################################################
 names(HS_NAICS)
 colSums(is.na(HS_NAICS))
@@ -157,41 +158,10 @@ test <- HS_NAICS %>%  group_by(naics) %>%
   summarise(n_subsector = n_distinct(subsector),
             subsectors = paste(unique(subsector), collapse = ", ")  ) %>%
   filter(n_subsector > 1)
-# if non ag and crop/livestock put it in crop and livestock
-HS_NAICS <- HS_NAICS %>%  group_by(naics) %>%
-  mutate(
-    subsector = case_when(
-      # forestry + crop + nonag → crop (put this first: most specific)
-      all(c("forestry", "crop", "nonag") %in% subsector) ~ "crop",
-      
-      # nonag + livestock → livestock
-      any(subsector == "livestock") & any(subsector == "nonag") ~ "livestock",
-      
-      # nonag + crop → crop
-      any(subsector == "crop") & any(subsector == "nonag") ~ "crop",
-      
-      # nonag + forestry → nonag
-      any(subsector == "forestry") & any(subsector == "nonag") ~ "nonag",
-      
-      # otherwise keep original value
-      TRUE ~ subsector    )  ) %>%  ungroup()
-test <- HS_NAICS %>%  group_by(naics) %>%
-  summarise(n_subsector = n_distinct(subsector),
-            subsectors = paste(unique(subsector), collapse = ", ")  ) %>%
-  filter(n_subsector > 1)
-table(HS_NAICS$subsector)
-length(unique(HS_NAICS$naics))
-# manually adjust some other 
-HS_NAICS <- HS_NAICS %>%
-  mutate( subsector = case_when(naics == 311225 ~ "crop", naics == 311119 ~ "livestock",TRUE ~ subsector)  )
-
-
 
 sectors <- HS_NAICS %>%  group_by(naics, subsector) %>%
   summarise(ag_subsector = paste(ag_subsector, collapse = ", "), .groups = "drop")
 length(unique(sectors$naics))
-
-
 
 merge_data1 <- left_join(merge_data, sectors)
 colSums(is.na(merge_data1))
@@ -199,22 +169,14 @@ unique(merge_data1$subsector)
 test <- merge_data1 %>%  filter(is.na(subsector))
 unique(test$NAICS_description)
 
+# quick fix on potato
+merge_data1 <- merge_data1 %>% mutate(subsector = ifelse(naics == "111219", "crop", subsector),
+                                      ag_subsector = ifelse(naics == "111219", "Vegetable Farming", ag_subsector))
+
 
 
 test <- merge_data1 %>% filter(subsector == "crop" & IMP_tariff_tot_ir != 0)
 unique(test$NAICS_description)
-
-
-
-###############################################################################
-# drop mining?
-###############################################################################
-
-# separate mining in subscetor from nonag 
-names(merge_data1)
-unique(merge_data1$ag_subsector)
-table(merge_data1$subsector)
-merge_data1$subsector[grepl("mining", merge_data1$ag_subsector)] <- "mining"
 
 
 
@@ -232,4 +194,6 @@ unique(IMP_tot_r$year)
 test <- IMP_tot_r %>% filter(IMP_tariff_tot_ir > 1.5)  
 
 write_csv(IMP_tot_r, paste0("/data/sikeme/TRADE/US_CHN_TradeWar_git/data/created_exposure/NAICS6/county/IMP_r_subsectors_IV.csv") )
+
+
 
